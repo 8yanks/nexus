@@ -1,0 +1,46 @@
+// ─── SYMBOL MAPPING: Internal IDs ↔ Exchange symbols ────────
+// Our instrument IDs are exchange-agnostic. Each exchange has its
+// own symbol conventions. This module bridges the two.
+
+export interface SymbolMapping {
+  instrumentId: string
+  binanceSymbol: string
+  type: 'spot' | 'futures'
+}
+
+export const BINANCE_MAPPINGS: SymbolMapping[] = [
+  { instrumentId: 'BTC-USD-SPOT', binanceSymbol: 'BTCUSDT', type: 'spot' },
+  { instrumentId: 'ETH-USD-SPOT', binanceSymbol: 'ETHUSDT', type: 'spot' },
+  { instrumentId: 'SOL-USD-SPOT', binanceSymbol: 'SOLUSDT', type: 'spot' },
+  { instrumentId: 'BTC-PERP',     binanceSymbol: 'BTCUSDT', type: 'futures' },
+  { instrumentId: 'ETH-PERP',     binanceSymbol: 'ETHUSDT', type: 'futures' },
+]
+
+const _byInstrumentId = new Map(BINANCE_MAPPINGS.map((m) => [m.instrumentId, m]))
+const _byBinanceSpot = new Map(
+  BINANCE_MAPPINGS.filter((m) => m.type === 'spot').map((m) => [m.binanceSymbol.toLowerCase(), m]),
+)
+const _byBinanceFutures = new Map(
+  BINANCE_MAPPINGS.filter((m) => m.type === 'futures').map((m) => [m.binanceSymbol.toLowerCase(), m]),
+)
+
+export const toBinanceSymbol = (instrumentId: string): string | null =>
+  _byInstrumentId.get(instrumentId)?.binanceSymbol ?? null
+
+export const fromBinanceSpotSymbol = (symbol: string): string | null =>
+  _byBinanceSpot.get(symbol.toLowerCase())?.instrumentId ?? null
+
+export const fromBinanceFuturesSymbol = (symbol: string): string | null =>
+  _byBinanceFutures.get(symbol.toLowerCase())?.instrumentId ?? null
+
+export const isBinanceInstrument = (instrumentId: string): boolean =>
+  _byInstrumentId.has(instrumentId)
+
+export const getBinanceMapping = (instrumentId: string): SymbolMapping | null =>
+  _byInstrumentId.get(instrumentId) ?? null
+
+export const getSpotInstrumentIds = (): string[] =>
+  BINANCE_MAPPINGS.filter((m) => m.type === 'spot').map((m) => m.instrumentId)
+
+export const getFuturesInstrumentIds = (): string[] =>
+  BINANCE_MAPPINGS.filter((m) => m.type === 'futures').map((m) => m.instrumentId)

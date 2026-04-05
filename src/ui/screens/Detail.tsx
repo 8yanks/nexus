@@ -1,0 +1,271 @@
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts'
+import { ArrowLeft } from 'lucide-react'
+import { useMarketStore } from '@/store/market'
+import { useAnalytics } from '@/hooks/useAnalytics'
+import { StatusBadge } from '@/ui/components/StatusBadge'
+import { PriceChange } from '@/ui/components/PriceChange'
+import { QualityBar } from '@/ui/components/QualityBar'
+import { fmt, fmtVol, fmtPct, fmtTime, fmtRatio } from '@/utils/format'
+import { safeFixed, isValidNumber } from '@/utils/math'
+import { colors, fonts, card, sectionHeader, statLabel, statValue, tagStyle, emptyState } from '@/ui/theme'
+
+// ─── STAT PAIR ──────────────────────────────────────────────
+
+const Stat = ({ label, value, color, mono = true }: { label: string; value: string; color?: string; mono?: boolean }) => (
+  <div style={{ marginBottom: 8 }}>
+    <div style={statLabel}>{label}</div>
+    <div style={{ ...statValue, fontSize: 13, color: color ?? colors.text, fontFamily: mono ? fonts.mono : fonts.sans }}>
+      {value}
+    </div>
+  </div>
+)
+
+export const Detail = () => {
+  const instrumentId = useMarketStore((s) => s.selectedInstrumentId)
+  const instruments = useMarketStore((s) => s.instruments)
+  const snapshots = useMarketStore((s) => s.snapshots)
+  const candleMap = useMarketStore((s) => s.candles)
+  const quality = useMarketStore((s) => s.quality)
+  const signals = useMarketStore((s) => s.signals)
+  const setScreen = useMarketStore((s) => s.setScreen)
+
+  const inst = instruments.find((i) => i.id === instrumentId)
+  const snap = instrumentId ? snapshots[instrumentId] : undefined
+  const series = instrumentId ? candleMap[instrumentId] : undefined
+  const q = instrumentId ? quality[instrumentId] : undefined
+  const instSignals = signals.filter((s) => s.instrumentId === instrumentId)
+  const { analytics, structure, volatility } = useAnalytics(instrumentId)
+  const patterns = useMarketStore((s) => instrumentId ? s.patterns[instrumentId] ?? [] : [])
+
+  if (!inst || !snap) {
+    return (
+      <div style={emptyState}>
+        <p>No instrument selected</p>
+        <button
+          onClick={() => setScreen('dashboard')}
+          style={{ color: colors.accent, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    )
+  }
+
+  const isForex = inst.assetClass === 'forex'
+  const decimals = isForex ? 5 : 2
+  const chartData =
+    series?.candles.slice(-60).map((c) => ({
+      t: fmtTime(c.timestamp),
+      close: c.close,
+      volume: c.volume,
+    })) ?? []
+
+  return (
+    <div style={{ padding: '16px 20px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <button
+          onClick={() => setScreen('dashboard')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textMuted, padding: 4, borderRadius: 4 }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>{inst.symbol}</h1>
+            <StatusBadge status={snap._status} />
+          </div>
+          <span style={{ fontSize: 11, color: colors.textMuted }}>{inst.name} — {inst.exchange}</span>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.mono, color: colors.text, letterSpacing: '-0.02em' }}>
+            {fmt(snap.price, decimals)}
+          </div>
+          <PriceChange change={snap.change24h} />
+        </div>
+      </div>
+
+      {/* Chart + Key Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
+        <div style={card}>
+          {chartData.length > 2 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid stroke={colors.border} strokeDasharray="3 3" />
+                <XAxis dataKey="t" tick={{ fontSize: 9, fill: colors.textDim }} interval="preserveStartEnd" />
+                <YAxis yAxisId="price" domain={['auto', 'auto']} tick={{ fontSize: 9, fill: colors.textDim }} />
+                <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 9, fill: colors.textDim }} />
+                <Tooltip
+                  contentStyle={{ background: colors.bgCard, border: `1px solid ${colors.border}`, fontSize: 11, fontFamily: fonts.mono }}
+                  labelStyle={{ color: colors.textMuted }}
+                />
+                <Bar yAxisId="vol" dataKey="volume" fill={`${colors.accent}20`} isAnimationActive={false} />
+                <Line yAxisId="price" type="monotone" dataKey="close" stroke={colors.accent} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={emptyState}>Insufficient candle data for chart</div>
+          )}
+        </div>
+
+        {/* Key stats sidebar */}
+        <div style={card}>
+          <div style={sectionHeader}>Market Data</div>
+          <Stat label="Bid / Ask" value={`${fmt(snap.bid, decimals)} / ${fmt(snap.ask, decimals)}`} />
+          <Stat label="Spread" value={`${fmt(snap.spreadBps)} bps`} />
+          <Stat label="24h Range" value={`${fmt(snap.low24h, decimals)} — ${fmt(snap.high24h, decimals)}`} />
+          <Stat label="Volume 24h" value={fmtVol(snap.volume24h)} />
+          {snap.openInterest != null && <Stat label="Open Interest" value={fmtVol(snap.openInterest)} />}
+          {snap.fundingRate != null && <Stat label="Funding" value={fmtPct(snap.fundingRate)} color={
+            isValidNumber(snap.fundingRate)
+              ? snap.fundingRate > 0.001 ? colors.red : snap.fundingRate < -0.001 ? colors.green : colors.textSecondary
+              : undefined
+          } />}
+        </div>
+      </div>
+
+      {/* 4-panel grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+        {/* Analytics */}
+        <div style={card}>
+          <div style={sectionHeader}>Analytics</div>
+          {analytics ? (
+            <>
+              <Stat label="RSI (14)" value={safeFixed(analytics.rsi, 1)} color={
+                isValidNumber(analytics.rsi)
+                  ? analytics.rsi > 70 ? colors.red : analytics.rsi < 30 ? colors.green : undefined
+                  : undefined
+              } />
+              <Stat label="EMA 20 / 50" value={`${fmt(analytics.ema20, decimals)} / ${fmt(analytics.ema50, decimals)}`} />
+              <Stat label="EMA 200" value={fmt(analytics.ema200, decimals)} />
+              <Stat label="ATR (14)" value={fmt(analytics.atr, decimals)} />
+              <Stat label="VWAP" value={fmt(analytics.vwap, decimals)} />
+              <Stat label="BB Width" value={analytics.bollinger ? `${safeFixed(analytics.bollinger.bandwidth * 100, 2)}%` : '—'} />
+              <Stat label="Z-Score" value={safeFixed(analytics.zScore, 2)} />
+              <Stat label="Rel. Volume" value={analytics.relativeVolume != null ? `${safeFixed(analytics.relativeVolume, 1)}x` : '—'} color={
+                isValidNumber(analytics.relativeVolume) && analytics.relativeVolume > 2.5 ? colors.yellow : undefined
+              } />
+            </>
+          ) : (
+            <div style={{ color: colors.textDim, fontSize: 11 }}>Insufficient data</div>
+          )}
+          {structure && (
+            <Stat label="Structure" value={`${structure.trend.toUpperCase()}`} color={
+              structure.trend === 'bullish' ? colors.green : structure.trend === 'bearish' ? colors.red : colors.textMuted
+            } />
+          )}
+          {volatility && (
+            <Stat label="Vol. Regime" value={volatility.regime.toUpperCase()} color={
+              volatility.regime === 'expansion' ? colors.red : volatility.regime === 'compression' ? colors.cyan : colors.textMuted
+            } />
+          )}
+        </div>
+
+        {/* Signals */}
+        <div style={card}>
+          <div style={sectionHeader}>Signals ({instSignals.length})</div>
+          {instSignals.length === 0 ? (
+            <div style={{ color: colors.textDim, fontSize: 11 }}>No active signals</div>
+          ) : (
+            instSignals.map((s) => {
+              const dirColor = s.direction === 'bullish' ? colors.green : s.direction === 'bearish' ? colors.red : colors.yellow
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    padding: '6px 8px',
+                    marginBottom: 4,
+                    borderRadius: 4,
+                    background: `${dirColor}10`,
+                    borderLeft: `2px solid ${dirColor}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, color: colors.text, fontSize: 12 }}>{s.type.replace(/_/g, ' ')}</span>
+                    <span style={{ fontFamily: fonts.mono, fontSize: 10, color: dirColor }}>{safeFixed(s.strength * 100, 0)}%</span>
+                  </div>
+                  <div style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>{s.description}</div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Patterns */}
+        <div style={card}>
+          <div style={sectionHeader}>Patterns ({patterns.length})</div>
+          {patterns.length === 0 ? (
+            <div style={{ color: colors.textDim, fontSize: 11 }}>No patterns detected</div>
+          ) : (
+            patterns.map((p, i) => {
+              const c = p.direction === 'bullish' ? colors.green : colors.red
+              return (
+                <div
+                  key={i}
+                  style={{
+                    padding: '6px 8px',
+                    marginBottom: 4,
+                    borderRadius: 4,
+                    background: `${c}10`,
+                    borderLeft: `2px solid ${c}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, color: colors.text, fontSize: 12 }}>{p.type.replace(/_/g, ' ')}</span>
+                    <span style={{ fontFamily: fonts.mono, fontSize: 10, color: c }}>{safeFixed(p.confidence * 100, 0)}%</span>
+                  </div>
+                  <div style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>{p.description}</div>
+                  <div style={{ fontSize: 9, color: colors.textDim, marginTop: 2 }}>
+                    Neckline {fmt(p.neckline, decimals)} — {p.keyPoints.length} key points
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Quality */}
+        <div style={card}>
+          <div style={sectionHeader}>Data Quality</div>
+          {q ? (
+            <>
+              <Stat label="Overall Score" value={`${safeFixed(q.overallScore * 100, 0)}%`} />
+              <div style={{ marginBottom: 6 }}>
+                <QualityBar score={q.completeness} width={100} />
+                <span style={{ fontSize: 10, color: colors.textMuted, marginLeft: 8 }}>Completeness</span>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <QualityBar score={q.freshness} width={100} />
+                <span style={{ fontSize: 10, color: colors.textMuted, marginLeft: 8 }}>Freshness</span>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <QualityBar score={q.reliability} width={100} />
+                <span style={{ fontSize: 10, color: colors.textMuted, marginLeft: 8 }}>Reliability</span>
+              </div>
+              {q.issues.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  {q.issues.map((issue, i) => (
+                    <div key={i} style={{ fontSize: 10, color: colors.yellow, marginBottom: 2 }}>
+                      {issue}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ color: colors.textDim, fontSize: 11 }}>No quality data</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
