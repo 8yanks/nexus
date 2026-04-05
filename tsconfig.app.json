@@ -27,8 +27,17 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
+      "@/types": ["packages/shared-types/src"],
+      "@/types/*": ["packages/shared-types/src/*"],
+      "@/utils/*": ["packages/shared-utils/src/*"],
+      "@/signals/types": ["packages/shared-signals/src/types"],
+      "@/providers/base": ["packages/shared-clients/src/base"],
+      "@nexus/shared-types": ["packages/shared-types/src"],
+      "@nexus/shared-utils": ["packages/shared-utils/src"],
+      "@nexus/shared-signals": ["packages/shared-signals/src"],
+      "@nexus/shared-clients": ["packages/shared-clients/src"],
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "packages"]
 }

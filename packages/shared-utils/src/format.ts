@@ -1,5 +1,5 @@
 import type { AssetClass } from '@/types'
-import { isValidNumber } from '@/utils/math'
+import { isValidNumber } from './math'
 
 // ─── NUMBER FORMATTING ───────────────────────────────────────
 // All formatters guard against null, undefined, NaN, and Infinity.
