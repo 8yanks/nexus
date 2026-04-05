@@ -33,7 +33,7 @@ const mkDeal = (
   timestamp: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
   _source: 'mock_vc',
   _status: 'SIMULATED',
-  _provenance: { source: 'mock_vc', fetchMethod: 'generated', latencyMs: 0 },
+  _provenance: { source: 'mock_vc', fetchMethod: 'generated', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
 })
 
 const MOCK_DEALS: VCDeal[] = [

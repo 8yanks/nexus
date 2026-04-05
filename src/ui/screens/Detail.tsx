@@ -14,9 +14,9 @@ import { useAnalytics } from '@/hooks/useAnalytics'
 import { StatusBadge } from '@/ui/components/StatusBadge'
 import { PriceChange } from '@/ui/components/PriceChange'
 import { QualityBar } from '@/ui/components/QualityBar'
-import { fmt, fmtVol, fmtPct, fmtTime, fmtRatio } from '@/utils/format'
+import { fmt, fmtVol, fmtPct, fmtTime } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
-import { colors, fonts, card, sectionHeader, statLabel, statValue, tagStyle, emptyState } from '@/ui/theme'
+import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
 
 // ─── STAT PAIR ──────────────────────────────────────────────
 

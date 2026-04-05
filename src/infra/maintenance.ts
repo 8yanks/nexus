@@ -5,7 +5,7 @@
 import { pruneOldSnapshots } from '@/storage/snapshots'
 import { pruneOldSignals } from '@/storage/signals'
 import { config } from './env'
-import { getSystemHealth, markHealthy, markDegraded } from './health'
+import { markHealthy, markDegraded } from './health'
 
 export interface MaintenanceLog {
   task: string

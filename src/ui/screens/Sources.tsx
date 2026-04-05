@@ -1,6 +1,6 @@
 import { Database, Wifi, WifiOff, FlaskConical, AlertCircle } from 'lucide-react'
 import { PROVIDER_DEFS } from '@/providers/registry'
-import { colors, fonts, card, sectionHeader, statLabel, statValue } from '@/ui/theme'
+import { colors, fonts, card, statLabel, statValue } from '@/ui/theme'
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
   active:       <Wifi size={14} />,

@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useMarketStore } from '@/store/market'
 import { createMockCorporateProvider } from '@/corporate/mock'
 import { CORPORATE_EVENT_CONFIGS } from '@/corporate/types'
-import type { CorporateEvent, CorporateEventType, CorporateBias, CorporatePriority } from '@/corporate/types'
+import type { CorporateEvent, CorporateBias, CorporatePriority } from '@/corporate/types'
 import { fmtAge, fmtTime } from '@/utils/format'
-import { colors, fonts, card, sectionHeader, tagStyle, emptyState, thStyle, tdStyle } from '@/ui/theme'
+import { colors, fonts, card, tagStyle, emptyState } from '@/ui/theme'
 
 // ─── CONSTANTS ──────────────────────────────────────────────
 

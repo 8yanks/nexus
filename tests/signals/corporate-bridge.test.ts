@@ -18,7 +18,7 @@ const mkCorporateEvent = (overrides: Partial<CorporateEvent> = {}): CorporateEve
   timestamp: '2026-01-15T10:00:00Z',
   _source: 'mock_corporate',
   _status: 'SIMULATED',
-  _provenance: { source: 'mock_corporate', fetchMethod: 'generated', latencyMs: 0 },
+  _provenance: { source: 'mock_corporate', fetchMethod: 'generated', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
   ...overrides,
 })
 
@@ -41,7 +41,7 @@ const mkMacroIndicator = (overrides: Partial<MacroIndicator> = {}): MacroIndicat
   description: 'Fed Funds Rate',
   _source: 'mock_macro',
   _status: 'SIMULATED',
-  _provenance: { source: 'mock_macro', fetchMethod: 'generated', latencyMs: 0 },
+  _provenance: { source: 'mock_macro', fetchMethod: 'generated', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
   ...overrides,
 })
 

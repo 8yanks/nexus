@@ -1,6 +1,5 @@
 import type { OHLCV, CandleSeries } from '@/types'
 import type { AnalyticsResult } from '@/analytics/indicators'
-import type { StructureResult } from '@/analytics/structure'
 import { computeAnalytics } from '@/analytics/indicators'
 import { detectStructure } from '@/analytics/structure'
 import { detectSignals } from '@/signals/detector'
@@ -43,7 +42,7 @@ const sliceSeries = (
   candles: candles.slice(0, end + 1),
   _source: 'backtest',
   _status: 'SIMULATED',
-  _provenance: { source: 'backtest', fetchMethod: 'replay', latencyMs: 0 },
+  _provenance: { source: 'backtest', fetchMethod: 'replay', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
   generatedAt: candles[end]?.timestamp ?? new Date().toISOString(),
 })
 

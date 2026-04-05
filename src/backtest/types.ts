@@ -1,4 +1,4 @@
-import type { SignalType, SignalDirection } from '@/types'
+import type { SignalType } from '@/types'
 
 // ─── BACKTEST CONFIGURATION ─────────────────────────────────
 

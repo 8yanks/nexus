@@ -1,5 +1,5 @@
 import type { OHLCV } from '@/types'
-import { safeDivide, isValidNumber, safeClamp } from '@/utils/math'
+import { safeDivide, safeClamp } from '@/utils/math'
 
 // ─── PATTERN TYPES ──────────────────────────────────────────
 

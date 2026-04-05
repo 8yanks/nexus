@@ -1,7 +1,7 @@
 import { Bell, BellOff, Trash2, ShieldAlert } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { SeverityBadge } from '@/ui/components/SeverityBadge'
-import { colors, fonts, card, thStyle, tdStyle, monoTd, sectionHeader, emptyState, statLabel, statValue } from '@/ui/theme'
+import { colors, fonts, card, thStyle, tdStyle, monoTd, emptyState, statLabel, statValue } from '@/ui/theme'
 
 export const Alerts = () => {
   const alertRules = useMarketStore((s) => s.alertRules)

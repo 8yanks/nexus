@@ -33,7 +33,7 @@ const mkEvent = (
     timestamp: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
     _source: 'mock_corporate',
     _status: 'SIMULATED',
-    _provenance: { source: 'mock_corporate', fetchMethod: 'generated', latencyMs: 0 },
+    _provenance: { source: 'mock_corporate', fetchMethod: 'generated', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
   }
 }
 

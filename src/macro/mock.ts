@@ -44,7 +44,7 @@ const mkIndicator = (
     description,
     _source: 'mock_macro',
     _status: 'SIMULATED',
-    _provenance: { source: 'mock_macro', fetchMethod: 'generated', latencyMs: 0 },
+    _provenance: { source: 'mock_macro', fetchMethod: 'generated', latencyMs: 0, timestamp: new Date().toISOString(), receivedAt: new Date().toISOString() },
   }
 }
 

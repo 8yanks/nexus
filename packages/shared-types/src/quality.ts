@@ -8,7 +8,7 @@ export type DataStatus =
 
 export interface DataProvenance {
   source: string
-  fetchMethod: 'ws' | 'rest' | 'mock' | 'computed'
+  fetchMethod: 'ws' | 'rest' | 'mock' | 'computed' | 'generated' | 'replay'
   latencyMs: number | null
   timestamp: string
   receivedAt: string
