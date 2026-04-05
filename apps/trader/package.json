@@ -1,0 +1,12 @@
+{
+  "name": "@nexus/trader",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NEXUS Trader Bot — consumes Analyst signals, executes via Freqtrade, vetted by Sentinel",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  }
+}

@@ -37,6 +37,8 @@
       "@nexus/shared-signals": ["packages/shared-signals/src"],
       "@nexus/shared-clients": ["packages/shared-clients/src"],
       "@nexus/shared-infra": ["packages/shared-infra/src"],
+      "@nexus/sentinel": ["apps/sentinel/src"],
+      "@nexus/trader": ["apps/trader/src"],
       "@/*": ["src/*"]
     }
   },

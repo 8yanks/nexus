@@ -16,6 +16,8 @@ export default defineConfig({
       { find: '@nexus/shared-signals', replacement: resolve(__dirname, 'packages/shared-signals/src') },
       { find: '@nexus/shared-clients', replacement: resolve(__dirname, 'packages/shared-clients/src') },
       { find: '@nexus/shared-infra', replacement: resolve(__dirname, 'packages/shared-infra/src') },
+      { find: '@nexus/sentinel', replacement: resolve(__dirname, 'apps/sentinel/src') },
+      { find: '@nexus/trader', replacement: resolve(__dirname, 'apps/trader/src') },
       // Wildcard fallback
       { find: '@', replacement: resolve(__dirname, 'src') },
     ],
