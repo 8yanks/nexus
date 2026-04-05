@@ -1,6 +1,8 @@
+import { useState, useCallback } from 'react'
 import { useMarketStore } from '@/store/market'
 import { useMarketData } from '@/hooks/useMarketData'
 import { Nav } from '@/ui/components/Nav'
+import { DemoSplash } from '@/ui/components/DemoSplash'
 import { Dashboard } from '@/ui/screens/Dashboard'
 import { Detail } from '@/ui/screens/Detail'
 import { Scanner } from '@/ui/screens/Scanner'
@@ -39,6 +41,15 @@ function App() {
   // Start auto-refresh on mount
   useMarketData()
 
+  const [showSplash, setShowSplash] = useState(
+    () => !sessionStorage.getItem('nexus_splash_dismissed'),
+  )
+
+  const dismissSplash = useCallback(() => {
+    sessionStorage.setItem('nexus_splash_dismissed', '1')
+    setShowSplash(false)
+  }, [])
+
   return (
     <div
       style={{
@@ -48,6 +59,7 @@ function App() {
         fontFamily: fonts.sans,
       }}
     >
+      {showSplash && <DemoSplash onDismiss={dismissSplash} />}
       <Nav />
       <ScreenRouter />
     </div>
