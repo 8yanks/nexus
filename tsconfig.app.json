@@ -36,8 +36,9 @@
       "@nexus/shared-utils": ["packages/shared-utils/src"],
       "@nexus/shared-signals": ["packages/shared-signals/src"],
       "@nexus/shared-clients": ["packages/shared-clients/src"],
+      "@nexus/shared-infra": ["packages/shared-infra/src"],
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "packages"]
+  "include": ["src", "packages", "apps"]
 }

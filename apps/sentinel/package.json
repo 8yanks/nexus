@@ -1,0 +1,12 @@
+{
+  "name": "@nexus/sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NEXUS Sentinel Bot — system monitoring, health checks, and veto engine",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  }
+}
