@@ -3,10 +3,17 @@ import type { AuditEntry } from '@/types/audit'
 import type { SentinelVeto, TradeDecision } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import { auditLogger } from '@/audit/logger'
-import { AIOrchestrator, type AIProvider } from '@/ai/orchestrator'
-import { SentinelEngine, type SentinelContext } from '@/sentinel/engine'
+import { AIOrchestrator } from '@/ai/orchestrator'
+import { SentinelEngine } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
 import { DecisionChain } from '@/chain'
+import {
+  buildAnalystContext,
+  toSentinelContext,
+  type AnalystContext,
+} from '@/analyst/context-builder'
+import { ruleBasedProvider } from '@/ai/providers/rule-based'
+import { useMarketStore } from '@/store/market'
 
 interface ChainState {
   entries: AuditEntry[]
@@ -18,38 +25,49 @@ interface ChainState {
   clear: () => void
 }
 
-const mockProvider = (): AIProvider => ({
-  id: 'demo',
-  propose: async () => {
-    const action = Math.random() > 0.5 ? 'BUY' : 'SELL'
-    const entry = 60000 + (Math.random() - 0.5) * 2000
-    return {
-      id: `dec_${Date.now().toString(36)}_${Math.floor(Math.random() * 1000)}`,
-      timestamp: Date.now(),
+/**
+ * Pulls the freshest AnalystContext from the market store. Falls back to a
+ * synthetic context when no snapshot is available yet so the UI button
+ * always produces a traceable outcome instead of silently failing.
+ */
+let lastCtx: AnalystContext | null = null
+
+function pickContext(): AnalystContext {
+  const m = useMarketStore.getState()
+  const focus = m.selectedInstrumentId ?? m.instruments[0]?.id
+  const snap = focus ? m.snapshots[focus] : undefined
+  const inst = m.instruments.find((i) => i.id === focus)
+  if (snap && inst) {
+    lastCtx = buildAnalystContext({
+      snapshot: snap,
+      signals: m.signals.filter((s) => s.instrumentId === focus).slice(0, 20),
+      quality: focus ? (m.quality[focus] ?? null) : null,
+      symbol: inst.symbol,
+    })
+  } else if (!lastCtx) {
+    lastCtx = {
       instrumentId: 'BTCUSD',
       symbol: 'BTC/USD',
-      action,
-      size: 0.1,
-      entryPrice: entry,
-      stopLoss: action === 'BUY' ? entry * 0.97 : entry * 1.03,
-      takeProfit: action === 'BUY' ? entry * 1.05 : entry * 0.95,
-      confidence: 0.55 + Math.random() * 0.4,
-      riskLevel: 'medium',
-      horizon: 'intraday',
-      thesis: 'demo decision',
-      keyFactors: ['demo'],
-      invalidators: ['demo_invalid'],
-      requiresHumanReview: false,
-      modelSource: 'demo',
-      consensusScore: null,
-      _source: 'ai_orchestrator',
-      _status: 'SIMULATED',
-      _contextHash: 'demo_h',
+      price: 60000,
+      snapshot: {
+        instrumentId: 'BTCUSD',
+        price: 60000,
+        timestamp: new Date().toISOString(),
+        _source: 'synthetic',
+        _status: 'SIMULATED',
+      } as never,
+      signals: [],
+      quality: null,
+      contextHash: 'synthetic',
+      builtAt: Date.now(),
     }
-  },
-})
+  }
+  return lastCtx
+}
 
-const ai = new AIOrchestrator(mockProvider(), { audit: auditLogger })
+const ai = new AIOrchestrator(ruleBasedProvider(pickContext), {
+  audit: auditLogger,
+})
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
 const chain = new DecisionChain({ ai, sentinel, trader, audit: auditLogger })
@@ -66,17 +84,15 @@ export const useChainStore = create<ChainState>((set) => {
     decisions: [],
     lastOutcome: null,
     runDemo: async () => {
-      const ctx: SentinelContext = {
-        currentDrawdownPct: Math.random() * 3,
-        currentExposurePct: Math.random() * 15,
-        positionSizePct: 1 + Math.random() * 2,
-        dataQualityScore: 0.7 + Math.random() * 0.3,
-        dataAgeMs: Math.random() * 20000,
-        latencyMs: Math.random() * 2000,
+      const ctx = pickContext()
+      const sctx = toSentinelContext(ctx, {
+        currentDrawdownPct: 1,
+        currentExposurePct: 5,
+        positionSizePct: 2,
         brokerAvailable: true,
         safeMode: false,
-      }
-      const outcome = await chain.run('demo_h', {}, ctx)
+      })
+      const outcome = await chain.run(ctx.contextHash, { ctx }, sctx)
       set((s) => {
         const next: Partial<ChainState> = { lastOutcome: outcome.stage }
         if (outcome.stage === 'filled') {
