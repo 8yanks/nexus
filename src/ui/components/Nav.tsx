@@ -12,6 +12,7 @@ import {
   Building2,
   Rocket,
   Globe,
+  Workflow,
 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import type { Screen } from '@/store/market'
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { screen: 'sources',     label: 'Sources',     icon: <Database size={14} /> },
   { screen: 'journal',     label: 'Journal',     icon: <BookOpen size={14} /> },
   { screen: 'export',      label: 'Export',      icon: <Download size={14} /> },
+  { screen: 'sentinel',    label: 'Chain',       icon: <Workflow size={14} /> },
 ]
 
 export const Nav = () => {
