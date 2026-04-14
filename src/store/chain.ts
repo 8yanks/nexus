@@ -14,6 +14,17 @@ import {
 } from '@/analyst/context-builder'
 import { ruleBasedProvider } from '@/ai/providers/rule-based'
 import { useMarketStore } from '@/store/market'
+import {
+  saveDecision,
+  saveVeto,
+  saveOrder,
+  saveAuditEntries,
+  loadDecisions,
+  loadOrders,
+  loadVetos,
+  loadAuditEntries,
+  clearChainStores,
+} from '@/storage/chain'
 
 interface ChainState {
   entries: AuditEntry[]
@@ -72,10 +83,57 @@ const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
 const chain = new DecisionChain({ ai, sentinel, trader, audit: auditLogger })
 
+// Debounced audit flush so we don't hit IDB on every log line.
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+let pendingAudit: typeof auditLogger extends { list: () => infer T } ? T : never[] =
+  [] as never
+const queueAuditFlush = () => {
+  if (flushTimer) return
+  flushTimer = setTimeout(() => {
+    flushTimer = null
+    const batch = pendingAudit
+    pendingAudit = [] as never
+    if (batch.length) void saveAuditEntries(batch).catch(() => {})
+  }, 500)
+}
+
 export const useChainStore = create<ChainState>((set) => {
-  auditLogger.subscribe(() => {
+  auditLogger.subscribe((e) => {
+    ;(pendingAudit as unknown as typeof e[]).push(e)
+    queueAuditFlush()
     set({ entries: auditLogger.list().slice(-500).reverse() })
   })
+
+  // Hydrate from IndexedDB on first use (browser only).
+  if (typeof indexedDB !== 'undefined') {
+    void (async () => {
+      try {
+        const [decisions, orders, vetos, audit] = await Promise.all([
+          loadDecisions(),
+          loadOrders(),
+          loadVetos(),
+          loadAuditEntries(),
+        ])
+        // Rehydrate audit logger so entries outlive reloads
+        for (const e of audit.sort((a, b) => a.timestamp - b.timestamp)) {
+          auditLogger.log(e.module, e.eventType, e.summary, e.data, e._source)
+        }
+        set({
+          decisions: decisions
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 50),
+          orders: orders
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 50),
+          vetos: vetos
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 50),
+        })
+      } catch {
+        // IDB unavailable — stay in-memory only
+      }
+    })()
+  }
 
   return {
     entries: auditLogger.list().reverse(),
@@ -98,17 +156,27 @@ export const useChainStore = create<ChainState>((set) => {
         if (outcome.stage === 'filled') {
           next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
           next.orders = [outcome.order, ...s.orders].slice(0, 50)
+          void saveDecision(outcome.decision).catch(() => {})
+          void saveOrder(outcome.order).catch(() => {})
         } else if (outcome.stage === 'sentinel_vetoed') {
           next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
+          void saveDecision(outcome.decision).catch(() => {})
         } else if (outcome.stage === 'order_rejected') {
           next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
+          void saveDecision(outcome.decision).catch(() => {})
         }
         return next
       })
     },
     clear: () => {
       auditLogger.clear()
+      void clearChainStores().catch(() => {})
       set({ entries: [], vetos: [], orders: [], decisions: [], lastOutcome: null })
     },
   }
 })
+
+// Persist vetos too (sentinel subscribes via the audit side effect above;
+// we expose a helper for tests + future hooks).
+export const persistVeto = (v: import('@/types/decision').SentinelVeto) =>
+  saveVeto(v).catch(() => {})
