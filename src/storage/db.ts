@@ -4,12 +4,16 @@
 // Stores: snapshots, candles, signals
 
 const DB_NAME = 'nexus'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export const STORES = {
   SNAPSHOTS: 'snapshots',
   CANDLES: 'candles',
   SIGNALS: 'signals',
+  DECISIONS: 'decisions',
+  VETOS: 'vetos',
+  ORDERS: 'orders',
+  AUDIT: 'audit',
 } as const
 
 let _dbPromise: Promise<IDBDatabase> | null = null
@@ -48,6 +52,21 @@ export const openDb = (): Promise<IDBDatabase> => {
         store.createIndex('by_instrument', 'instrumentId', { unique: false })
         store.createIndex('by_timestamp', 'timestamp', { unique: false })
         store.createIndex('by_type', 'type', { unique: false })
+      }
+
+      // decisions / vetos / orders: all keyed by id with numeric timestamp
+      for (const name of [STORES.DECISIONS, STORES.VETOS, STORES.ORDERS]) {
+        if (!db.objectStoreNames.contains(name)) {
+          const store = db.createObjectStore(name, { keyPath: 'id' })
+          store.createIndex('by_timestamp', 'timestamp', { unique: false })
+        }
+      }
+
+      // audit: ring buffer, keyed by id, numeric timestamp index
+      if (!db.objectStoreNames.contains(STORES.AUDIT)) {
+        const store = db.createObjectStore(STORES.AUDIT, { keyPath: 'id' })
+        store.createIndex('by_timestamp', 'timestamp', { unique: false })
+        store.createIndex('by_module', 'module', { unique: false })
       }
     }
 
