@@ -19,3 +19,9 @@ export type {
   VetoReason,
 } from './decision'
 export type { AuditEntry, AuditEventType, AuditModule } from './audit'
+export type {
+  PaperOrder,
+  PaperOrderSide,
+  PaperOrderType,
+  PaperOrderStatus,
+} from './order'
