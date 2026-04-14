@@ -16,6 +16,7 @@ import { Backtest } from '@/ui/screens/Backtest'
 import { Corporate } from '@/ui/screens/Corporate'
 import { VCFlow } from '@/ui/screens/VCFlow'
 import { MacroPulse } from '@/ui/screens/MacroPulse'
+import { ChainMonitor } from '@/ui/screens/ChainMonitor'
 import { colors, fonts } from '@/ui/theme'
 
 const ScreenRouter = () => {
@@ -34,6 +35,9 @@ const ScreenRouter = () => {
     case 'corporate': return <Corporate />
     case 'vcflow':    return <VCFlow />
     case 'macro':     return <MacroPulse />
+    case 'sentinel':
+    case 'papertrading':
+    case 'audit':     return <ChainMonitor />
   }
 }
 

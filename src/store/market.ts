@@ -53,6 +53,9 @@ export type Screen =
   | 'corporate'
   | 'vcflow'
   | 'macro'
+  | 'sentinel'
+  | 'papertrading'
+  | 'audit'
 
 // ─── STORE SHAPE ────────────────────────────────────────────
 
