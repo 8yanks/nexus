@@ -10,3 +10,12 @@ export type {
 } from './quality'
 export type { SignalEvent, SignalType, SignalDirection } from './signal'
 export type { AlertRule, AlertType, AlertSeverity } from './alert'
+export type {
+  TradeDecision,
+  DecisionAction,
+  DecisionRisk,
+  DecisionHorizon,
+  SentinelVeto,
+  VetoReason,
+} from './decision'
+export type { AuditEntry, AuditEventType, AuditModule } from './audit'
