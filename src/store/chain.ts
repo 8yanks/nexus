@@ -43,9 +43,12 @@ interface ChainState {
     realizedPnl: number
   }
   lastOutcome: string | null
+  autoRun: boolean
+  autoRunIntervalMs: number
   runDemo: () => Promise<void>
   mark: () => void
   closePosition: (id: string) => void
+  setAutoRun: (enabled: boolean, intervalMs?: number) => void
   clear: () => void
 }
 
@@ -108,6 +111,8 @@ const syncPositionState = (
     positions: positionManager.list(),
     portfolio: positionManager.portfolio(),
   }))
+
+let autoRunTimer: ReturnType<typeof setInterval> | null = null
 
 // Debounced audit flush so we don't hit IDB on every log line.
 let flushTimer: ReturnType<typeof setTimeout> | null = null
@@ -190,6 +195,21 @@ export const useChainStore = create<ChainState>((set) => {
       realizedPnl: 0,
     },
     lastOutcome: null,
+    autoRun: false,
+    autoRunIntervalMs: 15_000,
+    setAutoRun: (enabled: boolean, intervalMs?: number) => {
+      if (autoRunTimer) {
+        clearInterval(autoRunTimer)
+        autoRunTimer = null
+      }
+      const ms = intervalMs ?? useChainStore.getState().autoRunIntervalMs
+      if (enabled) {
+        autoRunTimer = setInterval(() => {
+          void useChainStore.getState().runDemo()
+        }, ms)
+      }
+      set({ autoRun: enabled, autoRunIntervalMs: ms })
+    },
     mark: () => {
       const m = useMarketStore.getState()
       const prices: Record<string, number> = {}

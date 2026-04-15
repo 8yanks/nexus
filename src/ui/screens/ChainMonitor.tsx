@@ -36,9 +36,12 @@ export const ChainMonitor = () => {
     positions,
     portfolio,
     lastOutcome,
+    autoRun,
+    autoRunIntervalMs,
     runDemo,
     clear,
     closePosition,
+    setAutoRun,
   } = useChainStore()
 
   return (
@@ -87,6 +90,42 @@ export const ChainMonitor = () => {
             last: {lastOutcome}
           </span>
         )}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <label
+            style={{
+              ...mono,
+              color: colors.textSecondary,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={autoRun}
+              onChange={(e) => setAutoRun(e.target.checked)}
+            />
+            auto-run
+          </label>
+          <select
+            value={autoRunIntervalMs}
+            onChange={(e) => setAutoRun(autoRun, Number(e.target.value))}
+            style={{
+              ...mono,
+              background: colors.bgInput,
+              color: colors.text,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 3,
+              padding: '2px 6px',
+            }}
+          >
+            <option value={5000}>5s</option>
+            <option value={15000}>15s</option>
+            <option value={30000}>30s</option>
+            <option value={60000}>60s</option>
+          </select>
+        </div>
       </div>
 
       <div style={panel}>
