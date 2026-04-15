@@ -1,0 +1,13 @@
+# Normalize text files on commit, keep native line endings in working tree.
+# Silences the endless "LF will be replaced by CRLF" warnings on Windows.
+* text=auto eol=lf
+
+# Explicit binary — never touched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

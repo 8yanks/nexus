@@ -121,24 +121,27 @@ const syncPositionState = (
   }))
 
 let autoRunTimer: ReturnType<typeof setInterval> | null = null
+// Single-flight guard — protects against a slow AI/network call overlapping
+// with the next tick of setInterval, which would otherwise queue calls
+// faster than they complete.
+let runInFlight = false
 
 // Debounced audit flush so we don't hit IDB on every log line.
 let flushTimer: ReturnType<typeof setTimeout> | null = null
-let pendingAudit: typeof auditLogger extends { list: () => infer T } ? T : never[] =
-  [] as never
+let pendingAudit: AuditEntry[] = []
 const queueAuditFlush = () => {
   if (flushTimer) return
   flushTimer = setTimeout(() => {
     flushTimer = null
     const batch = pendingAudit
-    pendingAudit = [] as never
+    pendingAudit = []
     if (batch.length) void saveAuditEntries(batch).catch(() => {})
   }, 500)
 }
 
 export const useChainStore = create<ChainState>((set) => {
   auditLogger.subscribe((e) => {
-    ;(pendingAudit as unknown as typeof e[]).push(e)
+    pendingAudit.push(e)
     queueAuditFlush()
     set({ entries: auditLogger.list().slice(-500).reverse() })
   })
@@ -219,6 +222,7 @@ export const useChainStore = create<ChainState>((set) => {
       const ms = intervalMs ?? useChainStore.getState().autoRunIntervalMs
       if (enabled) {
         autoRunTimer = setInterval(() => {
+          if (runInFlight) return // Drop this tick — the previous run is still pending.
           void useChainStore.getState().runDemo()
         }, ms)
       }
@@ -244,6 +248,9 @@ export const useChainStore = create<ChainState>((set) => {
       syncPositionState(set)
     },
     runDemo: async () => {
+      if (runInFlight) return
+      runInFlight = true
+      try {
       const ctx = pickContext()
       // Derive daily caps from the in-memory state so Sentinel's
       // maxDailyLoss / maxDailyTrades rules actually fire.
@@ -294,6 +301,9 @@ export const useChainStore = create<ChainState>((set) => {
         }
         return next
       })
+      } finally {
+        runInFlight = false
+      }
     },
     clear: () => {
       auditLogger.clear()

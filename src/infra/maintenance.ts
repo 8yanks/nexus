@@ -4,6 +4,12 @@
 
 import { pruneOldSnapshots } from '@/storage/snapshots'
 import { pruneOldSignals } from '@/storage/signals'
+import {
+  pruneOldDecisions,
+  pruneOldVetos,
+  pruneOldOrders,
+  pruneOldAudit,
+} from '@/storage/chain'
 import { config } from './env'
 import { markHealthy, markDegraded } from './health'
 
@@ -28,10 +34,21 @@ const addLog = (task: string, durationMs: number, result: 'ok' | 'error', detail
 const pruneStorage = async (): Promise<void> => {
   const t0 = Date.now()
   try {
-    await pruneOldSnapshots(config.idbRetentionDays)
-    await pruneOldSignals(config.signalRetentionDays)
+    const [snaps, sigs, decs, vets, ords, aud] = await Promise.all([
+      pruneOldSnapshots(config.idbRetentionDays),
+      pruneOldSignals(config.signalRetentionDays),
+      pruneOldDecisions(30),
+      pruneOldVetos(30),
+      pruneOldOrders(30),
+      pruneOldAudit(7),
+    ])
     const ms = Date.now() - t0
-    addLog('prune_storage', ms, 'ok', `Pruned snapshots (${config.idbRetentionDays}d) and signals (${config.signalRetentionDays}d)`)
+    addLog(
+      'prune_storage',
+      ms,
+      'ok',
+      `Pruned snapshots=${snaps} signals=${sigs} decisions=${decs} vetos=${vets} orders=${ords} audit=${aud}`,
+    )
     markHealthy('indexeddb', ms, { lastPrune: new Date().toISOString() })
   } catch (err) {
     const ms = Date.now() - t0

@@ -23,19 +23,39 @@ export interface BuildContextInput {
 }
 
 /**
- * Deterministic hash for a context payload. Lets AI orchestrator + audit
- * trail correlate identical inputs across retries.
+ * Deterministic 64-bit FNV-1a variant (two 32-bit lanes) for the context
+ * payload. Strong enough that two identical inputs collide while distinct
+ * snapshots — even with matching id + timestamp — diverge. Lets the AI
+ * orchestrator + audit trail correlate identical inputs across retries.
  */
 const hash = (s: string): string => {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
-  return `ctx_${(h >>> 0).toString(36)}`
+  let h1 = 0x811c9dc5
+  let h2 = 0x1b873593
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0
+    h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0
+  }
+  const lo = h1.toString(36).padStart(7, '0')
+  const hi = h2.toString(36).padStart(7, '0')
+  return `ctx_${hi}${lo}`
 }
 
 export function buildAnalystContext(input: BuildContextInput): AnalystContext {
   const now = input.now ?? Date.now
   const t = now()
-  const sigIds = input.signals.map((s) => s.id).join(',')
+  // Stable signal digest: id|direction|strength (rounded to 3 decimals for
+  // noise tolerance). Order sensitive — caller is expected to pass signals
+  // in a deterministic order.
+  const sigDigest = input.signals
+    .map((s) => `${s.id}:${s.direction}:${s.strength.toFixed(3)}`)
+    .join(',')
+  const qualityDigest = input.quality
+    ? `${input.quality.overallScore.toFixed(2)}:${input.quality._status}`
+    : 'none'
+  const payload =
+    `${input.snapshot.instrumentId}|${input.snapshot.timestamp}` +
+    `|${input.snapshot.price.toFixed(6)}|${sigDigest}|${qualityDigest}`
   return {
     instrumentId: input.snapshot.instrumentId,
     symbol: input.symbol,
@@ -44,7 +64,7 @@ export function buildAnalystContext(input: BuildContextInput): AnalystContext {
     signals: input.signals,
     quality: input.quality,
     builtAt: t,
-    contextHash: hash(`${input.snapshot.instrumentId}|${input.snapshot.timestamp}|${sigIds}`),
+    contextHash: hash(payload),
   }
 }
 

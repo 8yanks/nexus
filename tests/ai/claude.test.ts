@@ -71,15 +71,80 @@ describe('claudeProvider', () => {
     expect(validateTradeDecision(raw).ok).toBe(true)
   })
 
-  it('throws on non-2xx response', async () => {
+  it('throws on non-2xx response when retries exhausted', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response('nope', { status: 500 }))
     const p = claudeProvider(() => ctx, {
       apiKey: 'key',
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      maxRetries: 0,
     })
     await expect(p.propose('h', {})).rejects.toThrow(/500/)
+  })
+
+  it('does not retry 4xx client errors', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response('bad key', { status: 401 }))
+    const p = claudeProvider(() => ctx, {
+      apiKey: 'key',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      maxRetries: 3,
+    })
+    await expect(p.propose('h', {})).rejects.toThrow(/401/)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it('retries on 429 then succeeds', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('rate', { status: 429 }))
+      .mockResolvedValueOnce(okResponse(buildDecisionText()))
+    const p = claudeProvider(() => ctx, {
+      apiKey: 'key',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      maxRetries: 2,
+    })
+    const raw = await p.propose('h', {})
+    expect(validateTradeDecision(raw).ok).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  }, 10_000)
+
+  it('retries on 5xx until success', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('e', { status: 503 }))
+      .mockResolvedValueOnce(new Response('e', { status: 502 }))
+      .mockResolvedValueOnce(okResponse(buildDecisionText()))
+    const p = claudeProvider(() => ctx, {
+      apiKey: 'key',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      maxRetries: 2,
+    })
+    const raw = await p.propose('h', {})
+    expect(validateTradeDecision(raw).ok).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  }, 10_000)
+
+  it('aborts the request after timeoutMs', async () => {
+    const fetchImpl = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            const e = new Error('aborted')
+            e.name = 'AbortError'
+            reject(e)
+          })
+        }),
+    )
+    const p = claudeProvider(() => ctx, {
+      apiKey: 'key',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      timeoutMs: 50,
+      maxRetries: 0,
+    })
+    await expect(p.propose('h', {})).rejects.toThrow(/abort/i)
   })
 
   it('throws when response has no text content', async () => {

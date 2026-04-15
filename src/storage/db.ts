@@ -169,13 +169,13 @@ export const idbClear = async (storeName: string): Promise<void> => {
 
 export const idbPruneByTimestamp = async (
   storeName: string,
-  cutoffIso: string,
+  cutoff: string | number,
 ): Promise<number> => {
   const db = await openDb()
   const tx = db.transaction(storeName, 'readwrite')
   const store = tx.objectStore(storeName)
   const index = store.index('by_timestamp')
-  const range = IDBKeyRange.upperBound(cutoffIso)
+  const range = IDBKeyRange.upperBound(cutoff)
 
   let deleted = 0
   return new Promise((resolve, reject) => {

@@ -10,11 +10,23 @@ export interface ClaudeProviderOptions {
   endpoint?: string
   /** Max tokens for the response. */
   maxTokens?: number
+  /** Per-request timeout (ms). Default 20s. */
+  timeoutMs?: number
+  /** Retry attempts for 429 / 5xx / network errors. Default 2 (=> 3 total tries). */
+  maxRetries?: number
 }
 
 const DEFAULT_ENDPOINT = 'https://api.anthropic.com/v1/messages'
 const DEFAULT_MODEL = 'claude-sonnet-4-5'
 const DEFAULT_MAX_TOKENS = 1024
+const DEFAULT_TIMEOUT_MS = 20_000
+const DEFAULT_MAX_RETRIES = 2
+
+const isRetriableStatus = (status: number): boolean =>
+  status === 408 || status === 429 || (status >= 500 && status < 600)
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * The model is instructed to emit ONLY a JSON object matching TradeDecision.
@@ -74,6 +86,28 @@ export function claudeProvider(
   const endpoint = opts.endpoint ?? DEFAULT_ENDPOINT
   const model = opts.model ?? DEFAULT_MODEL
   const maxTokens = opts.maxTokens ?? DEFAULT_MAX_TOKENS
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES
+
+  const callOnce = async (body: string): Promise<Response> => {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetchImpl(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': opts.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
 
   return {
     id: `claude:${model}`,
@@ -100,37 +134,53 @@ export function claudeProvider(
           : null,
       }
 
-      const res = await fetchImpl(endpoint, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': opts.apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          system: SYSTEM_PROMPT,
-          messages: [
-            {
-              role: 'user',
-              content: JSON.stringify(userPayload),
-            },
-          ],
-        }),
+      const body = JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: JSON.stringify(userPayload) }],
       })
 
-      if (!res.ok) {
-        throw new Error(`Claude API ${res.status}: ${await res.text()}`)
+      let attempt = 0
+      let lastError: Error | null = null
+      while (attempt <= maxRetries) {
+        let shouldRetry = false
+        let thisError: Error | null = null
+
+        try {
+          const res = await callOnce(body)
+          if (res.ok) {
+            const payload = (await res.json()) as {
+              content?: Array<{ type: string; text?: string }>
+            }
+            const text =
+              payload.content?.find((c) => c.type === 'text')?.text ?? ''
+            if (!text) throw new Error('Claude returned no text content')
+            return extractJson(text)
+          }
+          // Non-2xx: decide retry by status.
+          const errText = await res.text()
+          thisError = new Error(`Claude API ${res.status}: ${errText}`)
+          shouldRetry = isRetriableStatus(res.status)
+        } catch (err) {
+          // Network / abort errors — retry. Everything else (parse errors,
+          // "no text content", and the rethrow above) is fatal.
+          thisError = err instanceof Error ? err : new Error(String(err))
+          const isAbort =
+            thisError.name === 'AbortError' ||
+            thisError.message.toLowerCase().includes('abort')
+          const isNetwork = err instanceof TypeError
+          shouldRetry = isAbort || isNetwork
+        }
+
+        if (!shouldRetry || attempt === maxRetries) throw thisError
+        lastError = thisError
+        // Exponential backoff with jitter: 400ms, 800ms, 1600ms ...
+        const delay = 400 * Math.pow(2, attempt) + Math.floor(Math.random() * 200)
+        await sleep(delay)
+        attempt++
       }
-      const body = (await res.json()) as {
-        content?: Array<{ type: string; text?: string }>
-      }
-      const text =
-        body.content?.find((c) => c.type === 'text')?.text ?? ''
-      if (!text) throw new Error('Claude returned no text content')
-      return extractJson(text)
+      throw lastError ?? new Error('Claude provider exhausted retries')
     },
   }
 }
