@@ -21,6 +21,10 @@ export interface SentinelContext {
   safeMode: boolean
   /** Optional multi-model consensus score in [0,1]. */
   consensusScore?: number | null
+  /** Realized PnL accumulated today (negative = loss). */
+  dailyLoss?: number
+  /** Number of trades already executed today. */
+  dailyTradesCount?: number
 }
 
 export interface SentinelEngineOptions {
@@ -84,6 +88,29 @@ export class SentinelEngine {
       }
       if (this.rules.requireBrokerAvailable && !ctx.brokerAvailable)
         reasons.push('BROKER_UNAVAILABLE')
+
+      // Daily trade / loss caps — only active when the caller tracks them.
+      if (
+        ctx.dailyLoss !== undefined &&
+        Math.abs(Math.min(0, ctx.dailyLoss)) >= this.rules.maxDailyLoss
+      ) {
+        reasons.push('DRAWDOWN_EXCEEDED')
+      }
+      if (
+        ctx.dailyTradesCount !== undefined &&
+        ctx.dailyTradesCount >= this.rules.maxDailyTrades
+      ) {
+        reasons.push('SIZE_TOO_LARGE')
+      }
+
+      // AI self-flagged human review blocks automated execution unless
+      // the decision's confidence is above the review threshold.
+      if (
+        decision.requiresHumanReview &&
+        decision.confidence < this.rules.requireHumanReviewAbove
+      ) {
+        reasons.push('MANUAL_BLOCK')
+      }
     }
 
     const approved = reasons.length === 0

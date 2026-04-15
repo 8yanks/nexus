@@ -4,7 +4,7 @@
 // Stores: snapshots, candles, signals
 
 const DB_NAME = 'nexus'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 export const STORES = {
   SNAPSHOTS: 'snapshots',
@@ -14,6 +14,7 @@ export const STORES = {
   VETOS: 'vetos',
   ORDERS: 'orders',
   AUDIT: 'audit',
+  POSITIONS: 'positions',
 } as const
 
 let _dbPromise: Promise<IDBDatabase> | null = null
@@ -67,6 +68,13 @@ export const openDb = (): Promise<IDBDatabase> => {
         const store = db.createObjectStore(STORES.AUDIT, { keyPath: 'id' })
         store.createIndex('by_timestamp', 'timestamp', { unique: false })
         store.createIndex('by_module', 'module', { unique: false })
+      }
+
+      // positions: keyed by id, indexed by openedAt for recency queries
+      if (!db.objectStoreNames.contains(STORES.POSITIONS)) {
+        const store = db.createObjectStore(STORES.POSITIONS, { keyPath: 'id' })
+        store.createIndex('by_opened', 'openedAt', { unique: false })
+        store.createIndex('by_status', 'status', { unique: false })
       }
     }
 

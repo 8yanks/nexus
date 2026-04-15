@@ -35,9 +35,7 @@ const ScreenRouter = () => {
     case 'corporate': return <Corporate />
     case 'vcflow':    return <VCFlow />
     case 'macro':     return <MacroPulse />
-    case 'sentinel':
-    case 'papertrading':
-    case 'audit':     return <ChainMonitor />
+    case 'chain':     return <ChainMonitor />
   }
 }
 

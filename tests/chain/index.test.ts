@@ -3,6 +3,7 @@ import { DecisionChain } from '@/chain'
 import { AIOrchestrator, type AIProvider } from '@/ai/orchestrator'
 import { SentinelEngine, type SentinelContext } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
+import { PositionManager } from '@/trader/position-manager'
 import { AuditLogger } from '@/audit/logger'
 import type { TradeDecision } from '@/types/decision'
 
@@ -86,5 +87,40 @@ describe('DecisionChain', () => {
     const { chain } = build(decision({ action: 'HOLD', size: 0 }))
     const r = await chain.run('h', {}, cleanCtx())
     expect(r.stage).toBe('order_rejected')
+  })
+
+  it('returns the Sentinel veto on every post-AI stage', async () => {
+    const approved = build(decision())
+    const r1 = await approved.chain.run('h', {}, cleanCtx())
+    expect(r1.stage).toBe('filled')
+    if (r1.stage === 'filled') {
+      expect(r1.veto.approved).toBe(true)
+      expect(r1.veto.decisionId).toBe(r1.decision.id)
+    }
+
+    const blocked = build(decision())
+    const r2 = await blocked.chain.run('h', {}, cleanCtx({ dataAgeMs: 99999 }))
+    expect(r2.stage).toBe('sentinel_vetoed')
+    if (r2.stage === 'sentinel_vetoed') {
+      expect(r2.veto.approved).toBe(false)
+      expect(r2.veto.vetoReasons).toContain('DATA_TOO_OLD')
+    }
+  })
+
+  it('wires a filled outcome into the PositionManager', async () => {
+    const { chain } = build(decision())
+    const pm = new PositionManager()
+    const outcome = await chain.run('h', {}, cleanCtx())
+    expect(outcome.stage).toBe('filled')
+    if (outcome.stage === 'filled') {
+      const pos = pm.open(outcome.order, outcome.decision)
+      expect(pos).not.toBeNull()
+      expect(pm.listOpen()).toHaveLength(1)
+      // Mark above take-profit to close the position automatically.
+      const closed = pm.mark({ BTCUSD: 70000 })
+      expect(closed).toHaveLength(1)
+      expect(closed[0].closeReason).toBe('take_profit')
+      expect(pm.portfolio().realizedPnl).toBeGreaterThan(0)
+    }
   })
 })

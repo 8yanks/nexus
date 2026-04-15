@@ -22,13 +22,21 @@ import {
   saveDecision,
   saveVeto,
   saveOrder,
+  savePosition,
   saveAuditEntries,
   loadDecisions,
   loadOrders,
   loadVetos,
+  loadPositions,
   loadAuditEntries,
   clearChainStores,
 } from '@/storage/chain'
+
+const startOfDay = (t: number): number => {
+  const d = new Date(t)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
 
 interface ChainState {
   entries: AuditEntry[]
@@ -143,7 +151,8 @@ export const useChainStore = create<ChainState>((set) => {
       if (snap?.price) prices[id] = snap.price
     }
     const closed = positionManager.mark(prices)
-    if (closed.length > 0 || positionManager.open_().length > 0) {
+    for (const p of closed) void savePosition(p).catch(() => {})
+    if (closed.length > 0 || positionManager.listOpen().length > 0) {
       set({
         positions: positionManager.list(),
         portfolio: positionManager.portfolio(),
@@ -155,16 +164,19 @@ export const useChainStore = create<ChainState>((set) => {
   if (typeof indexedDB !== 'undefined') {
     void (async () => {
       try {
-        const [decisions, orders, vetos, audit] = await Promise.all([
-          loadDecisions(),
-          loadOrders(),
-          loadVetos(),
-          loadAuditEntries(),
-        ])
+        const [decisions, orders, vetos, audit, storedPositions] =
+          await Promise.all([
+            loadDecisions(),
+            loadOrders(),
+            loadVetos(),
+            loadAuditEntries(),
+            loadPositions(),
+          ])
         // Rehydrate audit logger so entries outlive reloads
         for (const e of audit.sort((a, b) => a.timestamp - b.timestamp)) {
           auditLogger.log(e.module, e.eventType, e.summary, e.data, e._source)
         }
+        positionManager.hydrate(storedPositions)
         set({
           decisions: decisions
             .sort((a, b) => b.timestamp - a.timestamp)
@@ -175,6 +187,8 @@ export const useChainStore = create<ChainState>((set) => {
           vetos: vetos
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, 50),
+          positions: positionManager.list(),
+          portfolio: positionManager.portfolio(),
         })
       } catch {
         // IDB unavailable — stay in-memory only
@@ -216,7 +230,8 @@ export const useChainStore = create<ChainState>((set) => {
       for (const [id, snap] of Object.entries(m.snapshots)) {
         if (snap?.price) prices[id] = snap.price
       }
-      positionManager.mark(prices)
+      const closed = positionManager.mark(prices)
+      for (const p of closed) void savePosition(p).catch(() => {})
       syncPositionState(set)
     },
     closePosition: (id: string) => {
@@ -224,35 +239,58 @@ export const useChainStore = create<ChainState>((set) => {
       const pos = positionManager.list().find((p) => p.id === id)
       if (!pos) return
       const px = m.snapshots[pos.instrumentId]?.price ?? pos.markPrice
-      positionManager.close(id, px, 'manual')
+      const closed = positionManager.close(id, px, 'manual')
+      if (closed) void savePosition(closed).catch(() => {})
       syncPositionState(set)
     },
     runDemo: async () => {
       const ctx = pickContext()
+      // Derive daily caps from the in-memory state so Sentinel's
+      // maxDailyLoss / maxDailyTrades rules actually fire.
+      const dayStart = startOfDay(Date.now())
+      const s0 = useChainStore.getState()
+      const dailyTradesCount = s0.orders.filter(
+        (o) => o.timestamp >= dayStart,
+      ).length
+      const dailyLoss = positionManager
+        .list()
+        .filter(
+          (p) =>
+            p.status === 'closed' &&
+            p.closedAt !== null &&
+            p.closedAt >= dayStart,
+        )
+        .reduce((sum, p) => sum + (p.realizedPnl ?? 0), 0)
+      const exposure = positionManager.portfolio().grossExposure
       const sctx = toSentinelContext(ctx, {
-        currentDrawdownPct: 1,
-        currentExposurePct: 5,
+        currentDrawdownPct: Math.max(
+          0,
+          (-positionManager.portfolio().unrealizedPnl / 10_000) * 100,
+        ),
+        currentExposurePct: Math.min(100, (exposure / 10_000) * 100),
         positionSizePct: 2,
         brokerAvailable: true,
         safeMode: false,
       })
+      sctx.dailyLoss = dailyLoss
+      sctx.dailyTradesCount = dailyTradesCount
+
       const outcome = await chain.run(ctx.contextHash, { ctx }, sctx)
       set((s) => {
         const next: Partial<ChainState> = { lastOutcome: outcome.stage }
-        if (outcome.stage === 'filled') {
+        if (outcome.stage !== 'ai_rejected') {
           next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
-          next.orders = [outcome.order, ...s.orders].slice(0, 50)
+          next.vetos = [outcome.veto, ...s.vetos].slice(0, 50)
           void saveDecision(outcome.decision).catch(() => {})
+          void saveVeto(outcome.veto).catch(() => {})
+        }
+        if (outcome.stage === 'filled') {
+          next.orders = [outcome.order, ...s.orders].slice(0, 50)
           void saveOrder(outcome.order).catch(() => {})
-          positionManager.open(outcome.order, outcome.decision)
+          const pos = positionManager.open(outcome.order, outcome.decision)
+          if (pos) void savePosition(pos).catch(() => {})
           next.positions = positionManager.list()
           next.portfolio = positionManager.portfolio()
-        } else if (outcome.stage === 'sentinel_vetoed') {
-          next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
-          void saveDecision(outcome.decision).catch(() => {})
-        } else if (outcome.stage === 'order_rejected') {
-          next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
-          void saveDecision(outcome.decision).catch(() => {})
         }
         return next
       })
@@ -279,7 +317,3 @@ export const useChainStore = create<ChainState>((set) => {
   }
 })
 
-// Persist vetos too (sentinel subscribes via the audit side effect above;
-// we expose a helper for tests + future hooks).
-export const persistVeto = (v: import('@/types/decision').SentinelVeto) =>
-  saveVeto(v).catch(() => {})

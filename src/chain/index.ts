@@ -1,4 +1,4 @@
-import type { TradeDecision } from '@/types/decision'
+import type { TradeDecision, SentinelVeto } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import type { AuditLogger } from '@/audit/logger'
 import { AIOrchestrator } from '@/ai/orchestrator'
@@ -8,13 +8,24 @@ import type { ValidationError } from '@/ai/schemas'
 
 export type ChainOutcome =
   | { stage: 'ai_rejected'; errors: ValidationError[]; raw: unknown }
-  | { stage: 'sentinel_vetoed'; decision: TradeDecision; reasons: string[] }
+  | {
+      stage: 'sentinel_vetoed'
+      decision: TradeDecision
+      veto: SentinelVeto
+      reasons: string[]
+    }
   | {
       stage: 'order_rejected'
       decision: TradeDecision
+      veto: SentinelVeto
       reason: string
     }
-  | { stage: 'filled'; decision: TradeDecision; order: PaperOrder }
+  | {
+      stage: 'filled'
+      decision: TradeDecision
+      veto: SentinelVeto
+      order: PaperOrder
+    }
 
 export interface DecisionChainOptions {
   ai: AIOrchestrator
@@ -49,6 +60,7 @@ export class DecisionChain {
       return {
         stage: 'sentinel_vetoed',
         decision: ai.decision,
+        veto,
         reasons: veto.vetoReasons,
       }
     }
@@ -58,9 +70,10 @@ export class DecisionChain {
       return {
         stage: 'order_rejected',
         decision: ai.decision,
+        veto,
         reason: res.reason,
       }
     }
-    return { stage: 'filled', decision: ai.decision, order: res.order }
+    return { stage: 'filled', decision: ai.decision, veto, order: res.order }
   }
 }

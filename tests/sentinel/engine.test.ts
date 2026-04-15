@@ -105,4 +105,34 @@ describe('SentinelEngine', () => {
     )
     expect(v.vetoReasons).toContain('MODEL_CONSENSUS_LOW')
   })
+
+  it('vetoes when daily loss exceeds the cap', () => {
+    const v = new SentinelEngine({ rules: { maxDailyLoss: 100 } }).evaluate(
+      decision(),
+      ctx({ dailyLoss: -250 }),
+    )
+    expect(v.vetoReasons).toContain('DRAWDOWN_EXCEEDED')
+  })
+
+  it('vetoes when daily trade count hits the cap', () => {
+    const v = new SentinelEngine({ rules: { maxDailyTrades: 5 } }).evaluate(
+      decision(),
+      ctx({ dailyTradesCount: 5 }),
+    )
+    expect(v.vetoReasons).toContain('SIZE_TOO_LARGE')
+  })
+
+  it('vetoes decisions flagged for human review below review threshold', () => {
+    const v = new SentinelEngine({
+      rules: { requireHumanReviewAbove: 0.9, minModelConfidence: 0.5 },
+    }).evaluate(decision({ requiresHumanReview: true, confidence: 0.6 }), ctx())
+    expect(v.vetoReasons).toContain('MANUAL_BLOCK')
+  })
+
+  it('allows human-flagged decisions above the review threshold', () => {
+    const v = new SentinelEngine({
+      rules: { requireHumanReviewAbove: 0.5, minModelConfidence: 0.5 },
+    }).evaluate(decision({ requiresHumanReview: true, confidence: 0.9 }), ctx())
+    expect(v.vetoReasons).not.toContain('MANUAL_BLOCK')
+  })
 })

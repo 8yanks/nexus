@@ -35,6 +35,7 @@ export const ChainMonitor = () => {
     decisions,
     positions,
     portfolio,
+    vetos,
     lastOutcome,
     autoRun,
     autoRunIntervalMs,
@@ -265,7 +266,7 @@ export const ChainMonitor = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 12,
         }}
       >
@@ -320,6 +321,42 @@ export const ChainMonitor = () => {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+
+        <div style={panel}>
+          <div style={h}>Sentinel vetos ({vetos.length})</div>
+          {vetos.length === 0 ? (
+            <div style={{ ...mono, color: colors.textMuted }}>—</div>
+          ) : (
+            <ul
+              style={{
+                ...mono,
+                margin: 0,
+                padding: 0,
+                listStyle: 'none',
+                maxHeight: 200,
+                overflowY: 'auto',
+              }}
+            >
+              {vetos.slice(0, 10).map((v) => (
+                <li
+                  key={v.id}
+                  style={{ padding: '2px 0', color: colors.textSecondary }}
+                >
+                  <span
+                    style={{
+                      color: v.approved ? colors.green : colors.red,
+                    }}
+                  >
+                    {v.approved ? '✓' : '✗'}
+                  </span>{' '}
+                  {v.approved
+                    ? 'approved'
+                    : v.vetoReasons.slice(0, 2).join(', ')}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 

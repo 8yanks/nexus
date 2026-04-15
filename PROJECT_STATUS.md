@@ -1,6 +1,6 @@
 # NEXUS — Avancement du Projet
 
-> Dernière mise à jour : 7 avril 2026
+> Dernière mise à jour : 15 avril 2026
 
 ---
 
@@ -47,6 +47,7 @@ Le projet cible une architecture **3 bots** :
 | 5 avril 2026 | `90876bd` | Ajout du Trader Bot (signal consumer + Freqtrade bridge) |
 | 6 avril 2026 | `04c830c` | Demo splash overlay au premier chargement |
 | 7 avril 2026 | `be2c2d0` | +89 tests (alerts, export, normalization, storage, generator) |
+| 15 avril 2026 | PR `ai-schemas-and-audit` | **Decision Chain complète** : AI schema validator + orchestrator, SentinelEngine (11 règles), TraderEngine (PaperOrder), DecisionChain, PositionManager (mark-to-market + SL/TP), persistence IDB, Claude API provider, écran Chain avec auto-run |
 
 ---
 
@@ -186,6 +187,24 @@ nexus/
 
 ---
 
+## Decision Chain (bot pipeline)
+
+```
+Market snapshot → AnalystContext → AIOrchestrator → SentinelEngine → TraderEngine → PositionManager
+                         ↓                ↓                ↓                ↓                ↓
+                    contextHash    schema-validé    11 règles veto    PaperOrder      mark-to-market
+                                                                                       SL/TP auto-close
+                                                                ↓
+                                                         AuditLogger (IndexedDB persisted)
+```
+
+- **AI providers** : `rule-based` (déterministe, fallback) + `claude` (Anthropic API, opt-in via `VITE_ANTHROPIC_API_KEY`)
+- **Sentinel rules** : drawdown, exposure, size, data quality, data age, latency, confidence, consensus, broker, safe mode, daily loss, daily trades, human review, manual block
+- **Persistence IDB** : `decisions`, `vetos`, `orders`, `positions`, `audit` (survivent aux reloads)
+- **Auto-run** : bouton UI déclenche la chaîne toutes les 5s/15s/30s/60s
+
+---
+
 ## Pipeline de Données (Refresh Cycle)
 
 Le store exécute un cycle complet toutes les 5 secondes :
@@ -233,7 +252,7 @@ Le store exécute un cycle complet toutes les 5 secondes :
 | Metric | Valeur |
 |--------|--------|
 | Erreurs TypeScript | **0** |
-| Tests | **275 / 28 fichiers** |
+| Tests | **340 / 39 fichiers** |
 | Build production | **209 KB** gzip |
 | Fichiers source | ~98 |
 | Lignes de code | ~10 000 (source) + ~3 000 (tests) |
