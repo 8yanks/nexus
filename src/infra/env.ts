@@ -26,6 +26,9 @@ export const config = {
   polygonApiKey: (env.VITE_POLYGON_API_KEY as string) || '',
   finnhubApiKey: (env.VITE_FINNHUB_API_KEY as string) || '',
   fredApiKey: (env.VITE_FRED_API_KEY as string) || '',
+  anthropicApiKey: (env.VITE_ANTHROPIC_API_KEY as string) || '',
+  anthropicModel:
+    (env.VITE_ANTHROPIC_MODEL as string) || 'claude-sonnet-4-5',
 
   // Refresh
   refreshIntervalMs: parseInt((env.VITE_REFRESH_INTERVAL_MS as string) || '5000', 10),

@@ -13,6 +13,8 @@ import {
   type AnalystContext,
 } from '@/analyst/context-builder'
 import { ruleBasedProvider } from '@/ai/providers/rule-based'
+import { claudeProvider } from '@/ai/providers/claude'
+import { config } from '@/infra/env'
 import { useMarketStore } from '@/store/market'
 import {
   saveDecision,
@@ -76,9 +78,13 @@ function pickContext(): AnalystContext {
   return lastCtx
 }
 
-const ai = new AIOrchestrator(ruleBasedProvider(pickContext), {
-  audit: auditLogger,
-})
+const provider = config.anthropicApiKey
+  ? claudeProvider(pickContext, {
+      apiKey: config.anthropicApiKey,
+      model: config.anthropicModel,
+    })
+  : ruleBasedProvider(pickContext)
+const ai = new AIOrchestrator(provider, { audit: auditLogger })
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
 const chain = new DecisionChain({ ai, sentinel, trader, audit: auditLogger })
