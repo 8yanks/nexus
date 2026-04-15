@@ -25,3 +25,9 @@ export type {
   PaperOrderType,
   PaperOrderStatus,
 } from './order'
+export type {
+  Position,
+  PositionSide,
+  PositionStatus,
+  PositionCloseReason,
+} from './position'

@@ -25,9 +25,21 @@ const stageColor = (stage: string | null): string => {
   return colors.textMuted
 }
 
+const pnlColor = (v: number): string =>
+  v > 0 ? colors.green : v < 0 ? colors.red : colors.textSecondary
+
 export const ChainMonitor = () => {
-  const { entries, orders, decisions, lastOutcome, runDemo, clear } =
-    useChainStore()
+  const {
+    entries,
+    orders,
+    decisions,
+    positions,
+    portfolio,
+    lastOutcome,
+    runDemo,
+    clear,
+    closePosition,
+  } = useChainStore()
 
   return (
     <div
@@ -76,6 +88,140 @@ export const ChainMonitor = () => {
           </span>
         )}
       </div>
+
+      <div style={panel}>
+        <div style={h}>Portfolio</div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 16,
+            ...mono,
+          }}
+        >
+          <div>
+            <div style={{ color: colors.textSecondary }}>open</div>
+            <div style={{ fontSize: 16 }}>{portfolio.openCount}</div>
+          </div>
+          <div>
+            <div style={{ color: colors.textSecondary }}>gross exposure</div>
+            <div style={{ fontSize: 16 }}>
+              {portfolio.grossExposure.toFixed(2)}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: colors.textSecondary }}>unrealized PnL</div>
+            <div
+              style={{ fontSize: 16, color: pnlColor(portfolio.unrealizedPnl) }}
+            >
+              {portfolio.unrealizedPnl.toFixed(2)}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: colors.textSecondary }}>realized PnL</div>
+            <div
+              style={{ fontSize: 16, color: pnlColor(portfolio.realizedPnl) }}
+            >
+              {portfolio.realizedPnl.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {positions.length > 0 && (
+        <div style={panel}>
+          <div style={h}>Positions ({positions.length})</div>
+          <table style={{ ...mono, width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ color: colors.textSecondary }}>
+                <th style={{ textAlign: 'left' }}>sym</th>
+                <th style={{ textAlign: 'left' }}>side</th>
+                <th style={{ textAlign: 'right' }}>size</th>
+                <th style={{ textAlign: 'right' }}>entry</th>
+                <th style={{ textAlign: 'right' }}>mark</th>
+                <th style={{ textAlign: 'right' }}>SL</th>
+                <th style={{ textAlign: 'right' }}>TP</th>
+                <th style={{ textAlign: 'right' }}>PnL</th>
+                <th style={{ textAlign: 'left' }}>status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {positions.map((p) => {
+                const pnl =
+                  p.status === 'open' ? p.unrealizedPnl : (p.realizedPnl ?? 0)
+                return (
+                  <tr key={p.id}>
+                    <td>{p.symbol}</td>
+                    <td
+                      style={{
+                        color: p.side === 'long' ? colors.green : colors.red,
+                      }}
+                    >
+                      {p.side}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>{p.size}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {p.entryPrice.toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {p.markPrice.toFixed(2)}
+                    </td>
+                    <td
+                      style={{ textAlign: 'right', color: colors.textMuted }}
+                    >
+                      {p.stopLoss?.toFixed(2) ?? '—'}
+                    </td>
+                    <td
+                      style={{ textAlign: 'right', color: colors.textMuted }}
+                    >
+                      {p.takeProfit?.toFixed(2) ?? '—'}
+                    </td>
+                    <td
+                      style={{ textAlign: 'right', color: pnlColor(pnl) }}
+                    >
+                      {pnl.toFixed(2)}
+                    </td>
+                    <td
+                      style={{
+                        color:
+                          p.status === 'open'
+                            ? colors.textSecondary
+                            : p.closeReason === 'take_profit'
+                              ? colors.green
+                              : p.closeReason === 'stop_loss'
+                                ? colors.red
+                                : colors.textMuted,
+                      }}
+                    >
+                      {p.status === 'open' ? 'open' : (p.closeReason ?? 'closed')}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {p.status === 'open' && (
+                        <button
+                          onClick={() => closePosition(p.id)}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid ${colors.border}`,
+                            color: colors.textSecondary,
+                            borderRadius: 3,
+                            padding: '1px 6px',
+                            fontSize: 10,
+                            cursor: 'pointer',
+                            fontFamily: fonts.mono,
+                          }}
+                        >
+                          close
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div
         style={{

@@ -6,6 +6,8 @@ import { auditLogger } from '@/audit/logger'
 import { AIOrchestrator } from '@/ai/orchestrator'
 import { SentinelEngine } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
+import { PositionManager } from '@/trader/position-manager'
+import type { Position } from '@/types/position'
 import { DecisionChain } from '@/chain'
 import {
   buildAnalystContext,
@@ -33,8 +35,17 @@ interface ChainState {
   vetos: SentinelVeto[]
   orders: PaperOrder[]
   decisions: TradeDecision[]
+  positions: Position[]
+  portfolio: {
+    openCount: number
+    grossExposure: number
+    unrealizedPnl: number
+    realizedPnl: number
+  }
   lastOutcome: string | null
   runDemo: () => Promise<void>
+  mark: () => void
+  closePosition: (id: string) => void
   clear: () => void
 }
 
@@ -87,7 +98,16 @@ const provider = config.anthropicApiKey
 const ai = new AIOrchestrator(provider, { audit: auditLogger })
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
+const positionManager = new PositionManager({ audit: auditLogger })
 const chain = new DecisionChain({ ai, sentinel, trader, audit: auditLogger })
+
+const syncPositionState = (
+  set: (fn: (s: ChainState) => Partial<ChainState>) => void,
+) =>
+  set(() => ({
+    positions: positionManager.list(),
+    portfolio: positionManager.portfolio(),
+  }))
 
 // Debounced audit flush so we don't hit IDB on every log line.
 let flushTimer: ReturnType<typeof setTimeout> | null = null
@@ -108,6 +128,22 @@ export const useChainStore = create<ChainState>((set) => {
     ;(pendingAudit as unknown as typeof e[]).push(e)
     queueAuditFlush()
     set({ entries: auditLogger.list().slice(-500).reverse() })
+  })
+
+  // Auto mark-to-market whenever the market store refreshes.
+  useMarketStore.subscribe((state, prev) => {
+    if (state.lastRefresh === prev.lastRefresh) return
+    const prices: Record<string, number> = {}
+    for (const [id, snap] of Object.entries(state.snapshots)) {
+      if (snap?.price) prices[id] = snap.price
+    }
+    const closed = positionManager.mark(prices)
+    if (closed.length > 0 || positionManager.open_().length > 0) {
+      set({
+        positions: positionManager.list(),
+        portfolio: positionManager.portfolio(),
+      })
+    }
   })
 
   // Hydrate from IndexedDB on first use (browser only).
@@ -146,7 +182,31 @@ export const useChainStore = create<ChainState>((set) => {
     vetos: [],
     orders: [],
     decisions: [],
+    positions: [],
+    portfolio: {
+      openCount: 0,
+      grossExposure: 0,
+      unrealizedPnl: 0,
+      realizedPnl: 0,
+    },
     lastOutcome: null,
+    mark: () => {
+      const m = useMarketStore.getState()
+      const prices: Record<string, number> = {}
+      for (const [id, snap] of Object.entries(m.snapshots)) {
+        if (snap?.price) prices[id] = snap.price
+      }
+      positionManager.mark(prices)
+      syncPositionState(set)
+    },
+    closePosition: (id: string) => {
+      const m = useMarketStore.getState()
+      const pos = positionManager.list().find((p) => p.id === id)
+      if (!pos) return
+      const px = m.snapshots[pos.instrumentId]?.price ?? pos.markPrice
+      positionManager.close(id, px, 'manual')
+      syncPositionState(set)
+    },
     runDemo: async () => {
       const ctx = pickContext()
       const sctx = toSentinelContext(ctx, {
@@ -164,6 +224,9 @@ export const useChainStore = create<ChainState>((set) => {
           next.orders = [outcome.order, ...s.orders].slice(0, 50)
           void saveDecision(outcome.decision).catch(() => {})
           void saveOrder(outcome.order).catch(() => {})
+          positionManager.open(outcome.order, outcome.decision)
+          next.positions = positionManager.list()
+          next.portfolio = positionManager.portfolio()
         } else if (outcome.stage === 'sentinel_vetoed') {
           next.decisions = [outcome.decision, ...s.decisions].slice(0, 50)
           void saveDecision(outcome.decision).catch(() => {})
@@ -176,8 +239,22 @@ export const useChainStore = create<ChainState>((set) => {
     },
     clear: () => {
       auditLogger.clear()
+      positionManager.reset()
       void clearChainStores().catch(() => {})
-      set({ entries: [], vetos: [], orders: [], decisions: [], lastOutcome: null })
+      set({
+        entries: [],
+        vetos: [],
+        orders: [],
+        decisions: [],
+        positions: [],
+        portfolio: {
+          openCount: 0,
+          grossExposure: 0,
+          unrealizedPnl: 0,
+          realizedPnl: 0,
+        },
+        lastOutcome: null,
+      })
     },
   }
 })
