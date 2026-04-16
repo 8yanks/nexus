@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { DecisionChain } from '@/chain'
 import { AIOrchestrator, type AIProvider } from '@/ai/orchestrator'
+import { ConsensusOrchestrator } from '@/ai/consensus'
 import { SentinelEngine, type SentinelContext } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
 import { PositionManager } from '@/trader/position-manager'
@@ -120,6 +121,30 @@ describe('DecisionChain', () => {
     expect(r.stage).toBe('sentinel_vetoed')
     if (r.stage === 'sentinel_vetoed') {
       expect(r.veto.vetoReasons).toContain('SIZE_TOO_LARGE')
+    }
+  })
+
+  it('accepts a ConsensusOrchestrator structurally as its decision maker', async () => {
+    // Same OrchestratorResult shape → DecisionChain treats it identically.
+    const audit = new AuditLogger()
+    const ai = new ConsensusOrchestrator({
+      providers: [
+        provider(decision({ confidence: 0.7 })),
+        provider(decision({ confidence: 0.9 })),
+      ],
+      audit,
+    })
+    const chain = new DecisionChain({
+      ai,
+      sentinel: new SentinelEngine({ audit }),
+      trader: new TraderEngine({ audit }),
+      audit,
+    })
+    const r = await chain.run('h', {}, cleanCtx())
+    expect(r.stage).toBe('filled')
+    if (r.stage === 'filled') {
+      // Mean confidence = 0.8 → consensusScore stamped at 1.0 (unanimous BUY).
+      expect(r.decision.consensusScore).toBe(1)
     }
   })
 

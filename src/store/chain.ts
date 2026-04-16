@@ -4,6 +4,7 @@ import type { SentinelVeto, TradeDecision } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import { auditLogger } from '@/audit/logger'
 import { AIOrchestrator } from '@/ai/orchestrator'
+import { ConsensusOrchestrator } from '@/ai/consensus'
 import { SentinelEngine } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
 import { PositionManager } from '@/trader/position-manager'
@@ -152,13 +153,26 @@ function pickContext(): {
 // Provider needs an AnalystContext factory — wraps pickContext.
 const pickContextForProvider = (): AnalystContext => pickContext().ctx
 
-const provider = config.anthropicApiKey
-  ? claudeProvider(pickContextForProvider, {
-      apiKey: config.anthropicApiKey,
-      model: config.anthropicModel,
+// When a real LLM is configured we still vote with the deterministic
+// rule-based provider in parallel. The consensus layer surfaces disagreements
+// (HOLD with low confidence + requiresHumanReview) instead of silently
+// accepting whatever Claude returned. With no key, we collapse to the single
+// rule-based provider via AIOrchestrator — same OrchestratorResult shape.
+const ai = config.anthropicApiKey
+  ? new ConsensusOrchestrator({
+      providers: [
+        claudeProvider(pickContextForProvider, {
+          apiKey: config.anthropicApiKey,
+          model: config.anthropicModel,
+        }),
+        ruleBasedProvider(pickContextForProvider),
+      ],
+      id: 'consensus[claude+rule-based]',
+      audit: auditLogger,
     })
-  : ruleBasedProvider(pickContextForProvider)
-const ai = new AIOrchestrator(provider, { audit: auditLogger })
+  : new AIOrchestrator(ruleBasedProvider(pickContextForProvider), {
+      audit: auditLogger,
+    })
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
 const positionManager = new PositionManager({ audit: auditLogger })

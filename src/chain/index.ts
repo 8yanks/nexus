@@ -1,10 +1,22 @@
 import type { TradeDecision, SentinelVeto } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import type { AuditLogger } from '@/audit/logger'
-import { AIOrchestrator } from '@/ai/orchestrator'
+import type { OrchestratorResult } from '@/ai/orchestrator'
 import { SentinelEngine, type SentinelContext } from '@/sentinel/engine'
 import { TraderEngine } from '@/trader/engine'
 import type { ValidationError } from '@/ai/schemas'
+
+/**
+ * Anything that can turn a context into a typed decision satisfies this.
+ * Lets DecisionChain accept either a single-provider AIOrchestrator or a
+ * multi-provider ConsensusOrchestrator without coupling to the concrete class.
+ */
+export interface DecisionMaker {
+  decide(
+    contextHash: string,
+    context: Record<string, unknown>,
+  ): Promise<OrchestratorResult>
+}
 
 export type ChainOutcome =
   | { stage: 'ai_rejected'; errors: ValidationError[]; raw: unknown }
@@ -28,7 +40,7 @@ export type ChainOutcome =
     }
 
 export interface DecisionChainOptions {
-  ai: AIOrchestrator
+  ai: DecisionMaker
   sentinel: SentinelEngine
   trader: TraderEngine
   audit?: AuditLogger
