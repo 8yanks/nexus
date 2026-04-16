@@ -49,11 +49,14 @@ export const ChainMonitor = () => {
     autoRunIntervalMs,
     safeMode,
     lastContextInstrumentId,
+    reviewQueue,
     runDemo,
     clear,
     closePosition,
     setAutoRun,
     setSafeMode,
+    acceptReview,
+    dismissReview,
   } = useChainStore()
 
   const exportAll = (format: 'csv' | 'json') => {
@@ -258,6 +261,104 @@ export const ChainMonitor = () => {
           </div>
         </div>
       </div>
+
+      {reviewQueue.length > 0 && (
+        <div
+          style={{
+            ...panel,
+            borderColor: colors.orange,
+            background: `${colors.orange}08`,
+          }}
+        >
+          <div style={{ ...h, color: colors.orange }}>
+            Pending review ({reviewQueue.length})
+          </div>
+          <table style={{ ...mono, width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ color: colors.textSecondary }}>
+                <th style={{ textAlign: 'left' }}>queued</th>
+                <th style={{ textAlign: 'left' }}>action</th>
+                <th style={{ textAlign: 'left' }}>sym</th>
+                <th style={{ textAlign: 'right' }}>size</th>
+                <th style={{ textAlign: 'right' }}>conf</th>
+                <th style={{ textAlign: 'left' }}>thesis</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviewQueue.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ color: colors.textMuted }}>
+                    {new Date(r.queuedAt).toLocaleTimeString()}
+                  </td>
+                  <td
+                    style={{
+                      color:
+                        r.decision.action === 'BUY'
+                          ? colors.green
+                          : r.decision.action === 'SELL'
+                            ? colors.red
+                            : colors.textMuted,
+                    }}
+                  >
+                    {r.decision.action}
+                  </td>
+                  <td>{r.decision.symbol}</td>
+                  <td style={{ textAlign: 'right' }}>{r.decision.size}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    {r.decision.confidence.toFixed(2)}
+                  </td>
+                  <td
+                    style={{
+                      color: colors.textSecondary,
+                      maxWidth: 280,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={r.decision.thesis}
+                  >
+                    {r.decision.thesis}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button
+                      onClick={() => acceptReview(r.id)}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${colors.green}`,
+                        color: colors.green,
+                        borderRadius: 3,
+                        padding: '1px 8px',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        fontFamily: fonts.mono,
+                        marginRight: 4,
+                      }}
+                    >
+                      accept
+                    </button>
+                    <button
+                      onClick={() => dismissReview(r.id)}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textSecondary,
+                        borderRadius: 3,
+                        padding: '1px 8px',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        fontFamily: fonts.mono,
+                      }}
+                    >
+                      dismiss
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {positions.length > 0 && (
         <div style={panel}>

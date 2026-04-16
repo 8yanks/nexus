@@ -69,14 +69,14 @@ export const vetosToCSV = (vetos: SentinelVeto[]): string => {
 export const ordersToCSV = (orders: PaperOrder[]): string => {
   const header = row([
     'id', 'timestamp_iso', 'decision_id', 'sentinel_approval_id',
-    'instrument_id', 'symbol', 'side', 'size',
-    'request_price', 'fill_price', 'slippage_bps', 'status',
+    'instrument_id', 'symbol', 'side', 'type', 'size',
+    'price', 'slippage', 'fill_price', 'fill_iso', 'pnl', 'status',
   ])
   const rows = orders.map((o) =>
     row([
       o.id, isoOrEmpty(o.timestamp), o.decisionId, o.sentinelApprovalId,
-      o.instrumentId, o.symbol, o.side, o.size,
-      o.requestPrice, o.fillPrice, o.slippageBps, o.status,
+      o.instrumentId, o.symbol, o.side, o.type, o.size,
+      o.price, o.slippage, o.fillPrice, isoOrEmpty(o.fillTime), o.pnl, o.status,
     ]),
   )
   return [header, ...rows].join('\n')

@@ -65,11 +65,16 @@ const order: PaperOrder = {
   instrumentId: 'BTCUSD',
   symbol: 'BTC/USD',
   side: 'buy',
+  type: 'limit',
   size: 0.1,
-  requestPrice: 60_000,
+  price: 60_000,
+  slippage: 0.0005,
   fillPrice: 60_030,
-  slippageBps: 5,
+  fillTime: 1_700_000_000_010,
+  pnl: 0,
   status: 'filled',
+  _source: 'paper_broker',
+  _status: 'SIMULATED',
 }
 
 const position: Position = {
@@ -126,9 +131,17 @@ describe('chain export — CSV', () => {
   })
 
   it('emits empty cells for null fill prices', () => {
-    const o: PaperOrder = { ...order, fillPrice: null, status: 'rejected' }
+    const o: PaperOrder = {
+      ...order,
+      fillPrice: null,
+      fillTime: null,
+      pnl: null,
+      status: 'rejected',
+    }
     const csv = ordersToCSV([o])
-    expect(csv).toMatch(/o1.*,,5,rejected/)
+    // header order: ..., price, slippage, fill_price, fill_iso, pnl, status
+    // expect three consecutive empty cells before the status cell.
+    expect(csv).toMatch(/,,,,rejected$/)
   })
 
   it('keeps closed_iso empty for an open position', () => {

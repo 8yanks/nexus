@@ -39,6 +39,34 @@ const startOfDay = (t: number): number => {
   return d.getTime()
 }
 
+/** A Sentinel-vetoed decision that the AI self-flagged for human review. */
+export interface ReviewRequest {
+  id: string
+  queuedAt: number
+  decision: TradeDecision
+  veto: SentinelVeto
+  /** Non-MANUAL_BLOCK reasons, if any — operator can see what else blocked. */
+  otherReasons: string[]
+}
+
+/**
+ * A vetoed decision is reviewable only when:
+ *  1. The AI itself flagged it for human review, and
+ *  2. The ONLY reason Sentinel blocked it is MANUAL_BLOCK.
+ *
+ * If a hard risk rule (drawdown, exposure, data quality, ...) also fired,
+ * the operator cannot override it — those vetos are terminal.
+ */
+export const isReviewable = (
+  decision: Pick<TradeDecision, 'requiresHumanReview'>,
+  veto: Pick<SentinelVeto, 'vetoReasons'>,
+): boolean => {
+  if (!decision.requiresHumanReview) return false
+  const reasons = veto.vetoReasons
+  if (reasons.length === 0) return false
+  return reasons.every((r) => r === 'MANUAL_BLOCK')
+}
+
 interface ChainState {
   entries: AuditEntry[]
   vetos: SentinelVeto[]
@@ -60,11 +88,15 @@ interface ChainState {
   safeMode: boolean
   /** Last instrument actually fed into the chain — null if synthetic fallback. */
   lastContextInstrumentId: string | null
+  /** Decisions waiting on a human yes/no before they can execute. */
+  reviewQueue: ReviewRequest[]
   runDemo: () => Promise<void>
   mark: () => void
   closePosition: (id: string) => void
   setAutoRun: (enabled: boolean, intervalMs?: number) => void
   setSafeMode: (enabled: boolean) => void
+  acceptReview: (id: string) => void
+  dismissReview: (id: string) => void
   clear: () => void
 }
 
@@ -237,6 +269,66 @@ export const useChainStore = create<ChainState>((set) => {
     equityBaseline: 10_000,
     safeMode: false,
     lastContextInstrumentId: null,
+    reviewQueue: [],
+    acceptReview: (id: string) => {
+      const s = useChainStore.getState()
+      const req = s.reviewQueue.find((r) => r.id === id)
+      if (!req) return
+
+      // Build a synthetic "approved" veto carrying the manual override so
+      // the Trader engine accepts the order. The original veto + decision
+      // are still preserved in audit + state.
+      const overrideVeto: SentinelVeto = {
+        ...req.veto,
+        id: `${req.veto.id}_override_${Date.now().toString(36)}`,
+        timestamp: Date.now(),
+        approved: true,
+        vetoReasons: [],
+      }
+      auditLogger.log(
+        'system',
+        'REVIEW_COMPLETED',
+        `manual override accepted: ${req.decision.action} ${req.decision.symbol}`,
+        {
+          reviewId: req.id,
+          decisionId: req.decision.id,
+          originalVetoId: req.veto.id,
+          overrideVetoId: overrideVeto.id,
+        },
+      )
+
+      const result = trader.execute(req.decision, overrideVeto)
+      const next: Partial<ChainState> = {
+        reviewQueue: s.reviewQueue.filter((r) => r.id !== id),
+        vetos: [overrideVeto, ...s.vetos].slice(0, 50),
+      }
+      void saveVeto(overrideVeto).catch(() => {})
+
+      if (result.ok) {
+        next.orders = [result.order, ...s.orders].slice(0, 50)
+        void saveOrder(result.order).catch(() => {})
+        const pos = positionManager.open(result.order, req.decision)
+        if (pos) void savePosition(pos).catch(() => {})
+        next.positions = positionManager.list()
+        next.portfolio = positionManager.portfolio()
+        next.lastOutcome = 'filled'
+      } else {
+        next.lastOutcome = 'order_rejected'
+      }
+      set(next)
+    },
+    dismissReview: (id: string) => {
+      const s = useChainStore.getState()
+      const req = s.reviewQueue.find((r) => r.id === id)
+      if (!req) return
+      auditLogger.log(
+        'system',
+        'REVIEW_COMPLETED',
+        `manual override dismissed: ${req.decision.action} ${req.decision.symbol}`,
+        { reviewId: req.id, decisionId: req.decision.id, dismissed: true },
+      )
+      set({ reviewQueue: s.reviewQueue.filter((r) => r.id !== id) })
+    },
     setSafeMode: (enabled: boolean) => {
       set({ safeMode: enabled })
       auditLogger.log(
@@ -364,6 +456,27 @@ export const useChainStore = create<ChainState>((set) => {
           next.positions = positionManager.list()
           next.portfolio = positionManager.portfolio()
         }
+        // Queue review when the AI self-flagged AND the only blocker is
+        // MANUAL_BLOCK. If other risk reasons fired, the operator cannot
+        // override them — drop straight to vetoed and skip the queue.
+        if (outcome.stage === 'sentinel_vetoed') {
+          if (isReviewable(outcome.decision, outcome.veto)) {
+            const req: ReviewRequest = {
+              id: `rev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+              queuedAt: Date.now(),
+              decision: outcome.decision,
+              veto: outcome.veto,
+              otherReasons: [],
+            }
+            next.reviewQueue = [req, ...s.reviewQueue].slice(0, 20)
+            auditLogger.log(
+              'system',
+              'REVIEW_TRIGGERED',
+              `manual review queued for ${outcome.decision.action} ${outcome.decision.symbol}`,
+              { reviewId: req.id, decisionId: outcome.decision.id },
+            )
+          }
+        }
         return next
       })
       } finally {
@@ -388,6 +501,7 @@ export const useChainStore = create<ChainState>((set) => {
         },
         lastOutcome: null,
         lastContextInstrumentId: null,
+        reviewQueue: [],
       })
       lastFallbackLogged = false
     },
