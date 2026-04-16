@@ -45,7 +45,9 @@ export class DecisionChain {
   async run(
     contextHash: string,
     context: Record<string, unknown>,
-    sentinelCtx: SentinelContext,
+    sentinelCtx:
+      | SentinelContext
+      | ((decision: TradeDecision) => SentinelContext),
   ): Promise<ChainOutcome> {
     const audit = this.opts.audit
     audit?.log('system', 'CONTEXT_BUILT', 'chain start', { contextHash })
@@ -55,7 +57,9 @@ export class DecisionChain {
       return { stage: 'ai_rejected', errors: ai.errors, raw: ai.raw }
     }
 
-    const veto = this.opts.sentinel.evaluate(ai.decision, sentinelCtx)
+    const resolvedCtx =
+      typeof sentinelCtx === 'function' ? sentinelCtx(ai.decision) : sentinelCtx
+    const veto = this.opts.sentinel.evaluate(ai.decision, resolvedCtx)
     if (!veto.approved) {
       return {
         stage: 'sentinel_vetoed',

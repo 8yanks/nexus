@@ -107,6 +107,22 @@ describe('DecisionChain', () => {
     }
   })
 
+  it('accepts a SentinelContext factory and feeds it the AI decision', async () => {
+    const { chain } = build(decision({ size: 2 }))
+    let seenSize = -1
+    const r = await chain.run('h', {}, (d) => {
+      seenSize = d.size
+      // Feed back a context that vetoes when size > 1 — proves the factory
+      // ran, *with the decision in hand*, before Sentinel evaluated.
+      return cleanCtx({ positionSizePct: d.size > 1 ? 99 : 1 })
+    })
+    expect(seenSize).toBe(2)
+    expect(r.stage).toBe('sentinel_vetoed')
+    if (r.stage === 'sentinel_vetoed') {
+      expect(r.veto.vetoReasons).toContain('SIZE_TOO_LARGE')
+    }
+  })
+
   it('wires a filled outcome into the PositionManager', async () => {
     const { chain } = build(decision())
     const pm = new PositionManager()

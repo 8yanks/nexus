@@ -16,6 +16,7 @@ import {
 } from '@/analyst/context-builder'
 import { ruleBasedProvider } from '@/ai/providers/rule-based'
 import { claudeProvider } from '@/ai/providers/claude'
+import type { SentinelContext } from '@/sentinel/engine'
 import { config } from '@/infra/env'
 import { useMarketStore } from '@/store/market'
 import {
@@ -53,21 +54,34 @@ interface ChainState {
   lastOutcome: string | null
   autoRun: boolean
   autoRunIntervalMs: number
+  /** Synthetic equity baseline used to convert PnL/exposure → percent. */
+  equityBaseline: number
+  /** Manual kill-switch surfaced via UI; forwarded into SentinelContext. */
+  safeMode: boolean
+  /** Last instrument actually fed into the chain — null if synthetic fallback. */
+  lastContextInstrumentId: string | null
   runDemo: () => Promise<void>
   mark: () => void
   closePosition: (id: string) => void
   setAutoRun: (enabled: boolean, intervalMs?: number) => void
+  setSafeMode: (enabled: boolean) => void
   clear: () => void
 }
 
 /**
  * Pulls the freshest AnalystContext from the market store. Falls back to a
  * synthetic context when no snapshot is available yet so the UI button
- * always produces a traceable outcome instead of silently failing.
+ * always produces a traceable outcome instead of silently failing. The
+ * fallback path is logged to audit so the operator can see *why* a chain
+ * run targeted the synthetic instrument instead of a real one.
  */
 let lastCtx: AnalystContext | null = null
+let lastFallbackLogged = false
 
-function pickContext(): AnalystContext {
+function pickContext(): {
+  ctx: AnalystContext
+  isFallback: boolean
+} {
   const m = useMarketStore.getState()
   const focus = m.selectedInstrumentId ?? m.instruments[0]?.id
   const snap = focus ? m.snapshots[focus] : undefined
@@ -79,7 +93,10 @@ function pickContext(): AnalystContext {
       quality: focus ? (m.quality[focus] ?? null) : null,
       symbol: inst.symbol,
     })
-  } else if (!lastCtx) {
+    lastFallbackLogged = false
+    return { ctx: lastCtx, isFallback: false }
+  }
+  if (!lastCtx) {
     lastCtx = {
       instrumentId: 'BTCUSD',
       symbol: 'BTC/USD',
@@ -97,15 +114,18 @@ function pickContext(): AnalystContext {
       builtAt: Date.now(),
     }
   }
-  return lastCtx
+  return { ctx: lastCtx, isFallback: true }
 }
 
+// Provider needs an AnalystContext factory — wraps pickContext.
+const pickContextForProvider = (): AnalystContext => pickContext().ctx
+
 const provider = config.anthropicApiKey
-  ? claudeProvider(pickContext, {
+  ? claudeProvider(pickContextForProvider, {
       apiKey: config.anthropicApiKey,
       model: config.anthropicModel,
     })
-  : ruleBasedProvider(pickContext)
+  : ruleBasedProvider(pickContextForProvider)
 const ai = new AIOrchestrator(provider, { audit: auditLogger })
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
@@ -214,6 +234,19 @@ export const useChainStore = create<ChainState>((set) => {
     lastOutcome: null,
     autoRun: false,
     autoRunIntervalMs: 15_000,
+    equityBaseline: 10_000,
+    safeMode: false,
+    lastContextInstrumentId: null,
+    setSafeMode: (enabled: boolean) => {
+      set({ safeMode: enabled })
+      auditLogger.log(
+        'system',
+        enabled ? 'SAFE_MODE_ACTIVATED' : 'SAFE_MODE_DEACTIVATED',
+        enabled
+          ? 'safe mode enabled — all non-HOLD trades will be vetoed'
+          : 'safe mode disabled',
+      )
+    },
     setAutoRun: (enabled: boolean, intervalMs?: number) => {
       if (autoRunTimer) {
         clearInterval(autoRunTimer)
@@ -251,11 +284,26 @@ export const useChainStore = create<ChainState>((set) => {
       if (runInFlight) return
       runInFlight = true
       try {
-      const ctx = pickContext()
+      const picked = pickContext()
+      const ctx = picked.ctx
+      const s0 = useChainStore.getState()
+
+      if (picked.isFallback && !lastFallbackLogged) {
+        auditLogger.log(
+          'system',
+          'CONTEXT_BUILT',
+          'fallback to synthetic context — no live snapshot available',
+          { contextHash: ctx.contextHash, instrumentId: ctx.instrumentId },
+        )
+        lastFallbackLogged = true
+      }
+      set({
+        lastContextInstrumentId: picked.isFallback ? null : ctx.instrumentId,
+      })
+
       // Derive daily caps from the in-memory state so Sentinel's
       // maxDailyLoss / maxDailyTrades rules actually fire.
       const dayStart = startOfDay(Date.now())
-      const s0 = useChainStore.getState()
       const dailyTradesCount = s0.orders.filter(
         (o) => o.timestamp >= dayStart,
       ).length
@@ -268,21 +316,38 @@ export const useChainStore = create<ChainState>((set) => {
             p.closedAt >= dayStart,
         )
         .reduce((sum, p) => sum + (p.realizedPnl ?? 0), 0)
-      const exposure = positionManager.portfolio().grossExposure
-      const sctx = toSentinelContext(ctx, {
-        currentDrawdownPct: Math.max(
-          0,
-          (-positionManager.portfolio().unrealizedPnl / 10_000) * 100,
-        ),
-        currentExposurePct: Math.min(100, (exposure / 10_000) * 100),
-        positionSizePct: 2,
-        brokerAvailable: true,
-        safeMode: false,
-      })
-      sctx.dailyLoss = dailyLoss
-      sctx.dailyTradesCount = dailyTradesCount
+      const equity = Math.max(1, s0.equityBaseline)
+      const safeMode = s0.safeMode
+      const portfolio = positionManager.portfolio()
 
-      const outcome = await chain.run(ctx.contextHash, { ctx }, sctx)
+      // Build the Sentinel context lazily so positionSizePct reflects the
+      // *actual* decision size (notional / equity), not a magic number.
+      const buildSentinelCtx = (decision: TradeDecision): SentinelContext => {
+        const newNotional =
+          decision.action === 'HOLD'
+            ? 0
+            : Math.abs(decision.size) * (decision.entryPrice ?? ctx.price)
+        const projectedExposurePct = Math.min(
+          100,
+          ((portfolio.grossExposure + newNotional) / equity) * 100,
+        )
+        const positionSizePct = Math.min(100, (newNotional / equity) * 100)
+        const sctx = toSentinelContext(ctx, {
+          currentDrawdownPct: Math.max(
+            0,
+            (-portfolio.unrealizedPnl / equity) * 100,
+          ),
+          currentExposurePct: projectedExposurePct,
+          positionSizePct,
+          brokerAvailable: true,
+          safeMode,
+        })
+        sctx.dailyLoss = dailyLoss
+        sctx.dailyTradesCount = dailyTradesCount
+        return sctx
+      }
+
+      const outcome = await chain.run(ctx.contextHash, { ctx }, buildSentinelCtx)
       set((s) => {
         const next: Partial<ChainState> = { lastOutcome: outcome.stage }
         if (outcome.stage !== 'ai_rejected') {
@@ -322,7 +387,9 @@ export const useChainStore = create<ChainState>((set) => {
           realizedPnl: 0,
         },
         lastOutcome: null,
+        lastContextInstrumentId: null,
       })
+      lastFallbackLogged = false
     },
   }
 })

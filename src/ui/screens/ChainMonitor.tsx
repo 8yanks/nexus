@@ -1,6 +1,14 @@
 import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
 import { colors, fonts } from '@/ui/theme'
+import {
+  decisionsToCSV,
+  vetosToCSV,
+  ordersToCSV,
+  positionsToCSV,
+  buildChainPayload,
+  downloadText,
+} from '@/export/chain'
 
 const panel: React.CSSProperties = {
   background: colors.bgCard,
@@ -39,11 +47,32 @@ export const ChainMonitor = () => {
     lastOutcome,
     autoRun,
     autoRunIntervalMs,
+    safeMode,
+    lastContextInstrumentId,
     runDemo,
     clear,
     closePosition,
     setAutoRun,
+    setSafeMode,
   } = useChainStore()
+
+  const exportAll = (format: 'csv' | 'json') => {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    if (format === 'json') {
+      const payload = buildChainPayload(decisions, vetos, orders, positions, entries)
+      downloadText(
+        `nexus_chain_${ts}.json`,
+        JSON.stringify(payload, null, 2),
+        'application/json',
+      )
+      return
+    }
+    // CSV: emit one file per artefact, packaged sequentially.
+    if (decisions.length) downloadText(`nexus_decisions_${ts}.csv`, decisionsToCSV(decisions))
+    if (vetos.length) downloadText(`nexus_vetos_${ts}.csv`, vetosToCSV(vetos))
+    if (orders.length) downloadText(`nexus_orders_${ts}.csv`, ordersToCSV(orders))
+    if (positions.length) downloadText(`nexus_positions_${ts}.csv`, positionsToCSV(positions))
+  }
 
   return (
     <div
@@ -86,12 +115,74 @@ export const ChainMonitor = () => {
         >
           Clear
         </button>
+        <button
+          onClick={() => exportAll('csv')}
+          disabled={decisions.length + orders.length + positions.length === 0}
+          style={{
+            background: 'transparent',
+            color: colors.textSecondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 4,
+            padding: '6px 12px',
+            cursor: 'pointer',
+            fontFamily: fonts.sans,
+            fontSize: 12,
+            opacity:
+              decisions.length + orders.length + positions.length === 0 ? 0.4 : 1,
+          }}
+        >
+          Export CSV
+        </button>
+        <button
+          onClick={() => exportAll('json')}
+          style={{
+            background: 'transparent',
+            color: colors.textSecondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 4,
+            padding: '6px 12px',
+            cursor: 'pointer',
+            fontFamily: fonts.sans,
+            fontSize: 12,
+          }}
+        >
+          Export JSON
+        </button>
         {lastOutcome && (
           <span style={{ ...mono, color: stageColor(lastOutcome) }}>
             last: {lastOutcome}
           </span>
         )}
+        <span style={{ ...mono, color: colors.textMuted }}>
+          ctx:{' '}
+          {lastContextInstrumentId ? (
+            <span style={{ color: colors.accent }}>{lastContextInstrumentId}</span>
+          ) : (
+            <span style={{ color: colors.orange }}>synthetic</span>
+          )}
+        </span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <label
+            style={{
+              ...mono,
+              color: safeMode ? colors.red : colors.textSecondary,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              padding: '2px 8px',
+              borderRadius: 3,
+              border: `1px solid ${safeMode ? colors.red : colors.border}`,
+            }}
+            title="Safe mode forces every non-HOLD decision to be vetoed."
+          >
+            <input
+              type="checkbox"
+              checked={safeMode}
+              onChange={(e) => setSafeMode(e.target.checked)}
+            />
+            safe mode
+          </label>
           <label
             style={{
               ...mono,
