@@ -223,7 +223,14 @@ function synthesiseHold(args: {
     riskLevel: 'low',
     horizon: 'intraday',
     thesis: `consensus split (${args.share.toFixed(2)} agreement) — holding`,
-    keyFactors: args.votes.map((v) => `${v.providerId}:${v.decision.action}`),
+    // Format: "${providerId}:${ACTION}:${confidence.toFixed(2)}".
+    // The confidence suffix lets the UI show high-conviction disagreements
+    // ("claude:BUY:0.85, grok:SELL:0.72") differently from low-conviction
+    // noise. Parser tolerates the legacy two-segment format too.
+    keyFactors: args.votes.map(
+      (v) =>
+        `${v.providerId}:${v.decision.action}:${v.decision.confidence.toFixed(2)}`,
+    ),
     invalidators: [],
     requiresHumanReview: true,
     modelSource: args.modelSource,

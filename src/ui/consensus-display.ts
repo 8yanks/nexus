@@ -12,7 +12,7 @@ export interface ConsensusInfo {
   /** True when providers split below the agreement threshold (HOLD path). */
   isSplit: boolean
   /** Per-provider votes if recoverable from the synthesised HOLD payload. */
-  votes: Array<{ providerId: string; action: string }>
+  votes: Array<{ providerId: string; action: string; confidence: number | null }>
 }
 
 /**
@@ -34,18 +34,47 @@ export const inspectConsensus = (d: TradeDecision): ConsensusInfo => {
   return { isConsensus, share, isSplit, votes }
 }
 
-/** Parses `${providerId}:${ACTION}` entries written by synthesiseHold. */
+/**
+ * Parses entries written by synthesiseHold. Accepts two shapes:
+ *   - `${providerId}:${ACTION}:${confidence}` (current)
+ *   - `${providerId}:${ACTION}`               (legacy, confidence=null)
+ * Provider ids may themselves contain colons (e.g. `claude:sonnet`), so the
+ * last one or two segments are peeled off and the rest is the id.
+ */
+const ACTIONS = new Set(['BUY', 'SELL', 'HOLD'])
 const parseVotes = (
   keyFactors: string[],
-): Array<{ providerId: string; action: string }> => {
-  const out: Array<{ providerId: string; action: string }> = []
+): Array<{ providerId: string; action: string; confidence: number | null }> => {
+  const out: Array<{
+    providerId: string
+    action: string
+    confidence: number | null
+  }> = []
   for (const k of keyFactors) {
-    const i = k.lastIndexOf(':')
-    if (i <= 0 || i === k.length - 1) continue
-    const providerId = k.slice(0, i)
-    const action = k.slice(i + 1)
-    if (action !== 'BUY' && action !== 'SELL' && action !== 'HOLD') continue
-    out.push({ providerId, action })
+    const segments = k.split(':')
+    if (segments.length < 2) continue
+
+    // Try 3-segment shape first: [..., ACTION, confidence].
+    const last = segments[segments.length - 1]
+    const conf = Number(last)
+    const confLooksValid =
+      !Number.isNaN(conf) && conf >= 0 && conf <= 1 && last.length > 0
+
+    if (confLooksValid && segments.length >= 3) {
+      const action = segments[segments.length - 2]
+      const providerId = segments.slice(0, -2).join(':')
+      if (providerId && ACTIONS.has(action)) {
+        out.push({ providerId, action, confidence: conf })
+        continue
+      }
+    }
+
+    // Fall back to 2-segment legacy shape: [..., ACTION].
+    const action = segments[segments.length - 1]
+    const providerId = segments.slice(0, -1).join(':')
+    if (providerId && ACTIONS.has(action)) {
+      out.push({ providerId, action, confidence: null })
+    }
   }
   return out
 }
@@ -67,6 +96,9 @@ export const consensusTooltip = (info: ConsensusInfo): string | null => {
     }
     return null
   }
-  const lines = info.votes.map((v) => `${v.providerId} → ${v.action}`)
+  const lines = info.votes.map((v) => {
+    const suffix = v.confidence === null ? '' : ` (conf ${v.confidence.toFixed(2)})`
+    return `${v.providerId} → ${v.action}${suffix}`
+  })
   return `provider votes:\n${lines.join('\n')}`
 }

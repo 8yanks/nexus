@@ -160,11 +160,12 @@ describe('ConsensusOrchestrator', () => {
     // confidence = min(0.4, share*0.5) with share=0.5 → 0.25
     expect(r.decision.confidence).toBeCloseTo(0.25, 5)
     expect(r.decision.consensusScore).toBe(0.5)
+    // keyFactors carry per-provider vote + confidence for the UI tooltip.
     expect(r.decision.keyFactors).toEqual([
-      'p1:BUY',
-      'p2:SELL',
-      'p3:BUY',
-      'p4:SELL',
+      'p1:BUY:0.70',
+      'p2:SELL:0.70',
+      'p3:BUY:0.70',
+      'p4:SELL:0.70',
     ])
     expect(r.decision._source).toBe('ai_consensus')
   })
