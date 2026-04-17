@@ -29,6 +29,40 @@
     going off-piste shows up as a HOLD with `requiresHumanReview`.
   - Chain test added that proves structural acceptance.
 
+## 2026-04-19 — decision drilldown modal
+
+### Shipped
+- **`90678aa` decision drilldown modal** — click any row in "Recent
+  decisions" to open a modal with:
+  - Action / symbol / confidence / risk / horizon header + consensus badge
+  - Full thesis (no truncation)
+  - Per-provider breakdown — for agreed consensus, parses the synthesised
+    `[providerId] thesis | [providerId] thesis` string back into cards;
+    for split HOLDs reuses the keyFactors vote list with per-provider
+    confidence.
+  - Key factors + invalidators side-by-side
+  - Sentinel veto panel (reasons + risk metrics snapshot) when present
+  - Associated paper orders (status, side, size, price, fill, slippage)
+  - Resulting position (status, entry→mark, PnL, opened time)
+  - Escape or backdrop click to dismiss
+  - Correlation is by `decisionId` back-link — already carried by
+    `SentinelVeto`, `PaperOrder`, `Position`.
+- Pure helper `src/ui/decision-drilldown.ts` (+ 11 tests) including the
+  agreed-thesis parser that tolerates colon-containing provider ids
+  (e.g. `claude:sonnet-4-5`) and `|` characters inside thesis bodies.
+
+### State
+- Tests: **419/419 pass** (was 408).
+- `npm run type-check` clean.
+- Vite build clean (still the ~775 kB bundle warning).
+- Branch: `ai-schemas-and-audit`, up to date with origin.
+
+### Still open
+Same list as 2026-04-18 minus decision-drilldown (shipped).
+- Bundle size split (~775 kB), RTL component tests,
+  cost/usage tracking (parked with API keys), CRLF renormalise,
+  third LLM provider when keys land.
+
 ## 2026-04-18 — big session: UI, tsc, freshness, Grok, filters
 
 ### Shipped today (chronological)
