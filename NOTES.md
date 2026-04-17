@@ -29,9 +29,15 @@
     going off-piste shows up as a HOLD with `requiresHumanReview`.
   - Chain test added that proves structural acceptance.
 
-## 2026-04-19 — drilldown + bundle split
+## 2026-04-19 — drilldown + bundle split + RTL
 
 ### Shipped
+- **`dc50ace` RTL component tests** — drilldown modal (14 tests) +
+  ChainMonitor integration (6 tests). Covers click-to-open wiring, close
+  handlers (Escape / backdrop / button), correlated artefact rendering,
+  per-provider cards for agreed/split consensus, audit filter module +
+  query + clear button. Uses `useChainStore.setState` to seed fixtures.
+
 - **`9f6c193` code-split screens with React.lazy**
   - Each of the 14 screens is now its own chunk, loaded on first visit.
   - Main bundle: **775 kB → 250 kB** (gzip 225 → 80). Vite's 500 kB
@@ -61,19 +67,22 @@
   (e.g. `claude:sonnet-4-5`) and `|` characters inside thesis bodies.
 
 ### State
-- Tests: **419/419 pass** (was 408, +11 from drilldown helper).
+- Tests: **439/439 pass** (was 408 → 419 → 439; +11 helper, +20 RTL).
 - `npm run type-check` clean.
-- Vite build clean, **no more bundle-size warning**.
+- Vite build clean, no bundle-size warning.
 - Branch: `ai-schemas-and-audit`, up to date with origin.
 
 ### Still open
-- **RTL component tests** — the helpers (consensus-display, audit-filter,
-  decision-drilldown) are tested; the components aren't. Would cover the
-  modal render, click-to-open wiring, consensus badge.
-- **CRLF renormalise** (`git add --renormalize .`) — noisy diff, zero
-  runtime impact. Do in isolation so it doesn't muddy a feature commit.
+- **CRLF renormalise** — turns out the tree was already normalised on
+  disk (`git add --renormalize .` produced zero changes). Non-issue.
 - **Cost/usage tracking** — parked alongside API keys.
 - **Third LLM provider** — parked alongside API keys.
+- **Drilldown polish** (stretch): copy-as-JSON button, jump-to-audit
+  link filtering the table to this decision's events, show the raw
+  `AI_RESPONSE_VALIDATED` payload inline.
+- **Small chores**: extract the 6 copies of the inline secondary-button
+  style in ChainMonitor into `btnSecondary` in `theme.ts`; persist
+  audit filter across reloads; `r` keybind to run the chain.
 
 User decision (2026-04-19): API keys (Grok, Claude) parked until later.
 
