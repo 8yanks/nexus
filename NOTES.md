@@ -29,7 +29,58 @@
     going off-piste shows up as a HOLD with `requiresHumanReview`.
   - Chain test added that proves structural acceptance.
 
-## 2026-04-18 — UI badge + tsc cleanup + freshness bug
+## 2026-04-18 — big session: UI, tsc, freshness, Grok, filters
+
+### Shipped today (chronological)
+1. **`cc47f77`** — ChainMonitor consensus badge. Grey "unanimous" /
+   yellow "share NN%" / orange "split NN%" with hover tooltip. Pure
+   helpers in `src/ui/consensus-display.ts` + 7 tests.
+2. **`d86c7ba`** — tsc cleanup + **real bug fix**: `context-builder.ts`
+   was reading `snapshot.timestamp` which doesn't exist. Silent
+   `dataAgeMs = 0`; Sentinel's `DATA_TOO_OLD` was a no-op on live data.
+   Now reads from `_provenance.timestamp`. `@/types/*` path resolution
+   extended to `src/types/*`. `erasableSyntaxOnly` compliance.
+3. **`bb97365`** — NOTES update.
+4. **`2cd4903`** — **Grok provider**. xAI chat-completions endpoint,
+   Bearer auth, `response_format: {type: 'json_object'}`. Same
+   retry/timeout/abort shape as Claude. Provider list in store/chain.ts
+   is now dynamic: builds from whichever `VITE_*_API_KEY` values are
+   set, then hands to the consensus orchestrator. 10 tests.
+   - **To activate Grok**: add `VITE_XAI_API_KEY=xai-...` to `.env.local`.
+     Optional: `VITE_XAI_MODEL=grok-4-fast` (default `grok-4`).
+5. **`37eedf2`** — per-provider confidence in the consensus tooltip.
+   keyFactors for split HOLDs now encode `${id}:${ACTION}:${conf}`.
+   Parser tolerates legacy 2-segment shape too, and handles
+   colon-containing provider ids (e.g. `claude:sonnet-4-5`).
+6. **`a70ccf3`** — audit trail filter. Module select (derived from
+   on-screen entries) + case-insensitive substring search against
+   eventType + summary. Pure helpers in `src/ui/audit-filter.ts`,
+   10 tests.
+
+### State
+- Tests: **408/408 pass** (was 366 at the start of this arc, +42).
+- `npm run type-check` clean.
+- Vite build clean (only the bundle-size warning).
+- Branch: `ai-schemas-and-audit`, **fully up to date with origin**.
+
+### Still open
+- **Bundle size** (~760 kB main chunk). React.lazy the screens, split
+  Recharts — low priority for a prototype.
+- **CRLF renormalisation** (`git add --renormalize .`). Noisy diff,
+  zero runtime impact. Do in isolation.
+- **UI tests with React Testing Library** (peaufinage #11). The
+  helpers are tested; the components themselves aren't. Would cover
+  the consensus badge render and the audit filter wiring.
+- **Cost/usage tracking** per provider — Claude + Grok both return
+  token usage in responses. Useful once someone's actually paying
+  API bills. Skipped today because not urgent for paper trading.
+- **Decision drilldown modal** — flat decision rows could expand to
+  show full thesis, all provider theses side-by-side, veto reasons,
+  fill detail. Medium-sized UI project.
+- **Second provider setup (when the user wants one)**: OpenAI / a
+  second Claude variant. The `llmProviders.push(...)` pattern in
+  store/chain.ts makes this a ~5-line addition once the provider
+  module exists.
 
 ### Shipped
 - **`cc47f77` surface consensus disagreement in ChainMonitor**
