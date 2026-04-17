@@ -17,6 +17,8 @@ import {
 } from '@/analyst/context-builder'
 import { ruleBasedProvider } from '@/ai/providers/rule-based'
 import { claudeProvider } from '@/ai/providers/claude'
+import { grokProvider } from '@/ai/providers/grok'
+import type { AIProvider } from '@/ai/orchestrator'
 import type { SentinelContext } from '@/sentinel/engine'
 import { config } from '@/infra/env'
 import { useMarketStore } from '@/store/market'
@@ -180,26 +182,42 @@ function pickContext(): {
 // Provider needs an AnalystContext factory — wraps pickContext.
 const pickContextForProvider = (): AnalystContext => pickContext().ctx
 
-// When a real LLM is configured we still vote with the deterministic
-// rule-based provider in parallel. The consensus layer surfaces disagreements
-// (HOLD with low confidence + requiresHumanReview) instead of silently
-// accepting whatever Claude returned. With no key, we collapse to the single
-// rule-based provider via AIOrchestrator — same OrchestratorResult shape.
-const ai = config.anthropicApiKey
-  ? new ConsensusOrchestrator({
-      providers: [
-        claudeProvider(pickContextForProvider, {
-          apiKey: config.anthropicApiKey,
-          model: config.anthropicModel,
-        }),
-        ruleBasedProvider(pickContextForProvider),
-      ],
-      id: 'consensus[claude+rule-based]',
-      audit: auditLogger,
-    })
-  : new AIOrchestrator(ruleBasedProvider(pickContextForProvider), {
-      audit: auditLogger,
-    })
+// Assemble the provider list dynamically from whatever LLM keys are set.
+// rule-based is always included as the deterministic floor; LLM votes that
+// drift off get out-voted instead of silently executed.
+//
+//   - 0 LLM keys → AIOrchestrator(rule-based). Same OrchestratorResult
+//     shape, no LLM calls.
+//   - 1+ LLM key → ConsensusOrchestrator across [LLM(s), rule-based].
+//     Disagreements surface as HOLD + requiresHumanReview.
+const llmProviders: AIProvider[] = []
+if (config.anthropicApiKey) {
+  llmProviders.push(
+    claudeProvider(pickContextForProvider, {
+      apiKey: config.anthropicApiKey,
+      model: config.anthropicModel,
+    }),
+  )
+}
+if (config.xaiApiKey) {
+  llmProviders.push(
+    grokProvider(pickContextForProvider, {
+      apiKey: config.xaiApiKey,
+      model: config.xaiModel,
+    }),
+  )
+}
+
+const ai =
+  llmProviders.length > 0
+    ? new ConsensusOrchestrator({
+        providers: [...llmProviders, ruleBasedProvider(pickContextForProvider)],
+        id: `consensus[${[...llmProviders.map((p) => p.id), 'rule-based'].join('+')}]`,
+        audit: auditLogger,
+      })
+    : new AIOrchestrator(ruleBasedProvider(pickContextForProvider), {
+        audit: auditLogger,
+      })
 const sentinel = new SentinelEngine({ audit: auditLogger })
 const trader = new TraderEngine({ audit: auditLogger })
 const positionManager = new PositionManager({ audit: auditLogger })

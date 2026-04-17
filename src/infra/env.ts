@@ -29,6 +29,8 @@ export const config = {
   anthropicApiKey: (env.VITE_ANTHROPIC_API_KEY as string) || '',
   anthropicModel:
     (env.VITE_ANTHROPIC_MODEL as string) || 'claude-sonnet-4-5',
+  xaiApiKey: (env.VITE_XAI_API_KEY as string) || '',
+  xaiModel: (env.VITE_XAI_MODEL as string) || 'grok-4',
 
   // Refresh
   refreshIntervalMs: parseInt((env.VITE_REFRESH_INTERVAL_MS as string) || '5000', 10),
