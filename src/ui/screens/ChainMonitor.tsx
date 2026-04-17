@@ -1,5 +1,12 @@
+import { useMemo, useState } from 'react'
+import type { AuditModule } from '@/types/audit'
 import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
+import {
+  filterAuditEntries,
+  uniqueModules,
+  type AuditFilter,
+} from '@/ui/audit-filter'
 import { colors, fonts } from '@/ui/theme'
 import {
   decisionsToCSV,
@@ -63,6 +70,16 @@ export const ChainMonitor = () => {
     acceptReview,
     dismissReview,
   } = useChainStore()
+
+  const [auditFilter, setAuditFilter] = useState<AuditFilter>({
+    module: 'all',
+    query: '',
+  })
+  const moduleOptions = useMemo(() => uniqueModules(entries), [entries])
+  const filteredEntries = useMemo(
+    () => filterAuditEntries(entries, auditFilter),
+    [entries, auditFilter],
+  )
 
   const exportAll = (format: 'csv' | 'json') => {
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -615,7 +632,79 @@ export const ChainMonitor = () => {
       </div>
 
       <div style={panel}>
-        <div style={h}>Audit trail ({entries.length})</div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ ...h, marginBottom: 0 }}>
+            Audit trail ({filteredEntries.length}
+            {filteredEntries.length !== entries.length && `/${entries.length}`})
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <select
+              value={auditFilter.module}
+              onChange={(e) =>
+                setAuditFilter((f) => ({
+                  ...f,
+                  module: e.target.value as AuditModule | 'all',
+                }))
+              }
+              style={{
+                ...mono,
+                background: colors.bgInput,
+                color: colors.text,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 3,
+                padding: '2px 6px',
+              }}
+            >
+              <option value="all">all modules</option>
+              {moduleOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="filter event / summary"
+              value={auditFilter.query}
+              onChange={(e) =>
+                setAuditFilter((f) => ({ ...f, query: e.target.value }))
+              }
+              style={{
+                ...mono,
+                background: colors.bgInput,
+                color: colors.text,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 3,
+                padding: '2px 6px',
+                minWidth: 180,
+              }}
+            />
+            {(auditFilter.module !== 'all' || auditFilter.query !== '') && (
+              <button
+                onClick={() => setAuditFilter({ module: 'all', query: '' })}
+                style={{
+                  ...mono,
+                  background: 'transparent',
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textSecondary,
+                  borderRadius: 3,
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                }}
+              >
+                clear
+              </button>
+            )}
+          </div>
+        </div>
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
           <table style={{ ...mono, width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -627,7 +716,7 @@ export const ChainMonitor = () => {
               </tr>
             </thead>
             <tbody>
-              {entries.slice(0, 200).map((e) => (
+              {filteredEntries.slice(0, 200).map((e) => (
                 <tr key={e.id}>
                   <td style={{ color: colors.textMuted, padding: '2px 6px' }}>
                     {new Date(e.timestamp).toLocaleTimeString()}
