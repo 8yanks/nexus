@@ -29,9 +29,18 @@
     going off-piste shows up as a HOLD with `requiresHumanReview`.
   - Chain test added that proves structural acceptance.
 
-## 2026-04-19 — decision drilldown modal
+## 2026-04-19 — drilldown + bundle split
 
 ### Shipped
+- **`9f6c193` code-split screens with React.lazy**
+  - Each of the 14 screens is now its own chunk, loaded on first visit.
+  - Main bundle: **775 kB → 250 kB** (gzip 225 → 80). Vite's 500 kB
+    warning is gone.
+  - Recharts moved to on-demand chunks (CartesianChart ~290 kB,
+    ComposedChart ~54 kB) — only loads when a chart-using screen opens.
+  - Suspense fallback is a terse "loading…" line. Screens mount in a
+    few ms locally; spinners felt like overkill for a prototype.
+
 - **`90678aa` decision drilldown modal** — click any row in "Recent
   decisions" to open a modal with:
   - Action / symbol / confidence / risk / horizon header + consensus badge
@@ -52,16 +61,21 @@
   (e.g. `claude:sonnet-4-5`) and `|` characters inside thesis bodies.
 
 ### State
-- Tests: **419/419 pass** (was 408).
+- Tests: **419/419 pass** (was 408, +11 from drilldown helper).
 - `npm run type-check` clean.
-- Vite build clean (still the ~775 kB bundle warning).
+- Vite build clean, **no more bundle-size warning**.
 - Branch: `ai-schemas-and-audit`, up to date with origin.
 
 ### Still open
-Same list as 2026-04-18 minus decision-drilldown (shipped).
-- Bundle size split (~775 kB), RTL component tests,
-  cost/usage tracking (parked with API keys), CRLF renormalise,
-  third LLM provider when keys land.
+- **RTL component tests** — the helpers (consensus-display, audit-filter,
+  decision-drilldown) are tested; the components aren't. Would cover the
+  modal render, click-to-open wiring, consensus badge.
+- **CRLF renormalise** (`git add --renormalize .`) — noisy diff, zero
+  runtime impact. Do in isolation so it doesn't muddy a feature commit.
+- **Cost/usage tracking** — parked alongside API keys.
+- **Third LLM provider** — parked alongside API keys.
+
+User decision (2026-04-19): API keys (Grok, Claude) parked until later.
 
 ## 2026-04-18 — big session: UI, tsc, freshness, Grok, filters
 
