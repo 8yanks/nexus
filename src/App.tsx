@@ -1,23 +1,72 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { useMarketStore } from '@/store/market'
 import { useMarketData } from '@/hooks/useMarketData'
 import { Nav } from '@/ui/components/Nav'
 import { DemoSplash } from '@/ui/components/DemoSplash'
-import { Dashboard } from '@/ui/screens/Dashboard'
-import { Detail } from '@/ui/screens/Detail'
-import { Scanner } from '@/ui/screens/Scanner'
-import { Alerts } from '@/ui/screens/Alerts'
-import { Quality } from '@/ui/screens/Quality'
-import { Sources } from '@/ui/screens/Sources'
-import { Export } from '@/ui/screens/Export'
-import { Journal } from '@/ui/screens/Journal'
-import { Correlation } from '@/ui/screens/Correlation'
-import { Backtest } from '@/ui/screens/Backtest'
-import { Corporate } from '@/ui/screens/Corporate'
-import { VCFlow } from '@/ui/screens/VCFlow'
-import { MacroPulse } from '@/ui/screens/MacroPulse'
-import { ChainMonitor } from '@/ui/screens/ChainMonitor'
 import { colors, fonts } from '@/ui/theme'
+
+// ─── LAZY-LOADED SCREENS ────────────────────────────────────
+// Each screen ships in its own chunk. The initial bundle used to carry
+// every screen (Recharts included) at ~775 kB; lazy splitting keeps the
+// entry chunk small and loads each screen on first visit.
+//
+// Screens export named components (e.g. `Dashboard`). React.lazy requires
+// a module with `default`, so each import is mapped via `.then`.
+const Dashboard = lazy(() =>
+  import('@/ui/screens/Dashboard').then((m) => ({ default: m.Dashboard })),
+)
+const Detail = lazy(() =>
+  import('@/ui/screens/Detail').then((m) => ({ default: m.Detail })),
+)
+const Scanner = lazy(() =>
+  import('@/ui/screens/Scanner').then((m) => ({ default: m.Scanner })),
+)
+const Alerts = lazy(() =>
+  import('@/ui/screens/Alerts').then((m) => ({ default: m.Alerts })),
+)
+const Quality = lazy(() =>
+  import('@/ui/screens/Quality').then((m) => ({ default: m.Quality })),
+)
+const Sources = lazy(() =>
+  import('@/ui/screens/Sources').then((m) => ({ default: m.Sources })),
+)
+const Export = lazy(() =>
+  import('@/ui/screens/Export').then((m) => ({ default: m.Export })),
+)
+const Journal = lazy(() =>
+  import('@/ui/screens/Journal').then((m) => ({ default: m.Journal })),
+)
+const Correlation = lazy(() =>
+  import('@/ui/screens/Correlation').then((m) => ({ default: m.Correlation })),
+)
+const Backtest = lazy(() =>
+  import('@/ui/screens/Backtest').then((m) => ({ default: m.Backtest })),
+)
+const Corporate = lazy(() =>
+  import('@/ui/screens/Corporate').then((m) => ({ default: m.Corporate })),
+)
+const VCFlow = lazy(() =>
+  import('@/ui/screens/VCFlow').then((m) => ({ default: m.VCFlow })),
+)
+const MacroPulse = lazy(() =>
+  import('@/ui/screens/MacroPulse').then((m) => ({ default: m.MacroPulse })),
+)
+const ChainMonitor = lazy(() =>
+  import('@/ui/screens/ChainMonitor').then((m) => ({ default: m.ChainMonitor })),
+)
+
+const ScreenLoading = () => (
+  <div
+    style={{
+      padding: 32,
+      color: colors.textMuted,
+      fontFamily: fonts.mono,
+      fontSize: 12,
+    }}
+  >
+    loading…
+  </div>
+)
 
 const ScreenRouter = () => {
   const screen = useMarketStore((s) => s.screen)
@@ -63,7 +112,9 @@ function App() {
     >
       {showSplash && <DemoSplash onDismiss={dismissSplash} />}
       <Nav />
-      <ScreenRouter />
+      <Suspense fallback={<ScreenLoading />}>
+        <ScreenRouter />
+      </Suspense>
     </div>
   )
 }
