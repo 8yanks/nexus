@@ -21,6 +21,8 @@ import {
   consensusLabel,
   consensusTooltip,
 } from '@/ui/consensus-display'
+import { buildDrilldown } from '@/ui/decision-drilldown'
+import { DecisionDrilldownModal } from '@/ui/components/DecisionDrilldown'
 
 const panel: React.CSSProperties = {
   background: colors.bgCard,
@@ -75,11 +77,18 @@ export const ChainMonitor = () => {
     module: 'all',
     query: '',
   })
+  const [drilldownId, setDrilldownId] = useState<string | null>(null)
   const moduleOptions = useMemo(() => uniqueModules(entries), [entries])
   const filteredEntries = useMemo(
     () => filterAuditEntries(entries, auditFilter),
     [entries, auditFilter],
   )
+  const drilldown = useMemo(() => {
+    if (drilldownId === null) return null
+    const d = decisions.find((x) => x.id === drilldownId)
+    if (!d) return null
+    return buildDrilldown(d, { vetos, orders, positions })
+  }, [drilldownId, decisions, vetos, orders, positions])
 
   const exportAll = (format: 'csv' | 'json') => {
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -592,7 +601,20 @@ export const ChainMonitor = () => {
                 return (
                   <li
                     key={d.id}
-                    style={{ padding: '2px 0', color: colors.textSecondary }}
+                    onClick={() => setDrilldownId(d.id)}
+                    title="click for full decision drilldown"
+                    style={{
+                      padding: '2px 4px',
+                      color: colors.textSecondary,
+                      cursor: 'pointer',
+                      borderRadius: 2,
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = colors.bgHover)
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = 'transparent')
+                    }
                   >
                     <span
                       style={{
@@ -748,6 +770,13 @@ export const ChainMonitor = () => {
           </table>
         </div>
       </div>
+
+      {drilldown && (
+        <DecisionDrilldownModal
+          data={drilldown}
+          onClose={() => setDrilldownId(null)}
+        />
+      )}
     </div>
   )
 }
