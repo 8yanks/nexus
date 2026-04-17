@@ -9,6 +9,11 @@ import {
   buildChainPayload,
   downloadText,
 } from '@/export/chain'
+import {
+  inspectConsensus,
+  consensusLabel,
+  consensusTooltip,
+} from '@/ui/consensus-display'
 
 const panel: React.CSSProperties = {
   background: colors.bgCard,
@@ -558,26 +563,52 @@ export const ChainMonitor = () => {
             <div style={{ ...mono, color: colors.textMuted }}>—</div>
           ) : (
             <ul style={{ ...mono, margin: 0, padding: 0, listStyle: 'none' }}>
-              {decisions.slice(0, 10).map((d) => (
-                <li
-                  key={d.id}
-                  style={{ padding: '2px 0', color: colors.textSecondary }}
-                >
-                  <span
-                    style={{
-                      color:
-                        d.action === 'BUY'
-                          ? colors.green
-                          : d.action === 'SELL'
-                            ? colors.red
-                            : colors.textMuted,
-                    }}
+              {decisions.slice(0, 10).map((d) => {
+                const info = inspectConsensus(d)
+                const label = consensusLabel(info)
+                const tooltip = consensusTooltip(info) ?? undefined
+                const badgeColor = info.isSplit
+                  ? colors.orange
+                  : info.share !== null && info.share < 1
+                    ? colors.yellow
+                    : colors.textMuted
+                return (
+                  <li
+                    key={d.id}
+                    style={{ padding: '2px 0', color: colors.textSecondary }}
                   >
-                    {d.action}
-                  </span>{' '}
-                  {d.symbol} · conf {d.confidence.toFixed(2)}
-                </li>
-              ))}
+                    <span
+                      style={{
+                        color:
+                          d.action === 'BUY'
+                            ? colors.green
+                            : d.action === 'SELL'
+                              ? colors.red
+                              : colors.textMuted,
+                      }}
+                    >
+                      {d.action}
+                    </span>{' '}
+                    {d.symbol} · conf {d.confidence.toFixed(2)}
+                    {label && (
+                      <span
+                        title={tooltip}
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 10,
+                          padding: '0 4px',
+                          borderRadius: 2,
+                          border: `1px solid ${badgeColor}`,
+                          color: badgeColor,
+                          cursor: tooltip ? 'help' : 'default',
+                        }}
+                      >
+                        {label}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
