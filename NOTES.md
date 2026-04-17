@@ -29,6 +29,24 @@
     going off-piste shows up as a HOLD with `requiresHumanReview`.
   - Chain test added that proves structural acceptance.
 
+## 2026-04-19 — Sentinel + Trader screens
+
+### Shipped
+- **`3a2bc38` dedicated Sentinel + Trader screens**
+  - Splash was still labelling both as SKELETON — stale since the
+    Sentinel engine + Trader engine + PositionManager have been wired
+    through DecisionChain for weeks. User couldn't "access trader nor
+    sentinel" because there was no nav entry.
+  - `src/ui/screens/Sentinel.tsx` — rules, approval rate, veto reason
+    breakdown with share bars, safe-mode toggle, pending review queue,
+    full check history with risk metrics per row.
+  - `src/ui/screens/Trader.tsx` — portfolio summary, fill rate + mean
+    slippage + rejected count, open positions (with close button),
+    closed positions + closure-reason breakdown, full order blotter.
+  - Nav: ShieldAlert (Sentinel) + Briefcase (Trader) icons added.
+  - Splash BOTS entries updated to ACTIVE with accurate descriptions.
+  - Both screens lazy-loaded (~8-9 kB each); main bundle unchanged.
+
 ## 2026-04-19 — drilldown + bundle split + RTL
 
 ### Shipped
