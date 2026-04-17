@@ -15,17 +15,17 @@ const BOTS = [
   },
   {
     name: 'Sentinel',
-    tag: 'SKELETON',
+    tag: 'ACTIVE',
     color: colors.yellow,
-    desc: 'System health monitoring and trade veto engine. Blocks unsafe executions.',
-    features: ['Health polling (memory, providers)', 'Veto engine (drawdown, positions, health)', 'Event logging'],
+    desc: 'Risk guardrail. Runs 11 veto rules (drawdown, exposure, data age, model confidence) on every decision before execution.',
+    features: ['Rules engine + safe mode toggle', 'Veto reasons + risk metric snapshots', 'Human-review queue for borderline calls'],
   },
   {
     name: 'Trader',
-    tag: 'SKELETON',
+    tag: 'ACTIVE',
     color: colors.purple,
-    desc: 'Signal consumer with Freqtrade bridge. Dry-run only — live trading disabled.',
-    features: ['Signal filter (type, strength, age)', 'Sentinel veto integration', 'Freqtrade REST API stub'],
+    desc: 'Paper execution. Dry-run only — live trading disabled. Tracks orders, fills, slippage, positions, PnL.',
+    features: ['Paper broker with slippage model', 'Open/closed positions + mark-to-market', 'Order blotter with fill rate + PnL'],
   },
 ]
 

@@ -13,6 +13,8 @@ import {
   Rocket,
   Globe,
   Workflow,
+  ShieldAlert,
+  Briefcase,
 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import type { Screen } from '@/store/market'
@@ -38,6 +40,8 @@ const NAV_ITEMS: NavItem[] = [
   { screen: 'journal',     label: 'Journal',     icon: <BookOpen size={14} /> },
   { screen: 'export',      label: 'Export',      icon: <Download size={14} /> },
   { screen: 'chain',       label: 'Chain',       icon: <Workflow size={14} /> },
+  { screen: 'sentinel',    label: 'Sentinel',    icon: <ShieldAlert size={14} /> },
+  { screen: 'trader',      label: 'Trader',      icon: <Briefcase size={14} /> },
 ]
 
 export const Nav = () => {

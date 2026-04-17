@@ -54,6 +54,12 @@ const MacroPulse = lazy(() =>
 const ChainMonitor = lazy(() =>
   import('@/ui/screens/ChainMonitor').then((m) => ({ default: m.ChainMonitor })),
 )
+const Sentinel = lazy(() =>
+  import('@/ui/screens/Sentinel').then((m) => ({ default: m.Sentinel })),
+)
+const Trader = lazy(() =>
+  import('@/ui/screens/Trader').then((m) => ({ default: m.Trader })),
+)
 
 const ScreenLoading = () => (
   <div
@@ -85,6 +91,8 @@ const ScreenRouter = () => {
     case 'vcflow':    return <VCFlow />
     case 'macro':     return <MacroPulse />
     case 'chain':     return <ChainMonitor />
+    case 'sentinel': return <Sentinel />
+    case 'trader':   return <Trader />
   }
 }
 
