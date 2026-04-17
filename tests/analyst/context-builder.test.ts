@@ -15,9 +15,15 @@ const snap = (overrides: Partial<MarketSnapshot> = {}): MarketSnapshot =>
     volume24h: 100,
     high24h: 61000,
     low24h: 59000,
-    timestamp: '2026-04-14T12:00:00.000Z',
     _source: 'binance',
     _status: 'LIVE',
+    _provenance: {
+      source: 'binance',
+      fetchMethod: 'ws',
+      latencyMs: 0,
+      timestamp: '2026-04-14T12:00:00.000Z',
+      receivedAt: '2026-04-14T12:00:00.000Z',
+    },
     ...overrides,
   }) as MarketSnapshot
 

@@ -53,8 +53,9 @@ export function buildAnalystContext(input: BuildContextInput): AnalystContext {
   const qualityDigest = input.quality
     ? `${input.quality.overallScore.toFixed(2)}:${input.quality._status}`
     : 'none'
+  const snapTs = input.snapshot._provenance?.timestamp ?? ''
   const payload =
-    `${input.snapshot.instrumentId}|${input.snapshot.timestamp}` +
+    `${input.snapshot.instrumentId}|${snapTs}` +
     `|${input.snapshot.price.toFixed(6)}|${sigDigest}|${qualityDigest}`
   return {
     instrumentId: input.snapshot.instrumentId,
@@ -86,7 +87,11 @@ export function toSentinelContext(
   posture: RiskPosture,
   now: () => number = Date.now,
 ): SentinelContext {
-  const snapTs = Date.parse(ctx.snapshot.timestamp)
+  // Snapshot freshness comes from _provenance.timestamp (the canonical
+  // source field on MarketSnapshot). Falls back to 0 ms when missing so
+  // tests with synthetic snapshots don't trip the freshness rule.
+  const snapTsRaw = ctx.snapshot._provenance?.timestamp
+  const snapTs = snapTsRaw ? Date.parse(snapTsRaw) : NaN
   const dataAgeMs = Number.isFinite(snapTs) ? Math.max(0, now() - snapTs) : 0
   const latencyMs = Math.max(0, now() - ctx.builtAt)
   const dataQualityScore = ctx.quality?.overallScore ?? 0

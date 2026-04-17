@@ -22,10 +22,13 @@ export interface OrchestratorOptions {
  * rejection. No free-form text ever reaches the trader.
  */
 export class AIOrchestrator {
-  constructor(
-    private readonly provider: AIProvider,
-    private readonly opts: OrchestratorOptions = {},
-  ) {}
+  private readonly provider: AIProvider
+  private readonly opts: OrchestratorOptions
+
+  constructor(provider: AIProvider, opts: OrchestratorOptions = {}) {
+    this.provider = provider
+    this.opts = opts
+  }
 
   async decide(
     contextHash: string,

@@ -130,6 +130,7 @@ function pickContext(): {
     return { ctx: lastCtx, isFallback: false }
   }
   if (!lastCtx) {
+    const nowIso = new Date().toISOString()
     lastCtx = {
       instrumentId: 'BTCUSD',
       symbol: 'BTC/USD',
@@ -137,10 +138,36 @@ function pickContext(): {
       snapshot: {
         instrumentId: 'BTCUSD',
         price: 60000,
-        timestamp: new Date().toISOString(),
+        bid: null,
+        ask: null,
+        spread: null,
+        spreadBps: null,
+        change24h: null,
+        change24hPct: null,
+        high24h: null,
+        low24h: null,
+        volume24h: null,
+        openInterest: null,
+        fundingRate: null,
+        nextFunding: null,
+        liquidations24h: null,
+        vwap: null,
         _source: 'synthetic',
         _status: 'SIMULATED',
-      } as never,
+        _provenance: {
+          source: 'synthetic',
+          fetchMethod: 'mock',
+          latencyMs: 0,
+          timestamp: nowIso,
+          receivedAt: nowIso,
+        },
+        _quality: {
+          completeness: 0,
+          timeliness: 0,
+          accuracy: 0,
+          consistency: 0,
+        },
+      },
       signals: [],
       quality: null,
       contextHash: 'synthetic',

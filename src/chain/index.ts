@@ -52,7 +52,11 @@ export interface DecisionChainOptions {
  * typed outcome; no free-form text ever reaches the Trader.
  */
 export class DecisionChain {
-  constructor(private readonly opts: DecisionChainOptions) {}
+  private readonly opts: DecisionChainOptions
+
+  constructor(opts: DecisionChainOptions) {
+    this.opts = opts
+  }
 
   async run(
     contextHash: string,
