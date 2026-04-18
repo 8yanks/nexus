@@ -26,6 +26,7 @@ import {
 } from '@/ui/consensus-display'
 import { buildDrilldown } from '@/ui/decision-drilldown'
 import { DecisionDrilldownModal } from '@/ui/components/DecisionDrilldown'
+import { isRunChainShortcut } from '@/ui/keybinds'
 
 const panel: React.CSSProperties = {
   background: colors.bgCard,
@@ -83,6 +84,20 @@ export const ChainMonitor = () => {
   useEffect(() => {
     saveAuditFilter(auditFilter)
   }, [auditFilter])
+
+  // Keybind: 'r' runs the chain. Skipped when the user is typing in a
+  // form field or when the drilldown modal is open (the modal owns
+  // Escape; staying out of its way avoids surprising input collisions).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (drilldownId !== null) return
+      if (!isRunChainShortcut(e)) return
+      e.preventDefault()
+      void runDemo()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [runDemo, drilldownId])
   const moduleOptions = useMemo(() => uniqueModules(entries), [entries])
   const filteredEntries = useMemo(
     () => filterAuditEntries(entries, auditFilter),
@@ -126,6 +141,7 @@ export const ChainMonitor = () => {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
           onClick={() => void runDemo()}
+          title="Run the decision chain (shortcut: r)"
           style={{
             background: colors.accent,
             color: '#fff',
@@ -137,7 +153,19 @@ export const ChainMonitor = () => {
             fontSize: 12,
           }}
         >
-          Run decision chain
+          Run decision chain{' '}
+          <kbd
+            style={{
+              fontFamily: fonts.mono,
+              fontSize: 10,
+              padding: '0 4px',
+              marginLeft: 2,
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: 2,
+            }}
+          >
+            r
+          </kbd>
         </button>
         <button onClick={clear} style={btnSecondary}>
           Clear
