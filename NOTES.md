@@ -1,5 +1,29 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.4 (retrofit Dashboard)
+
+Branch `ux-overhaul`. Phase 3 enters the bigger screens. Dashboard
+is the first — highest-traffic single screen of the app.
+
+### Shipped
+
+1. **`<HASH>` Dashboard adopts `<ScreenHeader />`**
+   - Title + subtitle replace the hand-rolled `<h1>` block.
+   - Badge: live `updated {fmtAge}` clock (or `initializing`) — gives
+     the user a constant signal that data is moving even when the
+     KPIs/table aren't visibly changing.
+   - Actions slot hosts the bot-readiness widget (label + QualityBar
+     + READY/NOT-READY mono label). Same colour logic as before.
+   - Inner padding tightened 16 → 14 to match the pattern.
+   - All 599 existing tests still pass — Dashboard had no RTL coverage
+     (gap noted earlier in NOTES; covered in Phase 4).
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.3 (retrofit Sources + Export + Quality)
 
 Branch `ux-overhaul`. Three more screens of the Système group adopt

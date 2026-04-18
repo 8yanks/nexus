@@ -4,9 +4,10 @@ import { FreshnessDot } from '@/ui/components/FreshnessDot'
 import { PriceChange } from '@/ui/components/PriceChange'
 import { MiniChart } from '@/ui/components/MiniChart'
 import { QualityBar } from '@/ui/components/QualityBar'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import { fmt, fmtVol, fmtAge } from '@/utils/format'
 import { ASSET_CLASS_LABELS, ASSET_CLASS_COLORS } from '@/utils/format'
-import { colors, fonts, card, thStyle, tdStyle, monoTd, statValue, statLabel } from '@/ui/theme'
+import { colors, fonts, radius, card, thStyle, tdStyle, monoTd, statValue, statLabel } from '@/ui/theme'
 import { safeFixed } from '@/utils/math'
 
 // ─── STAT CARD (top row KPIs) ───────────────────────────────
@@ -34,37 +35,50 @@ export const Dashboard = () => {
   const totalSignals = signals.length
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text, letterSpacing: '-0.01em' }}>
-            Market Dashboard
-          </h1>
-          <span style={{ fontSize: 12, color: colors.textMuted }}>
-            {lastRefresh ? `Updated ${fmtAge(lastRefresh)}` : 'Initializing...'}
+    <>
+      <ScreenHeader
+        title="Market Dashboard"
+        subtitle="Vue d'ensemble — instruments suivis, snapshots live/simulés, signaux actifs et qualité agrégée."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="dashboard-refresh-badge"
+          >
+            {lastRefresh ? `updated ${fmtAge(lastRefresh)}` : 'initializing'}
           </span>
-        </div>
-        {readiness && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bot Readiness</span>
-            <QualityBar score={readiness.score} width={64} />
-            <span
-              style={{
-                ...monoTd,
-                padding: 0,
-                border: 'none',
-                fontSize: 11,
-                fontWeight: 700,
-                color: readiness.ready ? colors.green : colors.red,
-              }}
-            >
-              {readiness.ready ? 'READY' : 'NOT READY'}
-            </span>
-          </div>
-        )}
-      </div>
-
+        }
+        actions={
+          readiness ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Bot Readiness
+              </span>
+              <QualityBar score={readiness.score} width={64} />
+              <span
+                style={{
+                  fontFamily: fonts.mono,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: readiness.ready ? colors.green : colors.red,
+                }}
+                data-testid="dashboard-readiness-label"
+              >
+                {readiness.ready ? 'READY' : 'NOT READY'}
+              </span>
+            </div>
+          ) : undefined
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* KPI strip */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <KPI label="Instruments" value={`${instruments.length}`} />
@@ -163,6 +177,7 @@ export const Dashboard = () => {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
