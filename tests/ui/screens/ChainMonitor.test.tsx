@@ -56,6 +56,9 @@ const resetChainStore = () => {
     autoRun: false,
   })
   auditLogger.clear()
+  // The audit filter persists across reloads via localStorage. Wipe it so
+  // no test inherits a filter set by an earlier test in the file.
+  window.localStorage.clear()
 }
 
 beforeEach(() => resetChainStore())
@@ -261,6 +264,32 @@ describe('<ChainMonitor /> audit filter wiring', () => {
     expect(screen.getByText('rejected because DATA_TOO_OLD')).toBeInTheDocument()
   })
 
+  it('persists the active filter to localStorage', () => {
+    useChainStore.setState({
+      entries: [
+        {
+          id: 'a1',
+          timestamp: 1,
+          module: 'ai',
+          eventType: 'AI_PROMPT_SENT',
+          summary: 'prompt fired',
+          data: {},
+          _source: 't',
+        },
+      ],
+    })
+    render(<ChainMonitor />)
+    const input = screen.getByPlaceholderText(/filter event/i)
+    fireEvent.change(input, { target: { value: 'fired' } })
+
+    const stored = window.localStorage.getItem('nexus.auditFilter.v1')
+    expect(stored).not.toBeNull()
+    expect(JSON.parse(stored as string)).toEqual({
+      module: 'all',
+      query: 'fired',
+    })
+  })
+
   it('clear button restores the full audit table', () => {
     useChainStore.setState({
       entries: [
@@ -293,5 +322,79 @@ describe('<ChainMonitor /> audit filter wiring', () => {
     fireEvent.click(screen.getByText('clear'))
     expect(screen.getByText('prompt fired')).toBeInTheDocument()
     expect(screen.getByText('rejected')).toBeInTheDocument()
+  })
+})
+
+describe('<ChainMonitor /> jump-to-audit wiring', () => {
+  it('clicking jump-to-audit in the modal scopes the audit panel to that decision id', () => {
+    useChainStore.setState({
+      decisions: [decision({ id: 'jumped' })],
+      entries: [
+        {
+          id: 'match',
+          timestamp: 1,
+          module: 'ai',
+          eventType: 'AI_RESPONSE_VALIDATED',
+          summary: 'matched-summary',
+          data: { decisionId: 'jumped' },
+          _source: 't',
+        },
+        {
+          id: 'unrelated',
+          timestamp: 2,
+          module: 'ai',
+          eventType: 'AI_PROMPT_SENT',
+          summary: 'unrelated-summary',
+          data: {},
+          _source: 't',
+        },
+      ],
+    })
+    render(<ChainMonitor />)
+
+    // Open the modal.
+    fireEvent.click(screen.getByText('BUY'))
+    // Press jump-to-audit — modal closes and the audit panel re-filters.
+    fireEvent.click(screen.getByText('jump to audit'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // The decision-id pill is shown and the matched row is the only one left.
+    expect(screen.getByText(/decision: jumped/)).toBeInTheDocument()
+    expect(screen.getByText('matched-summary')).toBeInTheDocument()
+    expect(screen.queryByText('unrelated-summary')).not.toBeInTheDocument()
+  })
+
+  it('the decision-id pill x-button removes the decisionId scope', () => {
+    useChainStore.setState({
+      decisions: [decision({ id: 'jumped' })],
+      entries: [
+        {
+          id: 'match',
+          timestamp: 1,
+          module: 'ai',
+          eventType: 'AI_RESPONSE_VALIDATED',
+          summary: 'matched-summary',
+          data: { decisionId: 'jumped' },
+          _source: 't',
+        },
+        {
+          id: 'unrelated',
+          timestamp: 2,
+          module: 'ai',
+          eventType: 'AI_PROMPT_SENT',
+          summary: 'unrelated-summary',
+          data: {},
+          _source: 't',
+        },
+      ],
+    })
+    render(<ChainMonitor />)
+    fireEvent.click(screen.getByText('BUY'))
+    fireEvent.click(screen.getByText('jump to audit'))
+    expect(screen.queryByText('unrelated-summary')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('clear decision filter'))
+    expect(screen.queryByText(/decision: jumped/)).not.toBeInTheDocument()
+    expect(screen.getByText('unrelated-summary')).toBeInTheDocument()
   })
 })

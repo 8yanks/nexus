@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within, act, waitFor } from '@testing-library/react'
 import { DecisionDrilldownModal } from '@/ui/components/DecisionDrilldown'
 import { buildDrilldown } from '@/ui/decision-drilldown'
 import type { TradeDecision, SentinelVeto } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import type { Position } from '@/types/position'
+import type { AuditEntry } from '@/types/audit'
 
 // ─── FIXTURES ───────────────────────────────────────────────
 let seq = 0
@@ -106,12 +107,14 @@ const drilldownFor = (
     vetos: SentinelVeto[]
     orders: PaperOrder[]
     positions: Position[]
+    entries: AuditEntry[]
   }> = {},
 ) =>
   buildDrilldown(d, {
     vetos: ctx.vetos ?? [],
     orders: ctx.orders ?? [],
     positions: ctx.positions ?? [],
+    entries: ctx.entries,
   })
 
 afterEach(() => cleanup())
@@ -302,5 +305,99 @@ describe('<DecisionDrilldownModal />', () => {
       />,
     )
     expect(screen.getByText('review')).toBeInTheDocument()
+  })
+
+  // ─── POLISH: copy / jump-to-audit / raw audit ────────────────
+
+  it('copy JSON button writes the full drilldown payload to the clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    const d = baseDecision({ id: 'cp1', symbol: 'ETH/USD' })
+    render(<DecisionDrilldownModal data={drilldownFor(d)} onClose={vi.fn()} />)
+    await act(async () => {
+      fireEvent.click(screen.getByText('copy JSON'))
+    })
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const payload = writeText.mock.calls[0][0] as string
+    const parsed = JSON.parse(payload)
+    expect(parsed.decision.id).toBe('cp1')
+    expect(parsed.decision.symbol).toBe('ETH/USD')
+  })
+
+  it('copy button flashes "copied" then returns to default', async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    })
+    render(
+      <DecisionDrilldownModal data={drilldownFor(baseDecision())} onClose={vi.fn()} />,
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByText('copy JSON'))
+    })
+    expect(screen.getByText('copied')).toBeInTheDocument()
+    // The reset is on a real 1.8s setTimeout — wait for it to revert.
+    // waitFor polls until the assertion passes or the test times out.
+    await waitFor(
+      () => {
+        expect(screen.getByText('copy JSON')).toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
+  })
+
+  it('jump-to-audit button is hidden when the prop is omitted', () => {
+    render(
+      <DecisionDrilldownModal data={drilldownFor(baseDecision())} onClose={vi.fn()} />,
+    )
+    expect(screen.queryByText('jump to audit')).not.toBeInTheDocument()
+  })
+
+  it('jump-to-audit button hands the decision id back to the parent', () => {
+    const onJump = vi.fn()
+    const d = baseDecision({ id: 'jump-me' })
+    render(
+      <DecisionDrilldownModal
+        data={drilldownFor(d)}
+        onClose={vi.fn()}
+        onJumpToAudit={onJump}
+      />,
+    )
+    fireEvent.click(screen.getByText('jump to audit'))
+    expect(onJump).toHaveBeenCalledWith('jump-me')
+  })
+
+  it('raw audit section is hidden when no entries are correlated', () => {
+    render(
+      <DecisionDrilldownModal data={drilldownFor(baseDecision())} onClose={vi.fn()} />,
+    )
+    expect(screen.queryByText(/^raw audit/)).not.toBeInTheDocument()
+  })
+
+  it('raw audit section is folded by default and reveals JSON on toggle', () => {
+    const d = baseDecision({ id: 'raw-d' })
+    const e: AuditEntry = {
+      id: 'e-validated',
+      timestamp: 1_700_000_000_000,
+      module: 'ai',
+      eventType: 'AI_RESPONSE_VALIDATED',
+      summary: 'claude validated',
+      data: { decisionId: 'raw-d', confidence: 0.81, magic: 'visible-on-toggle' },
+      _source: 't',
+    }
+    render(
+      <DecisionDrilldownModal
+        data={drilldownFor(d, { entries: [e] })}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('raw audit (1)')).toBeInTheDocument()
+    // The payload itself is not rendered until the user clicks "show".
+    expect(screen.queryByText(/visible-on-toggle/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('show'))
+    expect(screen.getByText(/visible-on-toggle/)).toBeInTheDocument()
+    expect(screen.getByText('AI_RESPONSE_VALIDATED')).toBeInTheDocument()
+    // Re-collapsing hides the payload again.
+    fireEvent.click(screen.getByText('hide'))
+    expect(screen.queryByText(/visible-on-toggle/)).not.toBeInTheDocument()
   })
 })

@@ -9,6 +9,7 @@
 import type { TradeDecision, SentinelVeto } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import type { Position } from '@/types/position'
+import type { AuditEntry } from '@/types/audit'
 import { inspectConsensus, type ConsensusInfo } from './consensus-display'
 
 export interface ProviderView {
@@ -30,6 +31,12 @@ export interface DecisionDrilldown {
   veto: SentinelVeto | null
   orders: PaperOrder[]
   position: Position | null
+  /** Audit entries whose data references this decision id. Empty when the
+   *  caller didn't pass entries, or when none match (multi-provider
+   *  consensus: per-provider validations carry the per-vote id, not the
+   *  synthesised id, so they won't match here — but the synthesised
+   *  DECISION_CREATED entry will).                                       */
+  auditEntries: AuditEntry[]
 }
 
 /** Correlate a decision with its downstream artefacts by decisionId. */
@@ -39,6 +46,9 @@ export const buildDrilldown = (
     vetos: SentinelVeto[]
     orders: PaperOrder[]
     positions: Position[]
+    /** Optional. When supplied, entries with `data.decisionId === decision.id`
+     *  are surfaced in the modal as the raw event timeline.               */
+    entries?: AuditEntry[]
   },
 ): DecisionDrilldown => {
   const veto = ctx.vetos.find((v) => v.decisionId === decision.id) ?? null
@@ -46,7 +56,11 @@ export const buildDrilldown = (
   const position = ctx.positions.find((p) => p.decisionId === decision.id) ?? null
   const consensus = inspectConsensus(decision)
   const providers = buildProviderViews(decision, consensus)
-  return { decision, consensus, providers, veto, orders, position }
+  const auditEntries = (ctx.entries ?? []).filter((e) => {
+    const d = e.data as { decisionId?: unknown } | null | undefined
+    return d != null && d.decisionId === decision.id
+  })
+  return { decision, consensus, providers, veto, orders, position, auditEntries }
 }
 
 /**

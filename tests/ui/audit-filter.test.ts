@@ -3,6 +3,7 @@ import {
   filterAuditEntries,
   uniqueModules,
   EMPTY_FILTER,
+  isEmptyFilter,
   loadAuditFilter,
   saveAuditFilter,
   AUDIT_FILTER_STORAGE_KEY,
@@ -14,13 +15,14 @@ const entry = (
   module: AuditModule,
   eventType: AuditEventType,
   summary: string,
+  data: Record<string, unknown> = {},
 ): AuditEntry => ({
   id: `e${seq++}`,
   timestamp: 1_700_000_000_000,
   module,
   eventType,
   summary,
-  data: {},
+  data,
   _source: 't',
 })
 
@@ -86,6 +88,65 @@ describe('filterAuditEntries', () => {
     const snapshot = [...corpus]
     filterAuditEntries(corpus, { module: 'sentinel', query: 'veto' })
     expect(corpus).toEqual(snapshot)
+  })
+
+  it('filters by decisionId when provided', () => {
+    const tagged: AuditEntry[] = [
+      entry('ai', 'AI_RESPONSE_VALIDATED', 'a', { decisionId: 'd1' }),
+      entry('ai', 'AI_RESPONSE_VALIDATED', 'b', { decisionId: 'd2' }),
+      entry('sentinel', 'SENTINEL_VETOED', 'c', { decisionId: 'd1' }),
+      entry('trader', 'ORDER_FILLED', 'd', {}),
+    ]
+    const out = filterAuditEntries(tagged, {
+      module: 'all',
+      query: '',
+      decisionId: 'd1',
+    })
+    expect(out.map((e) => e.summary)).toEqual(['a', 'c'])
+  })
+
+  it('combines decisionId with module filter (AND)', () => {
+    const tagged: AuditEntry[] = [
+      entry('ai', 'AI_RESPONSE_VALIDATED', 'a', { decisionId: 'd1' }),
+      entry('sentinel', 'SENTINEL_VETOED', 'c', { decisionId: 'd1' }),
+    ]
+    const out = filterAuditEntries(tagged, {
+      module: 'sentinel',
+      query: '',
+      decisionId: 'd1',
+    })
+    expect(out).toHaveLength(1)
+    expect(out[0].module).toBe('sentinel')
+  })
+
+  it('decisionId filter rejects entries with null/missing data', () => {
+    const tagged: AuditEntry[] = [
+      // @ts-expect-error — exercising defensive path
+      { ...entry('ai', 'AI_PROMPT_SENT', 'a'), data: null },
+      entry('ai', 'AI_RESPONSE_VALIDATED', 'b', { decisionId: 'd1' }),
+    ]
+    const out = filterAuditEntries(tagged, {
+      module: 'all',
+      query: '',
+      decisionId: 'd1',
+    })
+    expect(out).toHaveLength(1)
+    expect(out[0].summary).toBe('b')
+  })
+})
+
+describe('isEmptyFilter', () => {
+  it('returns true for EMPTY_FILTER', () => {
+    expect(isEmptyFilter(EMPTY_FILTER)).toBe(true)
+  })
+  it('returns false when module is set', () => {
+    expect(isEmptyFilter({ module: 'ai', query: '' })).toBe(false)
+  })
+  it('returns false when query is set', () => {
+    expect(isEmptyFilter({ module: 'all', query: 'veto' })).toBe(false)
+  })
+  it('returns false when decisionId is set', () => {
+    expect(isEmptyFilter({ module: 'all', query: '', decisionId: 'd1' })).toBe(false)
   })
 })
 
@@ -154,5 +215,22 @@ describe('audit filter persistence', () => {
       saveAuditFilter({ module: m, query: '' })
       expect(loadAuditFilter().module).toBe(m)
     }
+  })
+
+  it('round-trips a filter that includes decisionId', () => {
+    saveAuditFilter({ module: 'all', query: '', decisionId: 'dec-42' })
+    expect(loadAuditFilter()).toEqual({
+      module: 'all',
+      query: '',
+      decisionId: 'dec-42',
+    })
+  })
+
+  it('rejects a stored filter with non-string decisionId', () => {
+    window.localStorage.setItem(
+      AUDIT_FILTER_STORAGE_KEY,
+      JSON.stringify({ module: 'all', query: '', decisionId: 99 }),
+    )
+    expect(loadAuditFilter()).toEqual(EMPTY_FILTER)
   })
 })

@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { colors, fonts } from '@/ui/theme'
+import { useEffect, useState } from 'react'
+import { colors, fonts, btnSmall } from '@/ui/theme'
 import type { DecisionDrilldown } from '@/ui/decision-drilldown'
 import { consensusLabel } from '@/ui/consensus-display'
 
@@ -31,12 +31,48 @@ const actionColor = (a: string): string =>
 const fmt = (n: number | null, digits = 2): string =>
   n === null || n === undefined ? '—' : n.toFixed(digits)
 
+/**
+ * Best-effort clipboard copy. navigator.clipboard is gated behind secure
+ * contexts (https/localhost) and may be missing in older runtimes. Returns
+ * true on success so the UI can flash a confirmation.
+ */
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // fall through to legacy path
+  }
+  // Legacy fallback: detached textarea + execCommand. Some browsers still
+  // honour this even without the modern API.
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export const DecisionDrilldownModal = ({
   data,
   onClose,
+  onJumpToAudit,
 }: {
   data: DecisionDrilldown
   onClose: () => void
+  /** When provided, the modal renders a "jump to audit" button that hands
+   *  the decision id back to the caller (typically to scope the audit
+   *  panel to this decision and close the modal). */
+  onJumpToAudit?: (decisionId: string) => void
 }) => {
   // Close on Escape.
   useEffect(() => {
@@ -47,8 +83,19 @@ export const DecisionDrilldownModal = ({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const { decision: d, consensus, providers, veto, orders, position } = data
+  // Toggle for the raw audit-entry payload section. Folded by default
+  // because the JSON is bulky and noisy for the typical reader.
+  const [showRaw, setShowRaw] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle')
+
+  const { decision: d, consensus, providers, veto, orders, position, auditEntries } = data
   const cLabel = consensusLabel(consensus)
+
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(JSON.stringify(data, null, 2))
+    setCopyState(ok ? 'ok' : 'fail')
+    setTimeout(() => setCopyState('idle'), 1800)
+  }
 
   return (
     <div
@@ -164,22 +211,42 @@ export const DecisionDrilldownModal = ({
               {d.id}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
+          <div
             style={{
-              background: 'transparent',
-              border: `1px solid ${colors.border}`,
-              color: colors.textSecondary,
-              borderRadius: 3,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontFamily: fonts.mono,
-              fontSize: 12,
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              flexShrink: 0,
             }}
           >
-            close (esc)
-          </button>
+            <button
+              onClick={() => void handleCopy()}
+              title="Copy the full drilldown payload as JSON"
+              style={{ ...btnSmall, padding: '4px 10px', fontSize: 11 }}
+            >
+              {copyState === 'ok'
+                ? 'copied'
+                : copyState === 'fail'
+                  ? 'copy failed'
+                  : 'copy JSON'}
+            </button>
+            {onJumpToAudit && (
+              <button
+                onClick={() => onJumpToAudit(d.id)}
+                title="Filter the audit panel to events tagged with this decision id"
+                style={{ ...btnSmall, padding: '4px 10px', fontSize: 11 }}
+              >
+                jump to audit
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              style={{ ...btnSmall, padding: '4px 10px', fontSize: 12 }}
+            >
+              close (esc)
+            </button>
+          </div>
         </div>
 
         {/* Price / size grid */}
@@ -498,6 +565,99 @@ export const DecisionDrilldownModal = ({
             </div>
           )}
         </div>
+
+        {/* Raw audit entries — folded by default. Surfaces the actual
+            structured payloads (AI_RESPONSE_VALIDATED, DECISION_CREATED,
+            SENTINEL_*, ORDER_*, POSITION_*) tied to this decision id. */}
+        {auditEntries.length > 0 && (
+          <div style={section}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 4,
+              }}
+            >
+              <div style={{ ...label, marginBottom: 0 }}>
+                raw audit ({auditEntries.length})
+              </div>
+              <button
+                onClick={() => setShowRaw((v) => !v)}
+                style={{ ...btnSmall, padding: '1px 8px', fontSize: 10 }}
+              >
+                {showRaw ? 'hide' : 'show'}
+              </button>
+            </div>
+            {showRaw && (
+              <div style={{ display: 'grid', gap: 6 }}>
+                {auditEntries.map((e) => (
+                  <div
+                    key={e.id}
+                    style={{
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: 4,
+                      padding: 8,
+                      background: colors.bgCardAlt,
+                    }}
+                  >
+                    <div
+                      style={{
+                        ...mono,
+                        fontSize: 11,
+                        display: 'flex',
+                        gap: 8,
+                        marginBottom: 4,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span style={{ color: colors.textMuted }}>
+                        {new Date(e.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span style={{ color: colors.accent }}>{e.module}</span>
+                      <span
+                        style={{
+                          color:
+                            e.eventType.includes('REJECTED') ||
+                            e.eventType.includes('VETOED') ||
+                            e.eventType.includes('ERROR')
+                              ? colors.red
+                              : e.eventType.includes('VALIDATED') ||
+                                  e.eventType.includes('APPROVED') ||
+                                  e.eventType.includes('FILLED')
+                                ? colors.green
+                                : colors.textSecondary,
+                        }}
+                      >
+                        {e.eventType}
+                      </span>
+                      <span style={{ color: colors.textSecondary }}>
+                        {e.summary}
+                      </span>
+                    </div>
+                    <pre
+                      style={{
+                        ...mono,
+                        fontSize: 10,
+                        margin: 0,
+                        padding: 6,
+                        background: colors.bg,
+                        borderRadius: 3,
+                        color: colors.textSecondary,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all',
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {JSON.stringify(e.data, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

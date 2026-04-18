@@ -5,6 +5,7 @@ import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
 import {
   EMPTY_FILTER,
   filterAuditEntries,
+  isEmptyFilter,
   loadAuditFilter,
   saveAuditFilter,
   uniqueModules,
@@ -107,8 +108,8 @@ export const ChainMonitor = () => {
     if (drilldownId === null) return null
     const d = decisions.find((x) => x.id === drilldownId)
     if (!d) return null
-    return buildDrilldown(d, { vetos, orders, positions })
-  }, [drilldownId, decisions, vetos, orders, positions])
+    return buildDrilldown(d, { vetos, orders, positions, entries })
+  }, [drilldownId, decisions, vetos, orders, positions, entries])
 
   const exportAll = (format: 'csv' | 'json') => {
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -688,7 +689,43 @@ export const ChainMonitor = () => {
                 minWidth: 180,
               }}
             />
-            {(auditFilter.module !== 'all' || auditFilter.query !== '') && (
+            {auditFilter.decisionId && (
+              <span
+                title={`scoped to decision ${auditFilter.decisionId}`}
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  background: `${colors.accent}18`,
+                  color: colors.accent,
+                  border: `1px solid ${colors.accent}40`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                decision: {auditFilter.decisionId.slice(0, 8)}…
+                <button
+                  onClick={() =>
+                    setAuditFilter((f) => ({ ...f, decisionId: undefined }))
+                  }
+                  aria-label="clear decision filter"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: colors.accent,
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: 12,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {!isEmptyFilter(auditFilter) && (
               <button
                 onClick={() => setAuditFilter(EMPTY_FILTER)}
                 style={{ ...btnSmall, padding: '2px 8px' }}
@@ -746,6 +783,12 @@ export const ChainMonitor = () => {
         <DecisionDrilldownModal
           data={drilldown}
           onClose={() => setDrilldownId(null)}
+          onJumpToAudit={(id) => {
+            // Filter the audit panel to only show events tagged with this
+            // decision id, then close the modal so the table is visible.
+            setAuditFilter({ module: 'all', query: '', decisionId: id })
+            setDrilldownId(null)
+          }}
         />
       )}
     </div>

@@ -6,6 +6,7 @@ import {
 import type { TradeDecision, SentinelVeto } from '@/types/decision'
 import type { PaperOrder } from '@/types/order'
 import type { Position } from '@/types/position'
+import type { AuditEntry } from '@/types/audit'
 
 let seq = 0
 const baseDecision = (over: Partial<TradeDecision> = {}): TradeDecision => ({
@@ -122,6 +123,44 @@ describe('buildDrilldown', () => {
     expect(out.position).toBeNull()
     expect(out.providers).toEqual([])
     expect(out.consensus.isConsensus).toBe(false)
+    expect(out.auditEntries).toEqual([])
+  })
+
+  it('surfaces audit entries whose data.decisionId matches', () => {
+    const d = baseDecision({ id: 'd-audit' })
+    const matchEntry = (
+      eventType: string,
+      data: Record<string, unknown>,
+    ): AuditEntry => ({
+      id: `e-${eventType}`,
+      timestamp: 1_700_000_000_000,
+      module: 'ai',
+      eventType: eventType as AuditEntry['eventType'],
+      summary: eventType,
+      data,
+      _source: 't',
+    })
+    const out = buildDrilldown(d, {
+      vetos: [],
+      orders: [],
+      positions: [],
+      entries: [
+        matchEntry('AI_RESPONSE_VALIDATED', { decisionId: 'd-audit', raw: { x: 1 } }),
+        matchEntry('AI_RESPONSE_VALIDATED', { decisionId: 'other' }),
+        matchEntry('DECISION_CREATED', { decisionId: 'd-audit' }),
+        matchEntry('AI_PROMPT_SENT', { contextHash: 'h' }), // no decisionId
+      ],
+    })
+    expect(out.auditEntries.map((e) => e.eventType)).toEqual([
+      'AI_RESPONSE_VALIDATED',
+      'DECISION_CREATED',
+    ])
+  })
+
+  it('returns empty auditEntries when ctx.entries is omitted', () => {
+    const d = baseDecision({ id: 'd1' })
+    const out = buildDrilldown(d, { vetos: [], orders: [], positions: [] })
+    expect(out.auditEntries).toEqual([])
   })
 
   it('recovers per-provider theses from an agreed consensus decision', () => {
