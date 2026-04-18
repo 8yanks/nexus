@@ -6,7 +6,7 @@ Branch `ux-overhaul`. Phase 1.4 lands the user-facing Options hub.
 
 ### Shipped
 
-1. **`<pending>` Options screen — 8-section customisation hub**
+1. **`a40d46b` Options screen — 8-section customisation hub**
    - New `src/ui/screens/Options.tsx`. Lazy-loaded via `App.tsx`. Routed
      under the `system` category (Système → Sources / Export / Options).
    - 8 sections in display order:
