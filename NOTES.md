@@ -8,7 +8,7 @@ execution view.
 
 ### Shipped
 
-1. **`<HASH>` Trader adopts `<ScreenHeader />`**
+1. **`8425b64` Trader adopts `<ScreenHeader />`**
    - Title + subtitle replace the hand-rolled purple `<div>` header.
    - Badge: `paper · {n} orders · {n} pos` in purple — gives the user
      a constant SIM/dry-run reminder so it's clear nothing is real.
