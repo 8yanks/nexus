@@ -15,6 +15,7 @@ import {
   Workflow,
   ShieldAlert,
   Briefcase,
+  Settings,
 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import type { Screen } from '@/store/market'
@@ -46,6 +47,7 @@ const SCREEN_ICONS: Record<Screen, React.ReactNode> = {
   journal:     <BookOpen size={13} />,
   sources:     <Database size={13} />,
   export:      <Download size={13} />,
+  options:     <Settings size={13} />,
 }
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -65,6 +67,7 @@ const SCREEN_LABELS: Record<Screen, string> = {
   journal:     'Journal',
   sources:     'Sources',
   export:      'Export',
+  options:     'Options',
 }
 
 export const Nav = () => {

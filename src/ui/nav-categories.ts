@@ -46,7 +46,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'system',
     label: 'Système',
-    screens: ['sources', 'export'],
+    screens: ['sources', 'export', 'options'],
   },
 ] as const
 

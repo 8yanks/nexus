@@ -1,5 +1,44 @@
 # Session notes
 
+## 2026-04-18 — UX overhaul, Phase 1.4 (Options screen skeleton)
+
+Branch `ux-overhaul`. Phase 1.4 lands the user-facing Options hub.
+
+### Shipped
+
+1. **`<pending>` Options screen — 8-section customisation hub**
+   - New `src/ui/screens/Options.tsx`. Lazy-loaded via `App.tsx`. Routed
+     under the `system` category (Système → Sources / Export / Options).
+   - 8 sections in display order:
+     Apparence (theme + density, fully wired via `prefs.ts`),
+     Données / Notifications / Layout / Rétention audit / Avancé
+     (chrome locked + dashed-border placeholder cards explaining what
+     each will own — concrete impl deferred to Phase 2),
+     Raccourcis clavier (read-only inventory of currently-wired
+     hotkeys: r run-chain, Esc drilldown, ⌘K search-to-come),
+     Workspaces (placeholder pointing to Phase 1.5).
+   - Reusable internal components:
+     - `<Segmented>` — accessible segmented control (role=group +
+       aria-pressed buttons). No-op when re-clicking the active value
+       so we don't queue a useless reload.
+     - `<Section>` — icon + title + hint + body. Locked chrome.
+     - `<Row>` — label + description + control, with bottom border.
+     - `<Placeholder>` — dashed-border stub with one-line note.
+   - `Screen` enum gains `'options'`. `nav-categories.ts` adds it under
+     `system`. `Nav.tsx` SCREEN_ICONS / SCREEN_LABELS extended (Settings
+     icon from lucide).
+
+### Suite stats
+- 555 tests across 58 files (was 544/57). All green.
+- Type-check + build clean.
+- 11 new tests for `<Options />`: chrome (title + 8 sections), Apparence
+  segmented behaviour (sombre+clair render, current marked aria-pressed,
+  click writes localStorage, re-click is no-op, density round-trips,
+  persisted density read on mount), hotkeys inventory (r + Esc shown
+  with scope and KBD chips).
+
+---
+
 ## 2026-04-18 — UX overhaul, Phase 1.3 (Nav 2 levels + 5 categories)
 
 Branch `ux-overhaul`. Continued the autonomous run. Phase 1.3 of the

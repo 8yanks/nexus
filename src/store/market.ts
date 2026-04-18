@@ -56,6 +56,7 @@ export type Screen =
   | 'chain'
   | 'sentinel'
   | 'trader'
+  | 'options'
 
 // ─── STORE SHAPE ────────────────────────────────────────────
 

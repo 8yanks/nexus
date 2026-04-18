@@ -60,6 +60,9 @@ const Sentinel = lazy(() =>
 const Trader = lazy(() =>
   import('@/ui/screens/Trader').then((m) => ({ default: m.Trader })),
 )
+const Options = lazy(() =>
+  import('@/ui/screens/Options').then((m) => ({ default: m.Options })),
+)
 
 const ScreenLoading = () => (
   <div
@@ -93,6 +96,7 @@ const ScreenRouter = () => {
     case 'chain':     return <ChainMonitor />
     case 'sentinel': return <Sentinel />
     case 'trader':   return <Trader />
+    case 'options':  return <Options />
   }
 }
 

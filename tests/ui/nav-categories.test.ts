@@ -51,6 +51,7 @@ describe('CATEGORIES shape', () => {
       'journal',
       'sources',
       'export',
+      'options',
     ]
     const visible = new Set(CATEGORIES.flatMap((c) => c.screens))
     for (const s of allScreens) {
@@ -85,7 +86,7 @@ describe('screensForCategory', () => {
       'macro',
     ])
     expect(screensForCategory('bots')).toEqual(['chain', 'sentinel', 'trader'])
-    expect(screensForCategory('system')).toEqual(['sources', 'export'])
+    expect(screensForCategory('system')).toEqual(['sources', 'export', 'options'])
   })
 })
 
