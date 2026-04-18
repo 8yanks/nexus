@@ -1,5 +1,89 @@
 # Session notes
 
+## 2026-04-18 — autonomous polish pass (price labels + still-open list)
+
+User authorised a long autonomous run. Cleared every "still open" item
+from the previous session's NOTES backlog. Six commits, all passing
+type-check + tests + build, all pushed to origin/ai-schemas-and-audit.
+
+### Shipped
+1. **`91c6ab6` clarify 24h price-change window with suffix + tooltip**
+   - User reported NEXUS BTC/USD differed from TradingView/Google.
+   - Diagnosis: not a bug. Binance rolling 24h vs Google's
+     "since midnight" aggregate — different windows, different sources.
+     Math is correct (verified `src/providers/binance/spot.ts` lines
+     85-86 and 147-148).
+   - Fix is purely cosmetic: `PriceChange` gains `suffix` + `title`
+     props. Detail uses `suffix="24h"` + tooltip. Dashboard uses
+     tooltip only (column header already says "24h").
+
+2. **`5afd3cb` extract btnSecondary + btnSmall in theme**
+   - 7 inline copies of the secondary-button style scattered across
+     ChainMonitor / Sentinel / Trader → 2 reusable theme exports.
+   - `btnSecondary` (medium ghost outline, sans 12px) and `btnSmall`
+     (compact mono, 10px). Colors stay overridable so semantic
+     variants (e.g. green "accept") just override border + color.
+   - Pure refactor, no behavior change.
+
+3. **`4b40f0c` persist audit filter across reloads**
+   - `loadAuditFilter` / `saveAuditFilter` round-trip via
+     localStorage under `nexus.auditFilter.v1`. Validates module
+     enum + shape + decisionId-string before trusting storage.
+     Silent fallback on any failure — cosmetic state.
+   - ChainMonitor uses lazy useState initializer + useEffect writer.
+     Empty filter clears the storage key.
+   - 7 new tests.
+
+4. **`2644968` add 'r' keybind to run the decision chain**
+   - Pure `isRunChainShortcut` predicate gates out modifier-held
+     variants and form-field/contenteditable targets so typing
+     into the audit filter input isn't hijacked.
+   - Skipped while drilldown modal is open (modal owns Escape;
+     stay out of its way).
+   - Run button renders an inline `<kbd>r</kbd>` hint + tooltip.
+   - 9 unit tests.
+
+5. **`8528eaf` drilldown polish: copy JSON, jump-to-audit, raw payload**
+   - **Copy JSON**: button serialises the full DecisionDrilldown
+     (decision + consensus + providers + veto + orders + position +
+     auditEntries) and writes to clipboard. Detached-textarea +
+     execCommand fallback in non-secure contexts. Flashes
+     "copied" / "copy failed" for 1.8s.
+   - **Jump-to-audit**: hands the decision id back to the parent
+     via `onJumpToAudit?(id)`. ChainMonitor closes the modal and
+     scopes the audit panel via a new `decisionId` field on
+     AuditFilter. Removable accent-coloured pill renders while the
+     scope is active.
+   - **Raw audit payload**: `buildDrilldown` now accepts `entries`
+     in ctx and surfaces matched ones (`data.decisionId === id`)
+     in a folded section. Pretty-printed JSON, max-height scroll,
+     hidden behind show/hide. Multi-provider note: per-provider
+     `AI_RESPONSE_VALIDATED` entries carry the per-vote id, so they
+     won't match the synthesised id — but the synthesised
+     `DECISION_CREATED` entry will.
+   - 20 new tests across helper + RTL + integration layers.
+
+### State
+- Tests: **475/475 pass** (was 439 → 446 → 455 → 475).
+- `npm run type-check` clean.
+- Vite build clean (251 kB main, 80 kB gzip — unchanged).
+- Branch: `ai-schemas-and-audit`, fully up to date with origin.
+
+### Backlog cleared
+Every "Still open / not parked-by-user" item from the 2026-04-19
+arc is now done:
+- ~~CRLF renormalise~~ (was already a non-issue)
+- ~~btnSecondary extract~~ → 5afd3cb
+- ~~persist audit filter~~ → 4b40f0c
+- ~~`r` keybind~~ → 2644968
+- ~~Drilldown polish (copy / jump / raw)~~ → 8528eaf
+
+### Still open (parked by user)
+- **API keys (Anthropic / xAI / OpenAI)** — consensus runs
+  single-provider rule-based until set in `.env.local`.
+- **Cost / usage tracking per provider** — meaningful only after
+  keys are wired and someone is paying API bills.
+
 ## 2026-04-17 — multi-provider consensus
 
 ### Shipped
