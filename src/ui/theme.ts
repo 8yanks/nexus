@@ -1,66 +1,90 @@
-// ─── NEXUS THEME — TradingView-inspired terminal design ─────
-// Dark premium palette, high contrast, mono-spaced numbers,
-// clear visual hierarchy, dense but readable.
+// ─── NEXUS THEME — re-export of the active palette ──────────
+//
+// Single point of truth for `colors`. The values come from the active
+// palette in `tokens.ts` (currently dark, with light shipping in the
+// next commit via ThemeProvider). The shape is preserved 1:1 with the
+// pre-overhaul theme so the 100+ existing call sites that import
+// `colors.bg`, `colors.green`, etc. keep working unchanged.
+//
+// ⚠ Future: when we migrate to live theme switching (no reload), these
+// hex strings become CSS var references (`var(--c-bg)` etc.) and the
+// active palette is applied via :root. The 31 `${colors.X}NN` opacity
+// concatenations need to be migrated to the `alpha()` helper first.
+//
+// For now: theme switch = persist preference + reload.
 
+import { palettes, fonts as tokenFonts, radius, density } from './tokens'
+import type { ThemeName, DensityName } from './tokens'
+
+const active = palettes.dark
+
+// Aliases kept for backwards compatibility with the v1 colour names.
+// Each maps onto the new greyscale-layered palette.
 export const colors = {
-  // Backgrounds — layered depth
-  bg: '#0a0e17',
-  bgCard: '#0f1520',
-  bgCardAlt: '#131a2a',
-  bgHover: '#1a2236',
-  bgTableRow: '#0d111d',
-  bgTableRowAlt: '#111827',
-  bgInput: '#0c1018',
+  // Backgrounds — layered depth (darkest → brightest in dark mode)
+  bg: active.bg,
+  bgCard: active.surface1,
+  bgCardAlt: active.surface2,
+  bgHover: active.surface3,
+  bgTableRow: active.surface1,
+  bgTableRowAlt: active.surface2,
+  bgInput: active.surface1,
 
   // Borders
-  border: '#1e293b',
-  borderLight: '#253149',
-  borderFocus: '#3b82f6',
+  border: active.border,
+  borderLight: active.borderStrong,
+  borderFocus: active.info,
 
   // Text hierarchy
-  text: '#e2e8f0',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  textDim: '#475569',
+  text: active.text,
+  textSecondary: active.textSecondary,
+  textMuted: active.textMuted,
+  textDim: active.textDim,
 
-  // Accent
-  accent: '#3b82f6',
-  accentHover: '#2563eb',
-  accentDim: '#1e3a8a',
+  // Accent (brand). In v1 this was cyan/blue — now neutral white in dark
+  // mode, so the brand reads as "subtle premium" instead of bleu froid.
+  accent: active.accent,
+  accentHover: active.accent,
+  accentDim: active.accentDim,
 
-  // Semantic
-  green: '#00d4aa',
-  greenDim: '#00d4aa22',
-  red: '#ff4466',
-  redDim: '#ff446622',
-  yellow: '#ffaa22',
-  yellowDim: '#ffaa2222',
-  orange: '#ff6644',
-  purple: '#a855f7',
-  purpleDim: '#a855f722',
-  cyan: '#06b6d4',
-  cyanDim: '#06b6d422',
+  // Semantic — kept under their v1 colour names so existing components
+  // don't need to migrate. These ARE the only colourful elements in the
+  // greyscale layered theme.
+  green: active.success,
+  greenDim: active.successDim,
+  red: active.danger,
+  redDim: active.dangerDim,
+  yellow: active.warn,
+  yellowDim: active.warnDim,
+  orange: active.stale,
+  purple: active.simulated,
+  purpleDim: active.simulated,
+  cyan: active.info,
+  cyanDim: active.infoDim,
 
   // Status overlays
-  live: '#00d4aa',
-  delayed: '#ffaa22',
-  simulated: '#a855f7',
-  stale: '#ff6644',
-  unavailable: '#64748b',
-  error: '#ff4466',
+  live: active.live,
+  delayed: active.delayed,
+  simulated: active.simulated,
+  stale: active.stale,
+  unavailable: active.unavailable,
+  error: active.error,
 } as const
 
-export const fonts = {
-  sans: "'IBM Plex Sans', system-ui, -apple-system, sans-serif",
-  mono: "'JetBrains Mono', 'Fira Code', monospace",
-} as const
+export const fonts = tokenFonts
+
+// Re-export tokens v2 so call sites can adopt them progressively.
+export { radius, density, palettes }
+export type { ThemeName, DensityName }
 
 // ─── SHARED STYLES ──────────────────────────────────────────
+// Ported to v2 radius tokens. Padding/font sizes will move to density
+// tokens when ScreenHeader/ScreenSettings ship in phase 2.
 
 export const card: React.CSSProperties = {
   background: colors.bgCard,
   border: `1px solid ${colors.border}`,
-  borderRadius: 8,
+  borderRadius: radius.card,
   padding: 16,
 }
 
@@ -72,7 +96,7 @@ export const cardElevated: React.CSSProperties = {
 export const badge: React.CSSProperties = {
   display: 'inline-block',
   padding: '2px 8px',
-  borderRadius: 4,
+  borderRadius: radius.badge,
   fontSize: 11,
   fontWeight: 600,
   fontFamily: fonts.mono,
@@ -144,7 +168,7 @@ export const statValue: React.CSSProperties = {
 export const inputStyle: React.CSSProperties = {
   background: colors.bgInput,
   border: `1px solid ${colors.border}`,
-  borderRadius: 4,
+  borderRadius: radius.input,
   padding: '6px 10px',
   color: colors.text,
   fontFamily: fonts.mono,
@@ -160,7 +184,7 @@ export const tagStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 4,
   padding: '3px 8px',
-  borderRadius: 4,
+  borderRadius: radius.badge,
   fontSize: 11,
   fontWeight: 600,
   fontFamily: fonts.mono,
@@ -175,12 +199,12 @@ export const btnPrimary: React.CSSProperties = {
   gap: 6,
   padding: '8px 16px',
   border: 'none',
-  borderRadius: 6,
+  borderRadius: radius.btn,
   cursor: 'pointer',
   fontSize: 13,
   fontWeight: 600,
   fontFamily: fonts.sans,
-  color: '#fff',
+  color: colors.bg,
   background: colors.accent,
   transition: 'background 0.15s',
 }
@@ -192,7 +216,7 @@ export const btnSecondary: React.CSSProperties = {
   background: 'transparent',
   color: colors.textSecondary,
   border: `1px solid ${colors.border}`,
-  borderRadius: 4,
+  borderRadius: radius.btn,
   padding: '6px 12px',
   cursor: 'pointer',
   fontFamily: fonts.sans,
@@ -206,7 +230,7 @@ export const btnSmall: React.CSSProperties = {
   background: 'transparent',
   border: `1px solid ${colors.border}`,
   color: colors.textSecondary,
-  borderRadius: 3,
+  borderRadius: radius.badge,
   padding: '1px 8px',
   fontSize: 10,
   cursor: 'pointer',
