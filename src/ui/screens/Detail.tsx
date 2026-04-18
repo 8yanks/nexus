@@ -90,7 +90,11 @@ export const Detail = () => {
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.mono, color: colors.text, letterSpacing: '-0.02em' }}>
             {fmt(snap.price, decimals)}
           </div>
-          <PriceChange change={snap.change24h} />
+          <PriceChange
+            change={snap.change24h}
+            suffix="24h"
+            title={`Rolling 24h change from ${inst.exchange}. May differ from TradingView/Google because those show "since midnight" or aggregate exchanges.`}
+          />
         </div>
       </div>
 

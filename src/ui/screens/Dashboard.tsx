@@ -140,7 +140,10 @@ export const Dashboard = () => {
                     {snap ? fmt(snap.price, isForex ? 5 : 2) : '—'}
                   </td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <PriceChange change={snap?.change24h ?? null} />
+                    <PriceChange
+                      change={snap?.change24h ?? null}
+                      title="Rolling 24h change from source exchange. May differ from TradingView/Google daily windows."
+                    />
                   </td>
                   <td style={{ ...monoTd, textAlign: 'right', color: colors.textSecondary, fontSize: 12 }}>
                     {snap ? fmtVol(snap.volume24h) : '—'}
