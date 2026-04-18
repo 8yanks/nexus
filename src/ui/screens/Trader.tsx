@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useChainStore } from '@/store/chain'
-import { colors, fonts } from '@/ui/theme'
+import { colors, fonts, btnSmall } from '@/ui/theme'
 
 // ─── TRADER SCREEN ──────────────────────────────────────────
 // Dedicated view for the execution bot: portfolio, positions (open +
@@ -245,16 +245,7 @@ export const Trader = () => {
                   <td style={{ textAlign: 'right' }}>
                     <button
                       onClick={() => closePosition(p.id)}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${colors.border}`,
-                        color: colors.textSecondary,
-                        borderRadius: 3,
-                        padding: '1px 6px',
-                        fontSize: 10,
-                        cursor: 'pointer',
-                        fontFamily: fonts.mono,
-                      }}
+                      style={{ ...btnSmall, padding: '1px 6px' }}
                     >
                       close
                     </button>

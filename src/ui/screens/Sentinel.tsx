@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
-import { colors, fonts } from '@/ui/theme'
+import { colors, fonts, btnSmall } from '@/ui/theme'
 
 // ─── SENTINEL SCREEN ────────────────────────────────────────
 // Dedicated view for the risk-guardrail bot: rules, safe mode, review
@@ -307,14 +307,9 @@ export const Sentinel = () => {
                     <button
                       onClick={() => acceptReview(r.id)}
                       style={{
-                        background: 'transparent',
+                        ...btnSmall,
                         border: `1px solid ${colors.green}`,
                         color: colors.green,
-                        borderRadius: 3,
-                        padding: '1px 8px',
-                        fontSize: 10,
-                        cursor: 'pointer',
-                        fontFamily: fonts.mono,
                         marginRight: 4,
                       }}
                     >
@@ -322,16 +317,7 @@ export const Sentinel = () => {
                     </button>
                     <button
                       onClick={() => dismissReview(r.id)}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${colors.border}`,
-                        color: colors.textSecondary,
-                        borderRadius: 3,
-                        padding: '1px 8px',
-                        fontSize: 10,
-                        cursor: 'pointer',
-                        fontFamily: fonts.mono,
-                      }}
+                      style={btnSmall}
                     >
                       dismiss
                     </button>

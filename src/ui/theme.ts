@@ -185,6 +185,34 @@ export const btnPrimary: React.CSSProperties = {
   transition: 'background 0.15s',
 }
 
+// Button secondary — outlined ghost (medium). Used for Clear, Export, etc.
+// Pair with `style={{ ...btnSecondary }}` and override individual fields
+// (e.g. `opacity` when disabled) at the call site.
+export const btnSecondary: React.CSSProperties = {
+  background: 'transparent',
+  color: colors.textSecondary,
+  border: `1px solid ${colors.border}`,
+  borderRadius: 4,
+  padding: '6px 12px',
+  cursor: 'pointer',
+  fontFamily: fonts.sans,
+  fontSize: 12,
+}
+
+// Button secondary — compact mono variant. Used for inline row actions
+// (close position, accept/dismiss review). Default border + textSecondary
+// colors are overridable for semantic variants (green for "accept" etc.).
+export const btnSmall: React.CSSProperties = {
+  background: 'transparent',
+  border: `1px solid ${colors.border}`,
+  color: colors.textSecondary,
+  borderRadius: 3,
+  padding: '1px 8px',
+  fontSize: 10,
+  cursor: 'pointer',
+  fontFamily: fonts.mono,
+}
+
 // Empty state
 export const emptyState: React.CSSProperties = {
   padding: 32,

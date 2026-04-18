@@ -7,7 +7,7 @@ import {
   uniqueModules,
   type AuditFilter,
 } from '@/ui/audit-filter'
-import { colors, fonts } from '@/ui/theme'
+import { colors, fonts, btnSecondary, btnSmall } from '@/ui/theme'
 import {
   decisionsToCSV,
   vetosToCSV,
@@ -134,52 +134,21 @@ export const ChainMonitor = () => {
         >
           Run decision chain
         </button>
-        <button
-          onClick={clear}
-          style={{
-            background: 'transparent',
-            color: colors.textSecondary,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 4,
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontFamily: fonts.sans,
-            fontSize: 12,
-          }}
-        >
+        <button onClick={clear} style={btnSecondary}>
           Clear
         </button>
         <button
           onClick={() => exportAll('csv')}
           disabled={decisions.length + orders.length + positions.length === 0}
           style={{
-            background: 'transparent',
-            color: colors.textSecondary,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 4,
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontFamily: fonts.sans,
-            fontSize: 12,
+            ...btnSecondary,
             opacity:
               decisions.length + orders.length + positions.length === 0 ? 0.4 : 1,
           }}
         >
           Export CSV
         </button>
-        <button
-          onClick={() => exportAll('json')}
-          style={{
-            background: 'transparent',
-            color: colors.textSecondary,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 4,
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontFamily: fonts.sans,
-            fontSize: 12,
-          }}
-        >
+        <button onClick={() => exportAll('json')} style={btnSecondary}>
           Export JSON
         </button>
         {lastOutcome && (
@@ -355,14 +324,9 @@ export const ChainMonitor = () => {
                     <button
                       onClick={() => acceptReview(r.id)}
                       style={{
-                        background: 'transparent',
+                        ...btnSmall,
                         border: `1px solid ${colors.green}`,
                         color: colors.green,
-                        borderRadius: 3,
-                        padding: '1px 8px',
-                        fontSize: 10,
-                        cursor: 'pointer',
-                        fontFamily: fonts.mono,
                         marginRight: 4,
                       }}
                     >
@@ -370,16 +334,7 @@ export const ChainMonitor = () => {
                     </button>
                     <button
                       onClick={() => dismissReview(r.id)}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${colors.border}`,
-                        color: colors.textSecondary,
-                        borderRadius: 3,
-                        padding: '1px 8px',
-                        fontSize: 10,
-                        cursor: 'pointer',
-                        fontFamily: fonts.mono,
-                      }}
+                      style={btnSmall}
                     >
                       dismiss
                     </button>
@@ -463,16 +418,7 @@ export const ChainMonitor = () => {
                       {p.status === 'open' && (
                         <button
                           onClick={() => closePosition(p.id)}
-                          style={{
-                            background: 'transparent',
-                            border: `1px solid ${colors.border}`,
-                            color: colors.textSecondary,
-                            borderRadius: 3,
-                            padding: '1px 6px',
-                            fontSize: 10,
-                            cursor: 'pointer',
-                            fontFamily: fonts.mono,
-                          }}
+                          style={{ ...btnSmall, padding: '1px 6px' }}
                         >
                           close
                         </button>
@@ -712,15 +658,7 @@ export const ChainMonitor = () => {
             {(auditFilter.module !== 'all' || auditFilter.query !== '') && (
               <button
                 onClick={() => setAuditFilter({ module: 'all', query: '' })}
-                style={{
-                  ...mono,
-                  background: 'transparent',
-                  border: `1px solid ${colors.border}`,
-                  color: colors.textSecondary,
-                  borderRadius: 3,
-                  padding: '2px 8px',
-                  cursor: 'pointer',
-                }}
+                style={{ ...btnSmall, padding: '2px 8px' }}
               >
                 clear
               </button>
