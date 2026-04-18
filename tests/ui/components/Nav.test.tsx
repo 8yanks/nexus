@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { Nav } from '@/ui/components/Nav'
 import { useMarketStore } from '@/store/market'
 
@@ -24,28 +24,33 @@ describe('<Nav /> rendering', () => {
     expect(screen.getByText('ANALYST MODE')).toBeInTheDocument()
   })
 
-  it('renders all 15 nav items as buttons', () => {
+  it('renders all 5 category tabs in the primary row', () => {
     render(<Nav />)
-    const labels = [
-      'Dashboard',
-      'Scanner',
-      'Alerts',
-      'Correlation',
-      'Backtest',
-      'Corporate',
-      'VC Flow',
-      'Macro',
-      'Quality',
-      'Sources',
-      'Journal',
-      'Export',
-      'Chain',
-      'Sentinel',
-      'Trader',
-    ]
-    for (const label of labels) {
-      expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument()
+    for (const label of ['Marchés', 'Bots', 'Recherche', 'Informations', 'Système']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+  })
+
+  it('renders the subscreens of the active category in the secondary row', () => {
+    // Default screen is dashboard → category is "markets" with 4 subscreens.
+    render(<Nav />)
+    const tablist = screen.getByRole('tablist')
+    for (const label of ['Dashboard', 'Scanner', 'Correlation', 'Macro']) {
+      expect(within(tablist).getByRole('tab', { name: new RegExp(label, 'i') })).toBeInTheDocument()
+    }
+    // Subscreens of OTHER categories must not leak into the secondary row.
+    expect(within(tablist).queryByRole('tab', { name: /chain/i })).not.toBeInTheDocument()
+    expect(within(tablist).queryByRole('tab', { name: /sources/i })).not.toBeInTheDocument()
+  })
+
+  it('switches the secondary row when the active category changes', () => {
+    useMarketStore.setState({ screen: 'sentinel' })
+    render(<Nav />)
+    const tablist = screen.getByRole('tablist')
+    for (const label of ['Chain', 'Sentinel', 'Trader']) {
+      expect(within(tablist).getByRole('tab', { name: new RegExp(label, 'i') })).toBeInTheDocument()
+    }
+    expect(within(tablist).queryByRole('tab', { name: /dashboard/i })).not.toBeInTheDocument()
   })
 })
 
@@ -64,11 +69,20 @@ describe('<Nav /> live indicator', () => {
   })
 })
 
-describe('<Nav /> navigation', () => {
-  it('calls setScreen and flips the store when a nav item is clicked', () => {
+describe('<Nav /> primary navigation', () => {
+  it('clicking a category jumps to its first subscreen', () => {
     render(<Nav />)
-    fireEvent.click(screen.getByRole('button', { name: /sentinel/i }))
-    expect(useMarketStore.getState().screen).toBe('sentinel')
+    fireEvent.click(screen.getByRole('button', { name: 'Bots' }))
+    // Bots' first subscreen is 'chain'.
+    expect(useMarketStore.getState().screen).toBe('chain')
+  })
+
+  it('clicking the active category does NOT change the screen', () => {
+    // Already on dashboard (markets). Clicking Marchés should be a no-op.
+    useMarketStore.setState({ screen: 'scanner' })
+    render(<Nav />)
+    fireEvent.click(screen.getByRole('button', { name: 'Marchés' }))
+    expect(useMarketStore.getState().screen).toBe('scanner')
   })
 
   it('routes back to dashboard when the NEXUS logo is clicked', () => {
@@ -78,13 +92,42 @@ describe('<Nav /> navigation', () => {
     expect(useMarketStore.getState().screen).toBe('dashboard')
   })
 
-  it('renders the active tab with the accent foreground color', () => {
+  it('renders the active category tab with the bold weight', () => {
     useMarketStore.setState({ screen: 'chain' })
     render(<Nav />)
-    const active = screen.getByRole('button', { name: /chain/i })
-    const inactive = screen.getByRole('button', { name: /trader/i })
-    // Active tab uses a bold weight; inactive buttons stay at regular weight.
+    const active = screen.getByRole('button', { name: 'Bots' })
+    const inactive = screen.getByRole('button', { name: 'Marchés' })
     expect(active).toHaveStyle({ fontWeight: '600' })
     expect(inactive).toHaveStyle({ fontWeight: '400' })
+  })
+})
+
+describe('<Nav /> secondary navigation', () => {
+  it('clicking a subscreen tab calls setScreen to that screen', () => {
+    render(<Nav />)
+    const tablist = screen.getByRole('tablist')
+    fireEvent.click(within(tablist).getByRole('tab', { name: /scanner/i }))
+    expect(useMarketStore.getState().screen).toBe('scanner')
+  })
+
+  it('marks the active subscreen tab with aria-selected=true', () => {
+    useMarketStore.setState({ screen: 'correlation' })
+    render(<Nav />)
+    const tablist = screen.getByRole('tablist')
+    const active = within(tablist).getByRole('tab', { name: /correlation/i })
+    const inactive = within(tablist).getByRole('tab', { name: /scanner/i })
+    expect(active).toHaveAttribute('aria-selected', 'true')
+    expect(inactive).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('shows the markets subnav when drilled into the detail screen', () => {
+    // detail is hidden from the subnav but should keep the markets
+    // category active so the user can navigate back via the same row.
+    useMarketStore.setState({ screen: 'detail' })
+    render(<Nav />)
+    const tablist = screen.getByRole('tablist')
+    expect(within(tablist).getByRole('tab', { name: /dashboard/i })).toBeInTheDocument()
+    // No "Detail" tab should render — it's a hidden drilldown.
+    expect(within(tablist).queryByRole('tab', { name: /^detail$/i })).not.toBeInTheDocument()
   })
 })

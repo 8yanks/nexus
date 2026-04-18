@@ -1,5 +1,44 @@
 # Session notes
 
+## 2026-04-18 — UX overhaul, Phase 1.3 (Nav 2 levels + 5 categories)
+
+Branch `ux-overhaul`. Continued the autonomous run. Phase 1.3 of the
+big visual + structural refonte landed.
+
+### Shipped
+
+1. **`<pending>` Nav refactor — 2-level top bar with 5 categories**
+   - New `src/ui/nav-categories.ts` defines the 5-category map:
+     Marchés (dashboard, scanner, correlation, macro), Bots (chain,
+     sentinel, trader), Recherche (backtest, quality), Informations
+     (vcflow, corporate, alerts, journal), Système (sources, export).
+     `detail` (drilldown) maps to Marchés but is hidden from the subnav.
+   - `Nav.tsx` rewritten: primary row = brand + 5 category tabs +
+     ANALYST MODE + LIVE indicator; secondary row = subscreens of the
+     active category (only rendered when ≥2 subscreens). Active
+     category derived from current screen via `categoryOf()`.
+     Click on a category jumps to its `landingOf()` (first subscreen)
+     unless already inside it (no-op).
+   - Uses the new `radius` tokens (btn, badge, pill) instead of the
+     hard-coded 4/50% values from v1.
+   - 14 new tests: 8 for `nav-categories` (shape, completeness, no
+     duplication, hidden-screen mapping), 6 net new for `<Nav />`
+     (5 categories render, secondary row swaps with category, click
+     active category is no-op, secondary tabs use aria-selected,
+     detail keeps Marchés subnav active).
+
+2. **`<pending>` fix(build): switch vite.config.ts to vitest/config**
+   - Pre-existing TS error `'test' does not exist in type 'UserConfigExport'`
+     was breaking `npm run build` since the vitest config block was
+     added. Imports now come from `vitest/config` so the augmented
+     UserConfig type accepts the `test` key.
+
+### Suite stats
+- 544 tests across 57 files (was 530/56). All green.
+- Type-check + build clean.
+
+---
+
 ## 2026-04-18 — autonomous polish pass (price labels + still-open list)
 
 User authorised a long autonomous run. Cleared every "still open" item

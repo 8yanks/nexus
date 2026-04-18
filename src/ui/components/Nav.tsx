@@ -18,149 +18,238 @@ import {
 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import type { Screen } from '@/store/market'
-import { colors, fonts } from '@/ui/theme'
+import { colors, fonts, radius } from '@/ui/theme'
+import {
+  CATEGORIES,
+  categoryOf,
+  landingOf,
+  screensForCategory,
+} from '@/ui/nav-categories'
 
-interface NavItem {
-  screen: Screen
-  label: string
-  icon: React.ReactNode
+// ─── ICON MAP ───────────────────────────────────────────────
+// Screen → icon. Centralising it here keeps the secondary subnav
+// declarative and shares the same pictograms across categories.
+const SCREEN_ICONS: Record<Screen, React.ReactNode> = {
+  dashboard:   <LayoutDashboard size={13} />,
+  detail:      <LayoutDashboard size={13} />,
+  scanner:     <ScanSearch size={13} />,
+  correlation: <GitCompareArrows size={13} />,
+  macro:       <Globe size={13} />,
+  chain:       <Workflow size={13} />,
+  sentinel:    <ShieldAlert size={13} />,
+  trader:      <Briefcase size={13} />,
+  backtest:    <FlaskConical size={13} />,
+  quality:     <ShieldCheck size={13} />,
+  vcflow:      <Rocket size={13} />,
+  corporate:   <Building2 size={13} />,
+  alerts:      <Bell size={13} />,
+  journal:     <BookOpen size={13} />,
+  sources:     <Database size={13} />,
+  export:      <Download size={13} />,
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { screen: 'dashboard',   label: 'Dashboard',   icon: <LayoutDashboard size={14} /> },
-  { screen: 'scanner',     label: 'Scanner',     icon: <ScanSearch size={14} /> },
-  { screen: 'alerts',      label: 'Alerts',      icon: <Bell size={14} /> },
-  { screen: 'correlation', label: 'Correlation', icon: <GitCompareArrows size={14} /> },
-  { screen: 'backtest',    label: 'Backtest',    icon: <FlaskConical size={14} /> },
-  { screen: 'corporate',   label: 'Corporate',   icon: <Building2 size={14} /> },
-  { screen: 'vcflow',      label: 'VC Flow',     icon: <Rocket size={14} /> },
-  { screen: 'macro',       label: 'Macro',       icon: <Globe size={14} /> },
-  { screen: 'quality',     label: 'Quality',     icon: <ShieldCheck size={14} /> },
-  { screen: 'sources',     label: 'Sources',     icon: <Database size={14} /> },
-  { screen: 'journal',     label: 'Journal',     icon: <BookOpen size={14} /> },
-  { screen: 'export',      label: 'Export',      icon: <Download size={14} /> },
-  { screen: 'chain',       label: 'Chain',       icon: <Workflow size={14} /> },
-  { screen: 'sentinel',    label: 'Sentinel',    icon: <ShieldAlert size={14} /> },
-  { screen: 'trader',      label: 'Trader',      icon: <Briefcase size={14} /> },
-]
+const SCREEN_LABELS: Record<Screen, string> = {
+  dashboard:   'Dashboard',
+  detail:      'Detail',
+  scanner:     'Scanner',
+  correlation: 'Correlation',
+  macro:       'Macro',
+  chain:       'Chain',
+  sentinel:    'Sentinel',
+  trader:      'Trader',
+  backtest:    'Backtest',
+  quality:     'Quality',
+  vcflow:      'VC Flow',
+  corporate:   'Corporate',
+  alerts:      'Alerts',
+  journal:     'Journal',
+  sources:     'Sources',
+  export:      'Export',
+}
 
 export const Nav = () => {
   const screen = useMarketStore((s) => s.screen)
   const setScreen = useMarketStore((s) => s.setScreen)
   const binanceConnected = useMarketStore((s) => s.binanceConnected)
 
+  const activeCategory = categoryOf(screen)
+  const subscreens = screensForCategory(activeCategory)
+
   return (
-    <nav
+    <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        padding: '6px 16px',
         background: colors.bgCard,
         borderBottom: `1px solid ${colors.border}`,
         fontFamily: fonts.sans,
       }}
     >
-      {/* Logo */}
-      <div
+      {/* ─── PRIMARY ROW — brand + 5 categories + status ─── */}
+      <nav
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          marginRight: 20,
-          cursor: 'pointer',
+          gap: 2,
+          padding: '6px 16px',
         }}
-        onClick={() => setScreen('dashboard')}
       >
-        <Activity size={16} style={{ color: colors.accent }} />
-        <span
+        {/* Logo */}
+        <div
           style={{
-            fontWeight: 800,
-            fontSize: 14,
-            color: colors.accent,
-            fontFamily: fonts.mono,
-            letterSpacing: '0.12em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginRight: 24,
+            cursor: 'pointer',
           }}
+          onClick={() => setScreen('dashboard')}
         >
-          NEXUS
-        </span>
-      </div>
-
-      {/* Nav items */}
-      {NAV_ITEMS.map((item) => {
-        const isActive = screen === item.screen
-        return (
-          <button
-            key={item.screen}
-            onClick={() => setScreen(item.screen)}
+          <Activity size={16} style={{ color: colors.accent }} />
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '5px 10px',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontSize: 12,
-              fontFamily: fonts.sans,
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? colors.accent : colors.textMuted,
-              background: isActive ? `${colors.accent}12` : 'transparent',
-              borderBottom: isActive ? `2px solid ${colors.accent}` : '2px solid transparent',
-              transition: 'all 0.12s ease',
+              fontWeight: 800,
+              fontSize: 14,
+              color: colors.accent,
+              fontFamily: fonts.mono,
+              letterSpacing: '0.12em',
             }}
           >
-            {item.icon}
-            {item.label}
-          </button>
-        )
-      })}
+            NEXUS
+          </span>
+        </div>
 
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
+        {/* Category tabs */}
+        {CATEGORIES.map((cat) => {
+          const isActive = cat.id === activeCategory
+          return (
+            <button
+              key={cat.id}
+              onClick={() => {
+                if (cat.id !== activeCategory) {
+                  setScreen(landingOf(cat.id))
+                }
+              }}
+              data-category={cat.id}
+              data-active={isActive ? 'true' : 'false'}
+              style={{
+                padding: '6px 14px',
+                border: 'none',
+                borderRadius: radius.btn,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontFamily: fonts.sans,
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? colors.text : colors.textMuted,
+                background: isActive ? colors.bgHover : 'transparent',
+                letterSpacing: '0.02em',
+                transition: 'background 0.12s ease, color 0.12s ease',
+              }}
+            >
+              {cat.label}
+            </button>
+          )
+        })}
 
-      {/* Analyst Mode badge */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '3px 10px',
-          borderRadius: 4,
-          background: `${colors.cyan}15`,
-          border: `1px solid ${colors.cyan}30`,
-          marginRight: 12,
-        }}
-      >
-        <span
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Analyst Mode badge */}
+        <div
           style={{
-            fontSize: 10,
-            fontFamily: fonts.mono,
-            fontWeight: 700,
-            color: colors.cyan,
-            letterSpacing: '0.08em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 10px',
+            borderRadius: radius.badge,
+            background: colors.bgHover,
+            border: `1px solid ${colors.border}`,
+            marginRight: 12,
           }}
         >
-          ANALYST MODE
-        </span>
-      </div>
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              fontWeight: 700,
+              color: colors.textSecondary,
+              letterSpacing: '0.08em',
+            }}
+          >
+            ANALYST MODE
+          </span>
+        </div>
 
-      {/* Live indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span
+        {/* Live indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: radius.pill,
+              background: binanceConnected ? colors.green : colors.red,
+              boxShadow: binanceConnected ? `0 0 6px ${colors.green}` : undefined,
+            }}
+          />
+          <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textDim, letterSpacing: '0.04em' }}>
+            {binanceConnected ? 'LIVE' : 'OFFLINE'}
+          </span>
+        </div>
+      </nav>
+
+      {/* ─── SECONDARY ROW — subscreens of active category ─── */}
+      {/*
+       * Rendered only when the active category has more than one
+       * subscreen. Single-screen categories (none today, but possible)
+       * would just clutter the chrome with a one-button row.
+       */}
+      {subscreens.length > 1 && (
+        <div
+          role="tablist"
+          aria-label={`${activeCategory} subscreens`}
           style={{
-            display: 'inline-block',
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: binanceConnected ? colors.green : colors.red,
-            boxShadow: binanceConnected ? `0 0 6px ${colors.green}` : undefined,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            padding: '4px 16px 6px',
+            borderTop: `1px solid ${colors.border}`,
+            background: colors.bg,
           }}
-        />
-        <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textDim, letterSpacing: '0.04em' }}>
-          {binanceConnected ? 'LIVE' : 'OFFLINE'}
-        </span>
-      </div>
-    </nav>
+        >
+          {subscreens.map((s) => {
+            const isActive = screen === s
+            return (
+              <button
+                key={s}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setScreen(s)}
+                data-screen={s}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '4px 10px',
+                  border: 'none',
+                  borderRadius: radius.btn,
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: fonts.sans,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? colors.accent : colors.textMuted,
+                  background: isActive ? colors.bgHover : 'transparent',
+                  borderBottom: isActive
+                    ? `2px solid ${colors.accent}`
+                    : '2px solid transparent',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                {SCREEN_ICONS[s]}
+                {SCREEN_LABELS[s]}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
