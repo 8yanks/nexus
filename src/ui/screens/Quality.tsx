@@ -1,24 +1,43 @@
-import { ShieldCheck, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { QualityBar } from '@/ui/components/QualityBar'
 import { StatusBadge } from '@/ui/components/StatusBadge'
-import { colors, fonts, card, thStyle, tdStyle, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
+import { colors, fonts, radius, card, thStyle, tdStyle, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 export const Quality = () => {
   const instruments = useMarketStore((s) => s.instruments)
   const quality = useMarketStore((s) => s.quality)
   const readiness = useMarketStore((s) => s.readiness)
 
-  return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <ShieldCheck size={18} style={{ color: colors.accent }} />
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text, fontFamily: fonts.sans }}>
-          Data Quality
-        </h1>
-      </div>
+  const readyColor = readiness?.ready ? colors.green : colors.red
 
+  return (
+    <>
+      <ScreenHeader
+        title="Data Quality"
+        subtitle="Score de complétude/fraîcheur/fiabilité par instrument + verdict global de readiness pour l'analyse."
+        badge={
+          readiness ? (
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: radius.badge,
+                background: colors.bgHover,
+                border: `1px solid ${colors.border}`,
+                fontSize: 10,
+                fontFamily: fonts.mono,
+                color: readyColor,
+                letterSpacing: '0.04em',
+              }}
+              data-testid="quality-readiness-badge"
+            >
+              {(readiness.score * 100).toFixed(0)}% {readiness.ready ? 'ready' : 'not ready'}
+            </span>
+          ) : undefined
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Readiness Panel */}
       {readiness && (
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr auto', gap: 16, marginBottom: 16 }}>
@@ -130,6 +149,7 @@ export const Quality = () => {
           <div style={emptyState}>Waiting for first data refresh...</div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

@@ -1,9 +1,19 @@
-import { Download, FileText, FileJson, Package } from 'lucide-react'
+import { FileText, FileJson, Package } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { snapshotsToCSV, downloadCSV } from '@/export/csv'
 import { buildExportPayload, downloadJSON } from '@/export/json'
 import { getJournal } from '@/signals/journal'
-import { colors, fonts, card, btnPrimary, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
+import {
+  colors,
+  radius,
+  card,
+  btnPrimary,
+  sectionHeader,
+  statLabel,
+  statValue,
+  emptyState,
+} from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 export const Export = () => {
   const instruments = useMarketStore((s) => s.instruments)
@@ -33,15 +43,43 @@ export const Export = () => {
   const signalCount = getJournal().length
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <Download size={18} style={{ color: colors.accent }} />
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text, fontFamily: fonts.sans }}>
-          Export Data
-        </h1>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Export Data"
+        subtitle="Export CSV (table à plat) ou JSON (structure complète) de l'état marché courant + signaux + qualité."
+        badge={
+          snapshotCount > 0 ? (
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: radius.badge,
+                background: colors.bgHover,
+                fontSize: 10,
+                color: colors.green,
+                letterSpacing: '0.04em',
+              }}
+              data-testid="export-ready-badge"
+            >
+              ready
+            </span>
+          ) : (
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: radius.badge,
+                background: colors.bgHover,
+                fontSize: 10,
+                color: colors.textMuted,
+                letterSpacing: '0.04em',
+              }}
+              data-testid="export-empty-badge"
+            >
+              waiting for data
+            </span>
+          )
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Status + Actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Status */}
@@ -114,5 +152,6 @@ export const Export = () => {
         </div>
       </div>
     </div>
+    </>
   )
 }

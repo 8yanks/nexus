@@ -1,6 +1,7 @@
-import { Database, Wifi, WifiOff, FlaskConical, AlertCircle } from 'lucide-react'
+import { Wifi, WifiOff, FlaskConical, AlertCircle } from 'lucide-react'
 import { PROVIDER_DEFS } from '@/providers/registry'
-import { colors, fonts, card, statLabel, statValue } from '@/ui/theme'
+import { colors, fonts, radius, card, statLabel, statValue } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
   active:       <Wifi size={14} />,
@@ -22,15 +23,29 @@ export const Sources = () => {
   const offlineCount = PROVIDER_DEFS.filter((p) => p.status === 'disconnected').length
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <Database size={18} style={{ color: colors.accent }} />
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text, fontFamily: fonts.sans }}>
-          Data Sources
-        </h1>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Data Sources"
+        subtitle="Inventaire des providers de données configurés. Le statut est figé au démarrage — un reload est nécessaire pour repolling."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: activeCount > 0 ? colors.green : colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="sources-active-badge"
+          >
+            {activeCount}/{PROVIDER_DEFS.length} active
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         {[
@@ -114,6 +129,7 @@ export const Sources = () => {
           )
         })}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

@@ -1,5 +1,34 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.3 (retrofit Sources + Export + Quality)
+
+Branch `ux-overhaul`. Three more screens of the Système group adopt
+`<ScreenHeader />` — closes out the small-screen pass before tackling
+the high-traffic ones (Dashboard / Chain / Trader / Sentinel / Detail).
+
+### Shipped
+
+1. **`<HASH>` Sources + Export + Quality use `<ScreenHeader />`**
+   - Sources: header carries `{n}/{total} active` badge (green if any
+     provider is `active`, grey otherwise). Subtitle reminds the user
+     that provider status is frozen at boot — a reload is required.
+   - Export: header carries a `ready` (green) / `waiting for data`
+     (grey) badge driven by snapshot count. Subtitle summarises CSV
+     vs JSON contents.
+   - Quality: header carries a `{n}% ready / not ready` badge driven
+     by `readiness.score` and `readiness.ready`. Subtitle summarises
+     what the screen scores.
+   - All three drop their hand-rolled `<header>` blocks. Inner content
+     padding tightened from 16 → 14 to match the established pattern.
+   - 599 existing tests still pass — none of these screens had RTL
+     coverage (gap noted earlier in NOTES; covered in Phase 4).
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.2 (retrofit Journal + Alerts)
 
 Branch `ux-overhaul`. Two more screens adopt `<ScreenHeader />`. Both
