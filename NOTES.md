@@ -1,5 +1,38 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 2.1 (ScreenHeader + ScreenSettings)
+
+Branch `ux-overhaul`. Phase 2 starts. Phase 2.1 ships the building
+blocks; adoption in existing screens is split out into Phase 3 so each
+screen's refonte is reviewable independently.
+
+### Shipped
+
+1. **`<pending>` ScreenHeader + ScreenSettings building blocks**
+   - `src/ui/components/ScreenHeader.tsx` — standardised header for
+     every screen. Slots: title, subtitle, badge (right of title),
+     actions (right side), settings (per-screen drawer content).
+     When `settings` is provided, a ⚙ button toggles the drawer.
+   - `src/ui/components/ScreenSettings.tsx` — inline drawer that
+     drops in below the header (NOT a modal — the user keeps the
+     screen state visible while tweaking). Closes via the X button
+     or Escape key (handles both body-focus and inside-drawer focus).
+   - 16 new tests. ScreenHeader: chrome (title h1, subtitle present /
+     absent), badge + actions slots render passed nodes, ⚙ toggle
+     (no settings ⇒ no button, click toggles aria-expanded + drawer
+     visibility, custom settingsTitle wins). ScreenSettings: chrome
+     (region with title, h2 title, children passthrough), close
+     behaviour (X click + Escape from body + Escape from inside-drawer
+     focus all call onClose; non-Escape keys ignored).
+   - No screen adopts these yet — that's Phase 3 work, one screen
+     per commit, easier to review.
+
+### Suite stats
+- 595 tests across 62 files (was 579/60). All green.
+- Type-check + build clean.
+
+---
+
 ## 2026-04-18 — UX overhaul, Phase 1.5 (Workspace store + switcher)
 
 Branch `ux-overhaul`. Phase 1.5 lands the workspace concept end-to-end.
