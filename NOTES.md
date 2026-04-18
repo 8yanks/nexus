@@ -7,7 +7,7 @@ big visual + structural refonte landed.
 
 ### Shipped
 
-1. **`<pending>` Nav refactor — 2-level top bar with 5 categories**
+1. **`5afe802` Nav refactor — 2-level top bar with 5 categories**
    - New `src/ui/nav-categories.ts` defines the 5-category map:
      Marchés (dashboard, scanner, correlation, macro), Bots (chain,
      sentinel, trader), Recherche (backtest, quality), Informations
@@ -27,7 +27,7 @@ big visual + structural refonte landed.
      active category is no-op, secondary tabs use aria-selected,
      detail keeps Marchés subnav active).
 
-2. **`<pending>` fix(build): switch vite.config.ts to vitest/config**
+2. **`5389b30` fix(build): switch vite.config.ts to vitest/config**
    - Pre-existing TS error `'test' does not exist in type 'UserConfigExport'`
      was breaking `npm run build` since the vitest config block was
      added. Imports now come from `vitest/config` so the augmented
