@@ -8,7 +8,7 @@ visible impact across the whole app at module-load.
 
 ### Shipped
 
-1. **`<pending>` Apply density tokens to card / thStyle / tdStyle**
+1. **`ecc3b35` Apply density tokens to card / thStyle / tdStyle**
    - `card.padding`     → `activeDensity.padCard`
    - `thStyle.padding`  → `${activeDensity.padPanel}px 12px`
    - `tdStyle.padding`  → `${max(padPanel - 2, 4)}px 12px`
