@@ -15,8 +15,17 @@
 
 import { palettes, fonts as tokenFonts, radius, density } from './tokens'
 import type { ThemeName, DensityName } from './tokens'
+import { loadTheme, loadDensity } from './prefs'
 
-const active = palettes.dark
+// Module-load: pick the active palette + density from persisted prefs.
+// This runs once before React mounts, so `colors.X` resolves against the
+// user's chosen theme immediately. Switching theme writes the new value
+// to localStorage and reloads the page; future migration to CSS vars
+// will remove the reload.
+export const activeThemeName: ThemeName = loadTheme()
+export const activeDensityName: DensityName = loadDensity()
+const active = palettes[activeThemeName]
+export const activeDensity = density[activeDensityName]
 
 // Aliases kept for backwards compatibility with the v1 colour names.
 // Each maps onto the new greyscale-layered palette.
