@@ -8,7 +8,7 @@ screen's refonte is reviewable independently.
 
 ### Shipped
 
-1. **`<pending>` ScreenHeader + ScreenSettings building blocks**
+1. **`9425915` ScreenHeader + ScreenSettings building blocks**
    - `src/ui/components/ScreenHeader.tsx` — standardised header for
      every screen. Slots: title, subtitle, badge (right of title),
      actions (right side), settings (per-screen drawer content).
