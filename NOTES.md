@@ -6,7 +6,7 @@ Branch `ux-overhaul`. Phase 1.5 lands the workspace concept end-to-end.
 
 ### Shipped
 
-1. **`<pending>` Workspaces — store + manager UI**
+1. **`01b8f5c` Workspaces — store + manager UI**
    - New `src/store/workspaces.ts`. Zustand store with manual
      localStorage persistence (versioned key `nexus.workspaces.v1`).
      Schema: `Workspace = { id, name, createdAt, theme, density }`.
