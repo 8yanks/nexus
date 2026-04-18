@@ -7,7 +7,7 @@ is the first — highest-traffic single screen of the app.
 
 ### Shipped
 
-1. **`<HASH>` Dashboard adopts `<ScreenHeader />`**
+1. **`c720225` Dashboard adopts `<ScreenHeader />`**
    - Title + subtitle replace the hand-rolled `<h1>` block.
    - Badge: live `updated {fmtAge}` clock (or `initializing`) — gives
      the user a constant signal that data is moving even when the
