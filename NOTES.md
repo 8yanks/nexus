@@ -8,7 +8,7 @@ the high-traffic ones (Dashboard / Chain / Trader / Sentinel / Detail).
 
 ### Shipped
 
-1. **`<HASH>` Sources + Export + Quality use `<ScreenHeader />`**
+1. **`97cae6e` Sources + Export + Quality use `<ScreenHeader />`**
    - Sources: header carries `{n}/{total} active` badge (green if any
      provider is `active`, grey otherwise). Subtitle reminds the user
      that provider status is frozen at boot — a reload is required.
