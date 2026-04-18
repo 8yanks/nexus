@@ -9,7 +9,7 @@ the higher-traffic ones (Dashboard / Chain / Trader / Sentinel / Detail).
 
 ### Shipped
 
-1. **`<pending>` Options now uses `<ScreenHeader />`**
+1. **`02b8c22` Options now uses `<ScreenHeader />`**
    - Removed the inline `<header>` block (h1 + p subtitle).
    - Replaced with `<ScreenHeader title="Options" subtitle="…" />`.
    - Outer wrapper switched from a single padded div to a fragment so
