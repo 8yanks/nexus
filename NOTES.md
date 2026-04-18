@@ -1,5 +1,31 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.1 (retrofit Options to ScreenHeader)
+
+Branch `ux-overhaul`. Phase 3 starts. Phase 3.1 is a one-screen pilot:
+retrofit Options.tsx to use the new ScreenHeader. Goal: validate that
+the building-block API works for a real screen before adopting it on
+the higher-traffic ones (Dashboard / Chain / Trader / Sentinel / Detail).
+
+### Shipped
+
+1. **`<pending>` Options now uses `<ScreenHeader />`**
+   - Removed the inline `<header>` block (h1 + p subtitle).
+   - Replaced with `<ScreenHeader title="Options" subtitle="…" />`.
+   - Outer wrapper switched from a single padded div to a fragment so
+     the header stretches edge-to-edge while the section grid keeps
+     the 920px max-width constraint.
+   - Inner content padding tightened from 20 → 18 to compensate for
+     the 14px header bottom-padding that the new chrome contributes.
+   - All 11 Options tests still pass without modification — the
+     accessible structure (h1 + section labels) is identical.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+- Type-check + build clean.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 2.2 (density tokens applied)
 
 Branch `ux-overhaul`. Phase 2.2 wires the density tokens into the

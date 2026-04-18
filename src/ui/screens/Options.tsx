@@ -40,6 +40,7 @@ import {
 } from '@/ui/prefs'
 import type { ThemeName, DensityName } from '@/ui/tokens'
 import { colors, fonts, radius, card, sectionHeader } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import { WorkspaceManager } from '@/ui/components/WorkspaceManager'
 
 // ─── ROW HELPERS ────────────────────────────────────────────
@@ -238,42 +239,20 @@ export const Options = () => {
   ]
 
   return (
-    <div
-      style={{
-        padding: '20px 24px',
-        maxWidth: 920,
-        margin: '0 auto',
-        fontFamily: fonts.sans,
-        color: colors.text,
-      }}
-    >
-      <header style={{ marginBottom: 18 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 18,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-            color: colors.text,
-          }}
-        >
-          Options
-        </h1>
-        <p
-          style={{
-            margin: '6px 0 0',
-            fontSize: 12,
-            color: colors.textMuted,
-            lineHeight: 1.5,
-          }}
-        >
-          Réglages globaux de l'interface, des données et du comportement.
-          Les changements de thème et de densité rechargent la page pour
-          réappliquer la palette&nbsp;; les autres réglages sont appliqués
-          en direct.
-        </p>
-      </header>
-
+    <>
+      <ScreenHeader
+        title="Options"
+        subtitle="Réglages globaux de l'interface, des données et du comportement. Les changements de thème et de densité rechargent la page pour réappliquer la palette ; les autres réglages sont appliqués en direct."
+      />
+      <div
+        style={{
+          padding: '18px 24px',
+          maxWidth: 920,
+          margin: '0 auto',
+          fontFamily: fonts.sans,
+          color: colors.text,
+        }}
+      >
       {/* 1. APPARENCE — fully wired */}
       <Section
         icon={<Settings size={14} />}
@@ -393,6 +372,7 @@ export const Options = () => {
       >
         <Placeholder note="À venir — Phase 2. Inclura : niveau de log, dump de l'état Zustand, reset complet du localStorage, drapeaux pour activer les screens en dev." />
       </Section>
-    </div>
+      </div>
+    </>
   )
 }
