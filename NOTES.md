@@ -9,7 +9,7 @@ crowded.
 
 ### Shipped
 
-1. **`<HASH>` ChainMonitor adopts `<ScreenHeader />`**
+1. **`10a1dcd` ChainMonitor adopts `<ScreenHeader />`**
    - Title + subtitle replace the implicit "first row is header" pattern.
    - Badge: `last: {outcome}` colour-coded (green=filled, red=vetoed,
      orange=ai-rejected, yellow=order-rejected).
