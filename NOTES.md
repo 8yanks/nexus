@@ -7,6 +7,23 @@ from the previous session's NOTES backlog. Six commits, all passing
 type-check + tests + build, all pushed to origin/ai-schemas-and-audit.
 
 ### Shipped
+0. **`be2337d` RTL coverage for Sentinel + Trader screens (after-arc)**
+   - Both screens were live since 2026-04-19 but had zero RTL coverage
+     despite handling business-critical actions (safe-mode toggle,
+     accept/dismiss review queue, close position).
+   - 9 tests for `<Sentinel />`: empty-state, approval-rate maths,
+     safe-mode checkbox round-trip, veto-reasons sort-by-count,
+     accept/dismiss queue handlers (with audit-log assertions).
+   - 7 tests for `<Trader />`: portfolio cards, fill-rate /
+     mean-slippage / rejected counts, open-positions table + close
+     button wiring, closed-positions panel + closure breakdown,
+     order-blotter status colours.
+   - `closePosition` side-effect can't be asserted via `setState`
+     fixtures because it routes through the positionManager
+     singleton — documented inline. Wiring (button rendered, handler
+     bound, no crash) is covered; close logic has its own unit tests.
+   - Suite: 491 tests across 52 files (was 475/52). All green.
+
 1. **`91c6ab6` clarify 24h price-change window with suffix + tooltip**
    - User reported NEXUS BTC/USD differed from TradingView/Google.
    - Diagnosis: not a bug. Binance rolling 24h vs Google's
@@ -64,7 +81,7 @@ type-check + tests + build, all pushed to origin/ai-schemas-and-audit.
    - 20 new tests across helper + RTL + integration layers.
 
 ### State
-- Tests: **475/475 pass** (was 439 → 446 → 455 → 475).
+- Tests: **491/491 pass** (was 439 → 446 → 455 → 475 → 491).
 - `npm run type-check` clean.
 - Vite build clean (251 kB main, 80 kB gzip — unchanged).
 - Branch: `ai-schemas-and-audit`, fully up to date with origin.
