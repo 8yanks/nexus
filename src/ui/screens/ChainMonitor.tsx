@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { AuditModule } from '@/types/audit'
 import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
 import {
+  EMPTY_FILTER,
   filterAuditEntries,
+  loadAuditFilter,
+  saveAuditFilter,
   uniqueModules,
   type AuditFilter,
 } from '@/ui/audit-filter'
@@ -73,11 +76,13 @@ export const ChainMonitor = () => {
     dismissReview,
   } = useChainStore()
 
-  const [auditFilter, setAuditFilter] = useState<AuditFilter>({
-    module: 'all',
-    query: '',
-  })
+  const [auditFilter, setAuditFilter] = useState<AuditFilter>(loadAuditFilter)
   const [drilldownId, setDrilldownId] = useState<string | null>(null)
+
+  // Persist filter on change (cleared back to localStorage when reset).
+  useEffect(() => {
+    saveAuditFilter(auditFilter)
+  }, [auditFilter])
   const moduleOptions = useMemo(() => uniqueModules(entries), [entries])
   const filteredEntries = useMemo(
     () => filterAuditEntries(entries, auditFilter),
@@ -657,7 +662,7 @@ export const ChainMonitor = () => {
             />
             {(auditFilter.module !== 'all' || auditFilter.query !== '') && (
               <button
-                onClick={() => setAuditFilter({ module: 'all', query: '' })}
+                onClick={() => setAuditFilter(EMPTY_FILTER)}
                 style={{ ...btnSmall, padding: '2px 8px' }}
               >
                 clear

@@ -43,3 +43,62 @@ export const uniqueModules = (entries: AuditEntry[]): AuditModule[] => {
   for (const e of entries) set.add(e.module)
   return Array.from(set).sort()
 }
+
+// ─── PERSISTENCE ─────────────────────────────────────────────
+// localStorage round-trip for the audit filter so it survives reloads.
+// Storage failures (no window, JSON parse error, security exceptions
+// in private mode) all fall through to EMPTY_FILTER — the filter is
+// cosmetic state, never worth surfacing as an error.
+
+export const AUDIT_FILTER_STORAGE_KEY = 'nexus.auditFilter.v1'
+
+const VALID_MODULES = new Set<AuditModule | 'all'>([
+  'all',
+  'analyst',
+  'sentinel',
+  'trader',
+  'broker',
+  'ai',
+  'system',
+])
+
+/** Validate a parsed JSON blob against the AuditFilter shape. */
+const isValidFilter = (raw: unknown): raw is AuditFilter => {
+  if (typeof raw !== 'object' || raw === null) return false
+  const r = raw as Record<string, unknown>
+  return (
+    typeof r.query === 'string' &&
+    typeof r.module === 'string' &&
+    VALID_MODULES.has(r.module as AuditModule | 'all')
+  )
+}
+
+/** Read the persisted filter (or EMPTY_FILTER on any failure). */
+export const loadAuditFilter = (): AuditFilter => {
+  if (typeof window === 'undefined') return EMPTY_FILTER
+  try {
+    const raw = window.localStorage.getItem(AUDIT_FILTER_STORAGE_KEY)
+    if (raw === null) return EMPTY_FILTER
+    const parsed = JSON.parse(raw) as unknown
+    return isValidFilter(parsed) ? parsed : EMPTY_FILTER
+  } catch {
+    return EMPTY_FILTER
+  }
+}
+
+/** Persist (or, when the filter is empty, clear) the stored value. */
+export const saveAuditFilter = (filter: AuditFilter): void => {
+  if (typeof window === 'undefined') return
+  try {
+    if (filter.module === 'all' && filter.query === '') {
+      window.localStorage.removeItem(AUDIT_FILTER_STORAGE_KEY)
+    } else {
+      window.localStorage.setItem(
+        AUDIT_FILTER_STORAGE_KEY,
+        JSON.stringify(filter),
+      )
+    }
+  } catch {
+    // intentionally swallow — see header comment
+  }
+}

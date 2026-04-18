@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   filterAuditEntries,
   uniqueModules,
   EMPTY_FILTER,
+  loadAuditFilter,
+  saveAuditFilter,
+  AUDIT_FILTER_STORAGE_KEY,
 } from '@/ui/audit-filter'
 import type { AuditEntry, AuditModule, AuditEventType } from '@/types/audit'
 
@@ -99,5 +102,57 @@ describe('uniqueModules', () => {
 
   it('returns empty array for an empty input', () => {
     expect(uniqueModules([])).toEqual([])
+  })
+})
+
+describe('audit filter persistence', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('returns EMPTY_FILTER when nothing is stored', () => {
+    expect(loadAuditFilter()).toEqual(EMPTY_FILTER)
+  })
+
+  it('round-trips a non-empty filter', () => {
+    const f = { module: 'sentinel' as const, query: 'veto' }
+    saveAuditFilter(f)
+    expect(loadAuditFilter()).toEqual(f)
+  })
+
+  it('clears the storage key when the filter is reset to empty', () => {
+    saveAuditFilter({ module: 'ai', query: 'x' })
+    expect(window.localStorage.getItem(AUDIT_FILTER_STORAGE_KEY)).not.toBeNull()
+    saveAuditFilter(EMPTY_FILTER)
+    expect(window.localStorage.getItem(AUDIT_FILTER_STORAGE_KEY)).toBeNull()
+  })
+
+  it('falls back to EMPTY_FILTER on malformed JSON', () => {
+    window.localStorage.setItem(AUDIT_FILTER_STORAGE_KEY, '{not json')
+    expect(loadAuditFilter()).toEqual(EMPTY_FILTER)
+  })
+
+  it('rejects a payload with the wrong shape', () => {
+    window.localStorage.setItem(
+      AUDIT_FILTER_STORAGE_KEY,
+      JSON.stringify({ module: 42, query: null }),
+    )
+    expect(loadAuditFilter()).toEqual(EMPTY_FILTER)
+  })
+
+  it('rejects an unknown module value', () => {
+    window.localStorage.setItem(
+      AUDIT_FILTER_STORAGE_KEY,
+      JSON.stringify({ module: 'malicious', query: '' }),
+    )
+    expect(loadAuditFilter()).toEqual(EMPTY_FILTER)
+  })
+
+  it('accepts every documented module', () => {
+    const modules = ['analyst', 'sentinel', 'trader', 'broker', 'ai', 'system'] as const
+    for (const m of modules) {
+      saveAuditFilter({ module: m, query: '' })
+      expect(loadAuditFilter().module).toBe(m)
+    }
   })
 })
