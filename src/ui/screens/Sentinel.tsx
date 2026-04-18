@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
-import { colors, fonts, btnSmall } from '@/ui/theme'
+import { colors, fonts, radius, btnSmall } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── SENTINEL SCREEN ────────────────────────────────────────
 // Dedicated view for the risk-guardrail bot: rules, safe mode, review
@@ -62,51 +63,39 @@ export const Sentinel = () => {
   }, [vetos])
 
   return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: fonts.sans,
-        color: colors.text,
-        display: 'grid',
-        gap: 12,
-      }}
-    >
-      {/* Header + safe-mode toggle */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <div
+    <>
+      <ScreenHeader
+        title="Sentinel"
+        subtitle="Garde-fou risque: rules actives, file de revue humaine, historique des vetos avec breakdown par raison."
+        badge={
+          <span
             style={{
-              fontSize: 18,
-              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
               color: colors.yellow,
+              letterSpacing: '0.04em',
             }}
+            data-testid="sentinel-stats-badge"
           >
-            Sentinel
-          </div>
-          <div style={{ ...mono, color: colors.textMuted, marginTop: 2 }}>
-            risk guardrail · {stats.total} checks · {stats.vetoed} vetoed ·{' '}
-            {stats.approved} approved
-          </div>
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
+            {stats.total} checks · {stats.vetoed} vetoed · {stats.approved} approved
+          </span>
+        }
+        actions={
           <label
             style={{
               ...mono,
-              fontSize: 12,
+              fontSize: 11,
               color: safeMode ? colors.red : colors.textSecondary,
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 6,
               cursor: 'pointer',
-              padding: '4px 10px',
-              borderRadius: 4,
+              padding: '3px 10px',
+              borderRadius: radius.btn,
               border: `1px solid ${safeMode ? colors.red : colors.border}`,
               background: safeMode ? `${colors.red}10` : 'transparent',
             }}
@@ -119,9 +108,17 @@ export const Sentinel = () => {
             />
             safe mode {safeMode ? 'ACTIVE' : 'off'}
           </label>
-        </div>
-      </div>
-
+        }
+      />
+      <div
+        style={{
+          padding: '14px 20px',
+          fontFamily: fonts.sans,
+          color: colors.text,
+          display: 'grid',
+          gap: 12,
+        }}
+      >
       {/* Stat cards */}
       <div
         style={{
@@ -420,6 +417,7 @@ export const Sentinel = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

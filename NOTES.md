@@ -1,5 +1,30 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.7 (retrofit Sentinel)
+
+Branch `ux-overhaul`. Sentinel screen retrofit. Closes the bots
+group (Chain + Trader + Sentinel — all three converted).
+
+### Shipped
+
+1. **`<HASH>` Sentinel adopts `<ScreenHeader />`**
+   - Title + subtitle replace the yellow hand-rolled header.
+   - Badge: `{checks} checks · {vetoed} vetoed · {approved} approved`
+     in yellow. The numeric story of the screen at a glance.
+   - Actions: the safe-mode toggle (a check input) lives in the
+     header so it's always visible — moving it to a settings drawer
+     would have hidden the most-important on/off switch in this
+     screen. Border colour goes red when active.
+   - Inner padding tightened 16 → 14 to match the established pattern.
+   - All 599 existing tests still pass — Sentinel.test.tsx assertions
+     for the safe-mode label still resolve via getByText.
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.6 (retrofit Trader)
 
 Branch `ux-overhaul`. Trader screen retrofit. Same template as the
