@@ -1,5 +1,30 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.6 (retrofit Trader)
+
+Branch `ux-overhaul`. Trader screen retrofit. Same template as the
+others but with a custom badge + actions composition tuned for an
+execution view.
+
+### Shipped
+
+1. **`<HASH>` Trader adopts `<ScreenHeader />`**
+   - Title + subtitle replace the hand-rolled purple `<div>` header.
+   - Badge: `paper · {n} orders · {n} pos` in purple — gives the user
+     a constant SIM/dry-run reminder so it's clear nothing is real.
+   - Actions: live `net PnL {sum}` colour-coded green/red — surfaces
+     the most important number to the screen-glance.
+   - Inner padding aligned 16 → 14 to match the pattern.
+   - One pre-existing test had to update (Trader.test.tsx empty-state
+     assertion looked for the old subtitle text). All 599 tests still
+     green after the fixture update.
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.5 (retrofit ChainMonitor)
 
 Branch `ux-overhaul`. ChainMonitor is the second of the bigger screens

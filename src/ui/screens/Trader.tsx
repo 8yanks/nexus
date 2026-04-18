@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useChainStore } from '@/store/chain'
-import { colors, fonts, btnSmall } from '@/ui/theme'
+import { colors, fonts, radius, btnSmall } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── TRADER SCREEN ──────────────────────────────────────────
 // Dedicated view for the execution bot: portfolio, positions (open +
@@ -69,32 +70,48 @@ export const Trader = () => {
   }, [closedPositions])
 
   return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: fonts.sans,
-        color: colors.text,
-        display: 'grid',
-        gap: 12,
-      }}
-    >
-      {/* Header */}
-      <div>
-        <div
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            color: colors.purple,
-          }}
-        >
-          Trader
-        </div>
-        <div style={{ ...mono, color: colors.textMuted, marginTop: 2 }}>
-          paper execution · {orderStats.total} orders · {positions.length}{' '}
-          positions · dry-run only
-        </div>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Trader"
+        subtitle="Vue execution: portfolio, positions ouvertes/fermées, blotter d'ordres, slippage. Paper trading uniquement — dry-run."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.purple,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="trader-paper-badge"
+          >
+            paper · {orderStats.total} orders · {positions.length} pos
+          </span>
+        }
+        actions={
+          <span
+            style={{
+              ...mono,
+              color: pnlColor(portfolio.unrealizedPnl + portfolio.realizedPnl),
+            }}
+            data-testid="trader-pnl-summary"
+          >
+            net PnL {(portfolio.unrealizedPnl + portfolio.realizedPnl).toFixed(2)}
+          </span>
+        }
+      />
+      <div
+        style={{
+          padding: '14px 20px',
+          fontFamily: fonts.sans,
+          color: colors.text,
+          display: 'grid',
+          gap: 12,
+        }}
+      >
       {/* Portfolio stat row */}
       <div
         style={{
@@ -422,6 +439,7 @@ export const Trader = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

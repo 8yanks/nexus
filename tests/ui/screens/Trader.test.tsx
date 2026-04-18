@@ -85,7 +85,7 @@ afterEach(() => cleanup())
 describe('<Trader /> empty state', () => {
   it('renders the dry-run subtitle and zero-state copy', () => {
     render(<Trader />)
-    expect(screen.getByText(/0 orders · 0 positions · dry-run only/i)).toBeInTheDocument()
+    expect(screen.getByText(/paper · 0 orders · 0 pos/i)).toBeInTheDocument()
     expect(screen.getByText(/no open positions/i)).toBeInTheDocument()
     // Order blotter and closed positions panels collapse to "—".
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
