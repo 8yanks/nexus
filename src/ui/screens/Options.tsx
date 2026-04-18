@@ -40,6 +40,7 @@ import {
 } from '@/ui/prefs'
 import type { ThemeName, DensityName } from '@/ui/tokens'
 import { colors, fonts, radius, card, sectionHeader } from '@/ui/theme'
+import { WorkspaceManager } from '@/ui/components/WorkspaceManager'
 
 // ─── ROW HELPERS ────────────────────────────────────────────
 
@@ -375,13 +376,13 @@ export const Options = () => {
         <Placeholder note="À venir — Phase 2. Inclura : nombre maximal d'entrées, age max, purge manuelle, export avant purge." />
       </Section>
 
-      {/* 7. WORKSPACES — Phase 1.5 */}
+      {/* 7. WORKSPACES — wired (Phase 1.5) */}
       <Section
         icon={<LayoutGrid size={14} />}
         title="Workspaces"
-        hint="Configurations nommées (filtres, layout, watchlists) à recharger à la volée."
+        hint="Snapshots nommés de votre combinaison thème + densité. Phase 1.5 ne couvre que ces deux champs ; les filtres et le layout viendront s'y greffer plus tard."
       >
-        <Placeholder note="À venir — Phase 1.5. Inclura : sauvegarde de la configuration courante sous un nom, switcher rapide depuis la nav, suppression / renommage." />
+        <WorkspaceManager />
       </Section>
 
       {/* 8. AVANCÉ — placeholder */}

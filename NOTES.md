@@ -1,5 +1,46 @@
 # Session notes
 
+## 2026-04-18 — UX overhaul, Phase 1.5 (Workspace store + switcher)
+
+Branch `ux-overhaul`. Phase 1.5 lands the workspace concept end-to-end.
+
+### Shipped
+
+1. **`<pending>` Workspaces — store + manager UI**
+   - New `src/store/workspaces.ts`. Zustand store with manual
+     localStorage persistence (versioned key `nexus.workspaces.v1`).
+     Schema: `Workspace = { id, name, createdAt, theme, density }`.
+     Mirrors the existing pattern in `prefs.ts` / audit-filter
+     (read-on-init + write-on-change, validate-then-default on read).
+   - Actions: `createWorkspace`, `renameWorkspace`, `deleteWorkspace`,
+     `applyWorkspace`. Apply writes to the prefs keys + queues a
+     reload via the same setTimeout(0) pattern as setTheme/setDensity,
+     so the rest of the app sees the new palette consistently.
+     Defensive: returns false on unknown id; clears activeId if the
+     active workspace is deleted.
+   - New `src/ui/components/WorkspaceManager.tsx` — list + create
+     row + per-row Activer / Renommer / Supprimer actions. Empty
+     state explains the concept. Newest-first ordering.
+   - Wired into Options.tsx (replaces the Phase 1.5 placeholder).
+   - Phase 1.5 only snapshots theme + density. The Workspace shape
+     is the only thing future phases need to extend; the manager UI
+     iterates the field set generically.
+
+### Suite stats
+- 579 tests across 60 files (was 555/58). All green.
+- Type-check + build clean.
+- 14 new store tests: create (empty-name fallback, persistence,
+  stable id), rename (empty no-op, unknown id no-op), delete
+  (clears activeId iff active, preserves otherwise), apply (writes
+  prefs, flips activeId, returns false on unknown id), persistence
+  shape guards (defensive against malformed JSON, bad theme).
+- 10 new component tests: empty state, create flow (open input,
+  Enter commits, Escape cancels), list rendering (theme/density
+  meta, newest-first ordering, active marker + disabled Activer),
+  apply / delete / rename (Enter commits, Escape reverts).
+
+---
+
 ## 2026-04-18 — UX overhaul, Phase 1.4 (Options screen skeleton)
 
 Branch `ux-overhaul`. Phase 1.4 lands the user-facing Options hub.
