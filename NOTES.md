@@ -7,7 +7,7 @@ chosen for size + simplicity (≤120 lines, no nested state machines).
 
 ### Shipped
 
-1. **`<pending>` Journal + Alerts use `<ScreenHeader />`**
+1. **`b56bac3` Journal + Alerts use `<ScreenHeader />`**
    - Journal: header carries the `{n} signal{s}` count as a badge so
      the user can see the queue size without scanning the table. The
      subtitle clarifies that only the 200 most-recent entries render.
