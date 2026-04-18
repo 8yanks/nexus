@@ -1,5 +1,33 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 2.2 (density tokens applied)
+
+Branch `ux-overhaul`. Phase 2.2 wires the density tokens into the
+shared theme styles so the Options → Apparence → Densité toggle has
+visible impact across the whole app at module-load.
+
+### Shipped
+
+1. **`<pending>` Apply density tokens to card / thStyle / tdStyle**
+   - `card.padding`     → `activeDensity.padCard`
+   - `thStyle.padding`  → `${activeDensity.padPanel}px 12px`
+   - `tdStyle.padding`  → `${max(padPanel - 2, 4)}px 12px`
+   - Buttons (btnPrimary / btnSecondary / btnSmall) intentionally
+     stay fixed — they're interaction elements, not layout. Same for
+     the badge (visual contrast with rows matters more than density
+     coherence at that scale).
+   - At the default `comfy` density (padCard=14, padPanel=10) the
+     visible change is: card padding goes 16 → 14 (a 2px tighten);
+     table cell paddings stay where they were (10 / 8). Compact
+     tightens to 8/6/4; spacious loosens to 20/14/12.
+   - 4 new tests in `theme-density.test.ts` assert the read paths.
+
+### Suite stats
+- 599 tests across 63 files (was 595/62). All green.
+- Type-check + build clean.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 2.1 (ScreenHeader + ScreenSettings)
 
 Branch `ux-overhaul`. Phase 2 starts. Phase 2.1 ships the building

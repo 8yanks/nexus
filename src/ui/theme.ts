@@ -87,14 +87,19 @@ export { radius, density, palettes }
 export type { ThemeName, DensityName }
 
 // ─── SHARED STYLES ──────────────────────────────────────────
-// Ported to v2 radius tokens. Padding/font sizes will move to density
-// tokens when ScreenHeader/ScreenSettings ship in phase 2.
+// Ported to v2 radius + density tokens. Card padding and table cell
+// vertical paddings now read from `activeDensity`, so a single switch
+// in Options → Apparence → Densité rescales every card / table row at
+// module-load. Buttons keep fixed paddings (interaction elements, not
+// layout); the badge keeps its tight 2/8 padding for visual contrast
+// with table cells. Font sizes will follow density in a later commit
+// once the type scale is locked in.
 
 export const card: React.CSSProperties = {
   background: colors.bgCard,
   border: `1px solid ${colors.border}`,
   borderRadius: radius.card,
-  padding: 16,
+  padding: activeDensity.padCard,
 }
 
 export const cardElevated: React.CSSProperties = {
@@ -112,9 +117,12 @@ export const badge: React.CSSProperties = {
   letterSpacing: '0.03em',
 }
 
-// Table styles — reusable across screens
+// Table styles — reusable across screens. Vertical padding tracks
+// density.padPanel so denser layouts feel uniformly tighter; horizontal
+// padding stays fixed at 12 because columns are sized by content, not
+// density.
 export const thStyle: React.CSSProperties = {
-  padding: '10px 12px',
+  padding: `${activeDensity.padPanel}px 12px`,
   textAlign: 'left',
   fontSize: 11,
   fontWeight: 600,
@@ -130,7 +138,7 @@ export const thStyle: React.CSSProperties = {
 }
 
 export const tdStyle: React.CSSProperties = {
-  padding: '8px 12px',
+  padding: `${Math.max(activeDensity.padPanel - 2, 4)}px 12px`,
   fontSize: 13,
   borderBottom: `1px solid ${colors.border}`,
   color: colors.text,
