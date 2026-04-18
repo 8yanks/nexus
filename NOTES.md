@@ -1,5 +1,36 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.5 (retrofit ChainMonitor)
+
+Branch `ux-overhaul`. ChainMonitor is the second of the bigger screens
+to adopt `<ScreenHeader />`. First real test of the settings drawer
+slot — the screen has many controls and the toolbar was getting
+crowded.
+
+### Shipped
+
+1. **`<HASH>` ChainMonitor adopts `<ScreenHeader />`**
+   - Title + subtitle replace the implicit "first row is header" pattern.
+   - Badge: `last: {outcome}` colour-coded (green=filled, red=vetoed,
+     orange=ai-rejected, yellow=order-rejected).
+   - Actions slot: compact `ctx: {instrumentId|synthetic}` indicator
+     so the user can see at a glance whether the chain is running on
+     real market data or a synthetic stub.
+   - Settings drawer: Safe Mode + Auto-Run + Auto-Run interval — the
+     three controls that were taking ⅓ of the toolbar width. Now
+     hidden until the user opens ⚙. Toolbar keeps Run / Clear /
+     Export CSV / Export JSON (the actions a user takes per session).
+   - Inner padding aligned to 14px 20px to match the pattern.
+   - All 599 existing tests still pass — ChainMonitor has dense
+     coverage (audit-filter, chain wiring, drilldown) but no header
+     selectors, so the rewrite is invisible to the suite.
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.4 (retrofit Dashboard)
 
 Branch `ux-overhaul`. Phase 3 enters the bigger screens. Dashboard

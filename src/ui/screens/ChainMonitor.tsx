@@ -11,7 +11,8 @@ import {
   uniqueModules,
   type AuditFilter,
 } from '@/ui/audit-filter'
-import { colors, fonts, btnSecondary, btnSmall } from '@/ui/theme'
+import { colors, fonts, radius, btnSecondary, btnSmall } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import {
   decisionsToCSV,
   vetosToCSV,
@@ -130,134 +131,166 @@ export const ChainMonitor = () => {
   }
 
   return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: fonts.sans,
-        color: colors.text,
-        display: 'grid',
-        gap: 12,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button
-          onClick={() => void runDemo()}
-          title="Run the decision chain (shortcut: r)"
-          style={{
-            background: colors.accent,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 4,
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontFamily: fonts.sans,
-            fontSize: 12,
-          }}
-        >
-          Run decision chain{' '}
-          <kbd
-            style={{
-              fontFamily: fonts.mono,
-              fontSize: 10,
-              padding: '0 4px',
-              marginLeft: 2,
-              background: 'rgba(255,255,255,0.15)',
-              borderRadius: 2,
-            }}
-          >
-            r
-          </kbd>
-        </button>
-        <button onClick={clear} style={btnSecondary}>
-          Clear
-        </button>
-        <button
-          onClick={() => exportAll('csv')}
-          disabled={decisions.length + orders.length + positions.length === 0}
-          style={{
-            ...btnSecondary,
-            opacity:
-              decisions.length + orders.length + positions.length === 0 ? 0.4 : 1,
-          }}
-        >
-          Export CSV
-        </button>
-        <button onClick={() => exportAll('json')} style={btnSecondary}>
-          Export JSON
-        </button>
-        {lastOutcome && (
-          <span style={{ ...mono, color: stageColor(lastOutcome) }}>
-            last: {lastOutcome}
+    <>
+      <ScreenHeader
+        title="Chain Monitor"
+        subtitle="Pipeline de décision: scoring → AI → sentinel → exécution paper. Audit trail complet + drilldown par décision."
+        badge={
+          lastOutcome ? (
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: radius.badge,
+                background: colors.bgHover,
+                border: `1px solid ${colors.border}`,
+                fontSize: 10,
+                fontFamily: fonts.mono,
+                color: stageColor(lastOutcome),
+                letterSpacing: '0.04em',
+              }}
+              data-testid="chain-outcome-badge"
+            >
+              last: {lastOutcome}
+            </span>
+          ) : undefined
+        }
+        actions={
+          <span style={{ ...mono, color: colors.textMuted }}>
+            ctx:{' '}
+            {lastContextInstrumentId ? (
+              <span style={{ color: colors.accent }}>{lastContextInstrumentId}</span>
+            ) : (
+              <span style={{ color: colors.orange }}>synthetic</span>
+            )}
           </span>
-        )}
-        <span style={{ ...mono, color: colors.textMuted }}>
-          ctx:{' '}
-          {lastContextInstrumentId ? (
-            <span style={{ color: colors.accent }}>{lastContextInstrumentId}</span>
-          ) : (
-            <span style={{ color: colors.orange }}>synthetic</span>
-          )}
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label
+        }
+        settings={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label
+              style={{
+                ...mono,
+                color: safeMode ? colors.red : colors.textSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+              }}
+              title="Safe mode forces every non-HOLD decision to be vetoed."
+            >
+              <input
+                type="checkbox"
+                checked={safeMode}
+                onChange={(e) => setSafeMode(e.target.checked)}
+              />
+              safe mode (force veto on every non-HOLD)
+            </label>
+            <label
+              style={{
+                ...mono,
+                color: colors.textSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoRun}
+                onChange={(e) => setAutoRun(e.target.checked)}
+              />
+              auto-run the chain on a fixed interval
+            </label>
+            <label
+              style={{
+                ...mono,
+                color: colors.textSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              auto-run interval
+              <select
+                value={autoRunIntervalMs}
+                onChange={(e) => setAutoRun(autoRun, Number(e.target.value))}
+                style={{
+                  ...mono,
+                  background: colors.bgInput,
+                  color: colors.text,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 3,
+                  padding: '2px 6px',
+                }}
+              >
+                <option value={5000}>5s</option>
+                <option value={15000}>15s</option>
+                <option value={30000}>30s</option>
+                <option value={60000}>60s</option>
+              </select>
+            </label>
+          </div>
+        }
+        settingsTitle="Réglages — Chain Monitor"
+      />
+      <div
+        style={{
+          padding: '14px 20px',
+          fontFamily: fonts.sans,
+          color: colors.text,
+          display: 'grid',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => void runDemo()}
+            title="Run the decision chain (shortcut: r)"
             style={{
-              ...mono,
-              color: safeMode ? colors.red : colors.textSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
+              background: colors.accent,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              padding: '6px 12px',
               cursor: 'pointer',
-              padding: '2px 8px',
-              borderRadius: 3,
-              border: `1px solid ${safeMode ? colors.red : colors.border}`,
+              fontFamily: fonts.sans,
+              fontSize: 12,
             }}
-            title="Safe mode forces every non-HOLD decision to be vetoed."
           >
-            <input
-              type="checkbox"
-              checked={safeMode}
-              onChange={(e) => setSafeMode(e.target.checked)}
-            />
-            safe mode
-          </label>
-          <label
+            Run decision chain{' '}
+            <kbd
+              style={{
+                fontFamily: fonts.mono,
+                fontSize: 10,
+                padding: '0 4px',
+                marginLeft: 2,
+                background: 'rgba(255,255,255,0.15)',
+                borderRadius: 2,
+              }}
+            >
+              r
+            </kbd>
+          </button>
+          <button onClick={clear} style={btnSecondary}>
+            Clear
+          </button>
+          <button
+            onClick={() => exportAll('csv')}
+            disabled={decisions.length + orders.length + positions.length === 0}
             style={{
-              ...mono,
-              color: colors.textSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
+              ...btnSecondary,
+              opacity:
+                decisions.length + orders.length + positions.length === 0 ? 0.4 : 1,
             }}
           >
-            <input
-              type="checkbox"
-              checked={autoRun}
-              onChange={(e) => setAutoRun(e.target.checked)}
-            />
-            auto-run
-          </label>
-          <select
-            value={autoRunIntervalMs}
-            onChange={(e) => setAutoRun(autoRun, Number(e.target.value))}
-            style={{
-              ...mono,
-              background: colors.bgInput,
-              color: colors.text,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 3,
-              padding: '2px 6px',
-            }}
-          >
-            <option value={5000}>5s</option>
-            <option value={15000}>15s</option>
-            <option value={30000}>30s</option>
-            <option value={60000}>60s</option>
-          </select>
+            Export CSV
+          </button>
+          <button onClick={() => exportAll('json')} style={btnSecondary}>
+            Export JSON
+          </button>
         </div>
-      </div>
 
-      <div style={panel}>
+        <div style={panel}>
         <div style={h}>Portfolio</div>
         <div
           style={{
@@ -791,6 +824,7 @@ export const ChainMonitor = () => {
           }}
         />
       )}
-    </div>
+      </div>
+    </>
   )
 }
