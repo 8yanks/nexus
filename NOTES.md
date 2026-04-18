@@ -7,6 +7,23 @@ from the previous session's NOTES backlog. Six commits, all passing
 type-check + tests + build, all pushed to origin/ai-schemas-and-audit.
 
 ### Shipped
+−1. **`55f478e` RTL coverage for Nav + 4 small badges (after-arc)**
+   - Closes the components gap: was 2/9 covered (Drilldown + PriceChange)
+     → 8/9 after this. Only MiniChart + DemoSplash left, both lower-value.
+   - `Nav` (7 tests): brand + ANALYST MODE chrome, all 15 nav items
+     render as buttons, LIVE/OFFLINE flips with `binanceConnected`,
+     click → `setScreen`, NEXUS logo → dashboard, active-tab font weight.
+   - `Badges` (12 tests across 4 components): FreshnessDot dead-fallback
+     + fresh-glow under a pinned clock + size prop; QualityBar green/
+     yellow/red thresholds + showLabel=false + score>1 width cap;
+     SeverityBadge colour-per-severity; StatusBadge LIVE-glow vs no-dot
+     + unknown-status fallback.
+
+0. **`09dc6c3` RTL coverage for PriceChange (after-arc)**
+   - 11 tests covering the null/NaN/Infinity empty-state, ± formatting,
+     `format="abs"` vs default `pct`, the recent 24h-disambiguation
+     suffix, and the optional title/cursor:help tooltip wiring.
+
 0. **`be2337d` RTL coverage for Sentinel + Trader screens (after-arc)**
    - Both screens were live since 2026-04-19 but had zero RTL coverage
      despite handling business-critical actions (safe-mode toggle,
@@ -81,10 +98,13 @@ type-check + tests + build, all pushed to origin/ai-schemas-and-audit.
    - 20 new tests across helper + RTL + integration layers.
 
 ### State
-- Tests: **491/491 pass** (was 439 → 446 → 455 → 475 → 491).
+- Tests: **521/521 pass** (was 439 → 446 → 455 → 475 → 491 → 502 → 521).
 - `npm run type-check` clean.
 - Vite build clean (251 kB main, 80 kB gzip — unchanged).
 - Branch: `ai-schemas-and-audit`, fully up to date with origin.
+- UI component RTL coverage: **8/9** (only MiniChart + DemoSplash left).
+- UI screen RTL coverage: **3/16** (ChainMonitor + Sentinel + Trader —
+  the rest are passive read-only views).
 
 ### Backlog cleared
 Every "Still open / not parked-by-user" item from the 2026-04-19
