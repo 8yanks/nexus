@@ -1,7 +1,19 @@
-import { Bell, BellOff, Trash2, ShieldAlert } from 'lucide-react'
+import { Bell, BellOff, Trash2 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { SeverityBadge } from '@/ui/components/SeverityBadge'
-import { colors, fonts, card, thStyle, tdStyle, monoTd, emptyState, statLabel, statValue } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
+import {
+  colors,
+  fonts,
+  radius,
+  card,
+  thStyle,
+  tdStyle,
+  monoTd,
+  emptyState,
+  statLabel,
+  statValue,
+} from '@/ui/theme'
 
 export const Alerts = () => {
   const alertRules = useMarketStore((s) => s.alertRules)
@@ -12,15 +24,29 @@ export const Alerts = () => {
   const criticalCount = alertRules.filter((r) => r.severity === 'critical').length
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <ShieldAlert size={18} style={{ color: colors.accent }} />
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text, fontFamily: fonts.sans }}>
-          Alert Rules
-        </h1>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Alert Rules"
+        subtitle="Règles d'alerte sur les instruments suivis. Toggle pour activer/désactiver, poubelle pour supprimer."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: activeCount > 0 ? colors.green : colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="alerts-active-badge"
+          >
+            {activeCount} active
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         {[
@@ -104,6 +130,7 @@ export const Alerts = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

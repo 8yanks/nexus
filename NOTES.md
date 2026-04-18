@@ -1,5 +1,31 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.2 (retrofit Journal + Alerts)
+
+Branch `ux-overhaul`. Two more screens adopt `<ScreenHeader />`. Both
+chosen for size + simplicity (≤120 lines, no nested state machines).
+
+### Shipped
+
+1. **`<pending>` Journal + Alerts use `<ScreenHeader />`**
+   - Journal: header carries the `{n} signal{s}` count as a badge so
+     the user can see the queue size without scanning the table. The
+     subtitle clarifies that only the 200 most-recent entries render.
+   - Alerts: header carries the `{n} active` count as a green badge
+     when >0 (greys out at 0). The ShieldAlert icon was redundant
+     with the title; removed.
+   - Both screens drop their hand-rolled `<header>` blocks. Inner
+     content padding tightened from 16 → 14 to match the Options
+     pattern.
+   - All 599 existing tests still pass — neither screen had RTL
+     coverage (gap noted earlier in NOTES; would be a good Phase 4
+     follow-up). Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.1 (retrofit Options to ScreenHeader)
 
 Branch `ux-overhaul`. Phase 3 starts. Phase 3.1 is a one-screen pilot:
