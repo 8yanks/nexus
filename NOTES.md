@@ -1,5 +1,37 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up #3: density-driven table fonts
+
+Branch `ai-schemas-and-audit`. Closes the latent finding flagged in
+the Options-translation NOTES entry: `density.fontBody`/`fontHeader`
+existed in tokens.ts but had no consumer.
+
+### Shipped — `be425b5`
+
+- `theme.ts`: `thStyle.fontSize` now reads `activeDensity.fontHeader`
+  (11 → 12 at default comfy = +1px visible win on every table header
+  in the app). `tdStyle.fontSize` now reads `activeDensity.fontBody`
+  (still 13 at comfy = no visible change at default, but density
+  toggle is no longer a placebo for table fonts: compact → 11,
+  spacious → 14).
+- Comment block in `theme.ts` rewritten to say fonts now follow
+  density and to spell out what intentionally stays fixed
+  (`statValue`, `sectionHeader`, `inputStyle` — informational chrome,
+  not body content; bumping them with density would over-shift
+  semantic meaning).
+- 2 new density tests (`thStyle.fontSize ↔ fontHeader`,
+  `tdStyle.fontSize ↔ fontBody`) pin the wiring so a future drift
+  trips a test.
+
+Net effect on the user's "text is too small" feedback: the prior
+Inter swap moved the needle the most, but now density toggle in
+Options → Appearance also has a real font impact. Spacious + Inter
+should feel meaningfully larger than the previous default.
+
+652/652 tests + tsc + build green.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up #2: Options screen English
 
 Branch `ai-schemas-and-audit`. Last big FR pocket in the user-facing
