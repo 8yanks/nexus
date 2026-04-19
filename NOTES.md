@@ -1,5 +1,51 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up #2: Options screen English
+
+Branch `ai-schemas-and-audit`. Last big FR pocket in the user-facing
+chrome — Options was almost entirely French (8 section titles + hints,
+4 segmented option labels, all Placeholder copy, the ScreenHeader
+subtitle, the hotkey descriptions). All translated.
+
+### Shipped — `d9deef9`
+
+- **Section titles**: Apparence/Données/Raccourcis clavier/Rétention de
+  l'audit/Avancé → Appearance/Data/Keyboard shortcuts/Audit retention/
+  Advanced. (Notifications, Layout, Workspaces already English.)
+- **Segmented controls**: Sombre/Clair/Confort/Spacieux → Dark/Light/
+  Comfy/Spacious. aria-labels: `Thème de l'interface` → `Interface
+  theme`, `Densité d'affichage` → `Display density`.
+- **Hotkey table**: `Lance la chaîne de décision` → `Run the decision
+  chain`; `Ferme la fenêtre de drilldown` → `Close the drilldown
+  window`; `Recherche globale (à venir)` → `Global search (coming
+  soon)`.
+- **All hints + ScreenHeader subtitle** translated.
+- **All Phase-2 Placeholder copy** translated. Earlier I'd parked these
+  on the theory they'll get rewritten when the screens are actually
+  built — but the user is reading them right now, so the small cost of
+  translating them is worth it.
+- Top doc-comment section index brought into sync.
+
+Tests: Options.test.tsx assertions re-pinned (8 section titles + 4
+segmented labels + 2 hotkey descriptions + new `interface theme` /
+`display density` aria-labels). 650/650 green, tsc + build clean.
+
+### Latent finding (not fixed this pass)
+
+While auditing density coverage I noticed that `density.fontBody` /
+`density.fontHeader` in `tokens.ts` are **unread**. `theme.ts` consumes
+`activeDensity.padCard` and `padPanel` (used by `card`, `thStyle`,
+`tdStyle`) but never `fontBody`/`fontHeader`. So the "comfy bump" from
+the previous commit (12→13 / 11→12) has zero runtime effect; the
+visible font-size improvement comes entirely from the global Inter
+swap. Wiring fontBody into the shared styles touches `tdStyle`,
+`statValue`, `inputStyle` etc. — every screen, with several test
+assertions on rendered cell sizes. Deferred until there's appetite for
+that refactor; flagged here so the next density change knows it's a
+no-op until wired.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up: English chrome (drawer + workspace manager)
 
 Branch `ai-schemas-and-audit`. Same intent as the prior nav-labels pass
