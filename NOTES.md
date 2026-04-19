@@ -49,6 +49,13 @@ latent zustand re-render bug uncovered by the tests.
 - 643 tests across 76 files. All green.
 - Type-check + build clean.
 
+### Merged
+
+`ux-overhaul` fast-forwarded into `ai-schemas-and-audit` (the active
+integration branch — `master` is still on the pre-bots checkpoint and
+will catch up via the next integration PR). UX overhaul is now the
+head of the integration branch.
+
 ---
 
 ## 2026-04-19 — UX overhaul, Phase 3.10 (retrofit Scanner + Correlation + MacroPulse + Backtest)
