@@ -1,5 +1,26 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up #6: more white-on-white button fixes
+
+Branch `ai-schemas-and-audit`. The DemoSplash audit (follow-up #5)
+prompted a grep for any remaining `color: '#fff'` on `colors.accent`
+pairings — the accent went cyan → slate-50 in the v1→v2 palette
+migration, so every literal `#fff` text on the accent background is
+now invisible.
+
+### Shipped
+
+- `src/ui/screens/Backtest.tsx` — "Run Backtest" button.
+- `src/ui/screens/ChainMonitor.tsx` — "Run decision chain" button.
+
+Both switched from `color: '#fff'` to `color: colors.bg` so the label
+reads dark-on-light against the slate-50 accent.
+
+CSS only. 652/652 tests + tsc + build green. Grep is now clean for
+that pattern across `src/`.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up #5: DemoSplash refresh
 
 Branch `ai-schemas-and-audit`. Audit of `src/ui/components/DemoSplash.tsx`

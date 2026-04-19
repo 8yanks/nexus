@@ -248,7 +248,7 @@ export const ChainMonitor = () => {
             title="Run the decision chain (shortcut: r)"
             style={{
               background: colors.accent,
-              color: '#fff',
+              color: colors.bg,
               border: 'none',
               borderRadius: 4,
               padding: '6px 12px',

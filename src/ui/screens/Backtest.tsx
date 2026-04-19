@@ -192,7 +192,7 @@ const ConfigPanel = ({
             cursor: running ? 'wait' : 'pointer',
             fontSize: 13,
             fontWeight: 600,
-            color: '#fff',
+            color: colors.bg,
             background: colors.accent,
             opacity: running || config.entrySignals.length === 0 ? 0.5 : 1,
           }}
