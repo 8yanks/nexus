@@ -9,7 +9,7 @@ follow.
 
 ### Shipped
 
-1. **`<HASH>` Detail adopts `<ScreenHeader />`**
+1. **`d7f349a` Detail adopts `<ScreenHeader />`**
    - Title: dynamic `inst.symbol` (varies per drilldown).
    - Subtitle: `inst.name — inst.exchange` so the user knows what
      they're looking at without parsing the symbol.
