@@ -7,7 +7,7 @@ group (Chain + Trader + Sentinel — all three converted).
 
 ### Shipped
 
-1. **`<HASH>` Sentinel adopts `<ScreenHeader />`**
+1. **`568eb8b` Sentinel adopts `<ScreenHeader />`**
    - Title + subtitle replace the yellow hand-rolled header.
    - Badge: `{checks} checks · {vetoed} vetoed · {approved} approved`
      in yellow. The numeric story of the screen at a glance.
