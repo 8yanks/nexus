@@ -1,20 +1,11 @@
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from 'recharts'
 import { ArrowLeft } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import { StatusBadge } from '@/ui/components/StatusBadge'
 import { PriceChange } from '@/ui/components/PriceChange'
 import { QualityBar } from '@/ui/components/QualityBar'
-import { fmt, fmtVol, fmtPct, fmtTime } from '@/utils/format'
+import { TradingViewChart } from '@/ui/components/TradingViewChart'
+import { fmt, fmtVol, fmtPct } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
 import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
@@ -73,12 +64,9 @@ export const Detail = () => {
 
   const isForex = inst.assetClass === 'forex'
   const decimals = isForex ? 5 : 2
-  const chartData =
-    series?.candles.slice(-60).map((c) => ({
-      t: fmtTime(c.timestamp),
-      close: c.close,
-      volume: c.volume,
-    })) ?? []
+  // Pass the raw candle window straight to TradingViewChart — it handles
+  // its own time/volume formatting internally and needs the OHLC fields.
+  const chartCandles = series?.candles.slice(-60) ?? []
 
   return (
     <>
@@ -132,22 +120,9 @@ export const Detail = () => {
       <div style={{ padding: '14px 20px' }}>
       {/* Chart + Key Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
-        <div style={card}>
-          {chartData.length > 2 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={chartData}>
-                <CartesianGrid stroke={colors.border} strokeDasharray="3 3" />
-                <XAxis dataKey="t" tick={{ fontSize: 9, fill: colors.textDim }} interval="preserveStartEnd" />
-                <YAxis yAxisId="price" domain={['auto', 'auto']} tick={{ fontSize: 9, fill: colors.textDim }} />
-                <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 9, fill: colors.textDim }} />
-                <Tooltip
-                  contentStyle={{ background: colors.bgCard, border: `1px solid ${colors.border}`, fontSize: 11, fontFamily: fonts.mono }}
-                  labelStyle={{ color: colors.textMuted }}
-                />
-                <Bar yAxisId="vol" dataKey="volume" fill={`${colors.accent}20`} isAnimationActive={false} />
-                <Line yAxisId="price" type="monotone" dataKey="close" stroke={colors.accent} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          {chartCandles.length > 2 ? (
+            <TradingViewChart candles={chartCandles} decimals={decimals} height={240} />
           ) : (
             <div style={emptyState}>Insufficient candle data for chart</div>
           )}
