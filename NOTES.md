@@ -1,5 +1,57 @@
 # Session notes
 
+## 2026-04-19 — UX polish (palette / font / nav symmetry / English labels)
+
+Branch `ai-schemas-and-audit`. Direct user feedback after a first pass
+on Phase 4: *"les couleurs sont tres sombres, on se rend pas hyper compte
+des infos, c'est peut-être trop petit, on change la police? (on veut
+une police pro tradingview), l'affichage des menus n'est pas terrible,
+ça manque de symétrie horizontale, et mets les noms des pages en anglais
+par défaut."* All five addressed in one commit.
+
+### Shipped — `dc7eb10`
+
+1. **Palette lift (dark)**. `bg 0a0e17 → 0d1117` with a more obvious
+   blue-grey hue (still TradingView-ish slate, not pitch-black). Surface
+   ladder steps brighter (`151a22 / 1c222d / 252b38`). Text tiers bumped
+   to slate-400/300/200/50 so labels actually read against the new
+   surfaces. Border tones lifted in proportion (`2a313e / 3d4555`).
+2. **Density bump (default = comfy)**. `fontBody 12 → 13`,
+   `fontHeader 11 → 12`. Spacious `13 → 14 / 12 → 13`. Compact unchanged.
+   Default no longer feels cramped on a 1440p+ desktop.
+3. **Inter font**. Sans stack `'IBM Plex Sans' → 'Inter'`. Loaded via
+   Google Fonts in `index.html`; body font-family in `index.css` aligned.
+   OpenType features `cv11`, `ss01`, `ss03` enabled in `body` for the
+   number-friendly Inter variants used across trading UIs.
+4. **Nav horizontal symmetry**. `Nav.tsx` primary row swapped from
+   flex-row (`logo + tabs + spacer + status`) to a 3-column grid
+   (`1fr / auto / 1fr`). Brand pins left, category tab group centers,
+   status cluster pins right — chrome no longer feels left-clustered.
+   Tab font-size 12 → 13 + inactive weight 400 → 500 for stronger
+   contrast against active.
+5. **English category labels**. `nav-categories.ts`: `Marchés / Bots /
+   Recherche / Informations / Système` → `Markets / Bots / Research /
+   Information / System`. Matches the rest of the chrome which is
+   already English (`Dashboard`, `Trader`, `Sentinel`, `ANALYST MODE`,
+   `LIVE`, etc.).
+
+### Tests
+
+`tests/ui/components/Nav.test.tsx` updated for new English labels and
+the new inactive font-weight (500). 650/650 green, type-check + build
+clean.
+
+### Files touched
+
+- `src/ui/tokens.ts` (palette, density font sizes, sans stack)
+- `index.html` (Google Fonts URL)
+- `src/index.css` (body bg + font-family + OpenType features)
+- `src/ui/nav-categories.ts` (English labels)
+- `src/ui/components/Nav.tsx` (3-col grid + tab font sizing)
+- `tests/ui/components/Nav.test.tsx` (label + weight assertions)
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 4 (RTL coverage backfill)
 
 Branch `ux-overhaul`. With every screen on `<ScreenHeader />`, Phase 4
