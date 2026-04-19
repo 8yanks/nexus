@@ -32,16 +32,43 @@ table {
   border-spacing: 0;
 }
 
+/*
+ * Focus-visible — keyboard users (Tab) get a subtle accent ring;
+ * mouse clicks don't trigger it. Many components manually set
+ * outline: none which would have killed all focus indication —
+ * this rule reinstates it whenever the browser decides focus
+ * should be visible. Slate-300 ring at low opacity reads against
+ * both dark and light palettes without screaming.
+ */
+:focus-visible {
+  outline: 2px solid #94a3b8;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+/*
+ * Text selection — accent-tinted rather than browser-default blue,
+ * so selecting price/symbol text in a table stays on-brand.
+ */
+::selection {
+  background: rgba(148, 163, 184, 0.3);
+  color: inherit;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: #0d1117;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #3d4555;
   border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4d5565;
 }
