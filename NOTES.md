@@ -1,5 +1,30 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.9 (retrofit VCFlow + Corporate)
+
+Branch `ux-overhaul`. Informations group: both VCFlow and Corporate
+adopt `<ScreenHeader />` in a single commit.
+
+### Shipped
+
+1. **`<HASH>` VCFlow + Corporate adopt `<ScreenHeader />`**
+   - VCFlow: badge `{n} deals · {n} sectors` in purple. Subtitle
+     calls out the data source (mock — adapters Crunchbase / PitchBook
+     / CB Insights for live).
+   - Corporate: badge `{n} evt · {bullish}↑ · {bearish}↓ · {high} high`
+     with inline coloured arrows for bias direction. Subtitle calls
+     out the data source (mock — Polygon / Finnhub / EODHD for live).
+   - Both screens drop their hand-rolled headers. Inner content
+     padding tightened from 16 → 14 to match the established pattern.
+   - All 599 existing tests still pass — neither screen had RTL
+     coverage; the gap is now flagged for Phase 4.
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.8 (retrofit Detail)
 
 Branch `ux-overhaul`. Detail screen retrofit. Closes the per-instrument

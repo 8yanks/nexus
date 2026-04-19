@@ -4,7 +4,8 @@ import { createMockCorporateProvider } from '@/corporate/mock'
 import { CORPORATE_EVENT_CONFIGS } from '@/corporate/types'
 import type { CorporateEvent, CorporateBias, CorporatePriority } from '@/corporate/types'
 import { fmtAge, fmtTime } from '@/utils/format'
-import { colors, fonts, card, tagStyle, emptyState } from '@/ui/theme'
+import { colors, fonts, radius, card, tagStyle, emptyState } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── CONSTANTS ──────────────────────────────────────────────
 
@@ -180,19 +181,29 @@ export const Corporate = () => {
   const highPriority = events.filter((e) => e.priority === 'high').length
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
-          Corporate Intelligence
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: colors.textMuted }}>
-          {events.length} event{events.length !== 1 ? 's' : ''} tracked —{' '}
-          <span style={{ color: colors.green }}>{bullishCount} bullish</span>,{' '}
-          <span style={{ color: colors.red }}>{bearishCount} bearish</span>,{' '}
-          <span style={{ color: colors.yellow }}>{highPriority} high priority</span>
-        </p>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Corporate Intelligence"
+        subtitle="Évènements corporatifs (earnings, guidance, M&A, regulatory) annotés bias + priorité. Source mock — adapters Polygon / Finnhub / EODHD pour live."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="corporate-events-badge"
+          >
+            {events.length} evt · <span style={{ color: colors.green }}>{bullishCount}↑</span> · <span style={{ color: colors.red }}>{bearishCount}↓</span> · <span style={{ color: colors.yellow }}>{highPriority} high</span>
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       <FilterBar
         selectedInstrument={selectedInstrument}
         setSelectedInstrument={setSelectedInstrument}
@@ -221,6 +232,7 @@ export const Corporate = () => {
           Corporate events are mock data. Connect Polygon.io, Finnhub, or EODHD adapters for live feeds.
         </span>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

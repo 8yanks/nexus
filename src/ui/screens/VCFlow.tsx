@@ -4,7 +4,8 @@ import { VC_SECTOR_CONFIGS, VC_DEAL_LABELS } from '@/vcflow/types'
 import type { VCDeal, VCSector, VCDealType } from '@/vcflow/types'
 import { fmtAge, fmtVol } from '@/utils/format'
 import { isValidNumber } from '@/utils/math'
-import { colors, fonts, card, sectionHeader, tagStyle, emptyState, statLabel, statValue } from '@/ui/theme'
+import { colors, fonts, radius, card, sectionHeader, tagStyle, emptyState, statLabel, statValue } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── DEAL CARD ──────────────────────────────────────────────
 
@@ -170,16 +171,29 @@ export const VCFlow = () => {
   )
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
-          Venture Capital Flow
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: colors.textMuted }}>
-          {deals.length} deal{deals.length !== 1 ? 's' : ''} tracked across {uniqueSectors} sectors
-        </p>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Venture Capital Flow"
+        subtitle="Inventaire des levées de fonds VC: secteurs, étages (seed → growth), valorisations, lead investors. Source mock — adapters Crunchbase / PitchBook / CB Insights pour live."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.purple,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="vcflow-deals-badge"
+          >
+            {deals.length} deal{deals.length !== 1 ? 's' : ''} · {uniqueSectors} sectors
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <KPI label="Total Capital" value={`$${fmtVol(totalCapital)}`} color={colors.green} />
@@ -234,6 +248,7 @@ export const VCFlow = () => {
           VC data is mock. Connect Crunchbase, PitchBook, or CB Insights adapters for live deal flow.
         </span>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
