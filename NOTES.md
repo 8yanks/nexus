@@ -1,5 +1,56 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 4 (RTL coverage backfill)
+
+Branch `ux-overhaul`. With every screen on `<ScreenHeader />`, Phase 4
+backfills RTL coverage for the 13 screens that had none and fixes one
+latent zustand re-render bug uncovered by the tests.
+
+### Shipped
+
+1. **`487abcc` Phase 4a — Sources / Alerts / Quality / Export / Journal**
+   - Each gets a small smoke-test file: ScreenHeader title, badge
+     variants (active/empty), KPI strip + a store-driven scenario
+     (toggle, remove, ready/not-ready, etc.).
+   - +18 tests (599 → 617).
+
+2. **`2723829` Phase 4b — VCFlow / Corporate / Scanner**
+   - VCFlow: loading → populated badge after mock provider resolves +
+     SIMULATED disclaimer + filter wiring.
+   - Corporate: loading → badge with bias counts + filter labels +
+     SIMULATED disclaimer.
+   - Scanner: empty/populated badge + Active/Quiet sections + sing/plur.
+   - +11 tests (617 → 628).
+
+3. **`424266f` Phase 4c — Dashboard / Detail / Backtest / Correlation / MacroPulse**
+   - Dashboard: initializing badge + READY/NOT-READY label flip + KPI
+     strip + watchlist row per instrument.
+   - Detail: empty state + populated header (symbol, back) + back-button
+     wiring to setScreen('dashboard').
+   - Backtest: idle badge + Run Backtest button.
+   - Correlation: empty branch (no badge) vs populated branch + legend.
+   - MacroPulse: loading vs populated badge with indicator counts.
+   - +15 tests (628 → 643).
+
+### Bug fixed along the way
+
+- **`424266f` Detail.tsx zustand re-render loop**. The previous
+  `s.patterns[instrumentId] ?? []` selector returned a fresh `[]`
+  literal every render, tripping zustand's ref-equality check and
+  re-rendering forever. Latent because real navigation always passes
+  through `selectInstrument()` and patterns are usually populated, so
+  it never fired in the wild — but the RTL test that mounts Detail
+  directly with no patterns flushed it out. Replaced with a module-
+  level `EMPTY_PATTERNS` constant; selector now reads the raw map
+  slice (stable reference) and the per-instrument resolution happens
+  in component body.
+
+### Suite stats
+- 643 tests across 76 files. All green.
+- Type-check + build clean.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.10 (retrofit Scanner + Correlation + MacroPulse + Backtest)
 
 Branch `ux-overhaul`. The last four screens of the Phase-3 cosmetic
