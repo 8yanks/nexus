@@ -1,5 +1,27 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up #5: DemoSplash refresh
+
+Branch `ai-schemas-and-audit`. Audit of `src/ui/components/DemoSplash.tsx`
+turned up four issues left over from the v1 → v2 palette migration and
+stale stats:
+
+### Shipped
+
+- **Invisible Enter button** — `color: '#fff'` on `background: colors.accent`
+  used to be white-on-cyan; v2 accent is now slate-50 (`#f1f5f9`), so the
+  text was effectively white-on-white. Switched to `color: colors.bg` so
+  the label reads dark-on-light against the new accent.
+- **ANALYST MODE label** — was `color: colors.cyan`; aligned to
+  `colors.accent` so the splash matches the rest of the chrome.
+- **Stale stats** — Screens `13` → `16` (real count after the Phase-3
+  retrofits) and Tests `186+` → `652+` (matches today's suite count).
+- **Stale Analyst feature copy** — "13 interactive screens" → "16".
+
+CSS / copy only. 652/652 tests + tsc + build green.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up #4: focus ring + selection + scrollbar
 
 Branch `ai-schemas-and-audit`. Three small global-CSS additions in

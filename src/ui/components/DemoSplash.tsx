@@ -11,7 +11,7 @@ const BOTS = [
     tag: 'ACTIVE',
     color: colors.cyan,
     desc: 'Multi-asset market monitoring. 19 instruments, 23 signal types, real-time data with mock fallback.',
-    features: ['Crypto, Equities, Forex, Commodities, Indices', 'Technical + Corporate + Macro signals', '13 interactive screens'],
+    features: ['Crypto, Equities, Forex, Commodities, Indices', 'Technical + Corporate + Macro signals', '16 interactive screens'],
   },
   {
     name: 'Sentinel',
@@ -83,7 +83,7 @@ export const DemoSplash = ({ onDismiss }: { onDismiss: () => void }) => {
       >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: colors.cyan, marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: colors.accent, marginBottom: 6 }}>
             ANALYST MODE
           </div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: colors.text, letterSpacing: '-0.02em' }}>
@@ -175,8 +175,8 @@ export const DemoSplash = ({ onDismiss }: { onDismiss: () => void }) => {
           {[
             { label: 'Instruments', value: '19' },
             { label: 'Signal Types', value: '23' },
-            { label: 'Screens', value: '13' },
-            { label: 'Tests', value: '186+' },
+            { label: 'Screens', value: '16' },
+            { label: 'Tests', value: '652+' },
             { label: 'TS Errors', value: '0' },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: 'center' }}>
@@ -194,7 +194,7 @@ export const DemoSplash = ({ onDismiss }: { onDismiss: () => void }) => {
               padding: '10px 32px',
               fontSize: 13,
               fontWeight: 700,
-              color: '#fff',
+              color: colors.bg,
               background: colors.accent,
               border: 'none',
               borderRadius: 6,
