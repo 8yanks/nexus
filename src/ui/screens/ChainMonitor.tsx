@@ -231,7 +231,7 @@ export const ChainMonitor = () => {
             </label>
           </div>
         }
-        settingsTitle="Réglages — Chain Monitor"
+        settingsTitle="Settings — Chain Monitor"
       />
       <div
         style={{

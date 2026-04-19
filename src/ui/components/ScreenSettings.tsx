@@ -83,7 +83,7 @@ export const ScreenSettings = ({
         </h2>
         <button
           type="button"
-          aria-label="Fermer les réglages"
+          aria-label="Close settings"
           onClick={onClose}
           style={{
             display: 'inline-flex',

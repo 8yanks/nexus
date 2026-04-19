@@ -66,7 +66,7 @@ const WorkspaceRow = ({
       {/* LEFT — name + meta */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
         {isActive && (
-          <Check size={14} style={{ color: colors.green, flexShrink: 0 }} aria-label="Workspace actif" />
+          <Check size={14} style={{ color: colors.green, flexShrink: 0 }} aria-label="Active workspace" />
         )}
         {renaming ? (
           <input
@@ -81,7 +81,7 @@ const WorkspaceRow = ({
                 setRenaming(false)
               }
             }}
-            aria-label="Renommer le workspace"
+            aria-label="Rename workspace"
             style={{
               background: colors.bg,
               border: `1px solid ${colors.borderFocus}`,
@@ -126,15 +126,15 @@ const WorkspaceRow = ({
                 opacity: isActive ? 0.4 : 1,
                 cursor: isActive ? 'default' : 'pointer',
               }}
-              aria-label={`Activer ${workspace.name}`}
+              aria-label={`Activate ${workspace.name}`}
             >
-              {isActive ? 'Actif' : 'Activer'}
+              {isActive ? 'Active' : 'Activate'}
             </button>
             <button
               type="button"
               onClick={() => setRenaming(true)}
               style={{ ...btnSmall, padding: '2px 6px' }}
-              aria-label={`Renommer ${workspace.name}`}
+              aria-label={`Rename ${workspace.name}`}
             >
               <Edit3 size={11} />
             </button>
@@ -147,7 +147,7 @@ const WorkspaceRow = ({
                 color: colors.red,
                 borderColor: colors.border,
               }}
-              aria-label={`Supprimer ${workspace.name}`}
+              aria-label={`Delete ${workspace.name}`}
             >
               <Trash2 size={11} />
             </button>
@@ -199,13 +199,13 @@ export const WorkspaceManager = () => {
             lineHeight: 1.5,
           }}
         >
-          Aucun workspace enregistré. Créez-en un pour sauvegarder votre
-          combinaison thème + densité actuelle et y revenir en un clic.
+          No workspace saved. Create one to capture your current theme +
+          density combo and snap back to it in one click.
         </div>
       ) : (
         <ul
           style={{ margin: 0, padding: 0, listStyle: 'none' }}
-          aria-label="Workspaces enregistrés"
+          aria-label="Saved workspaces"
         >
           {[...workspaces]
             .sort((a, b) => b.createdAt - a.createdAt)
@@ -237,8 +237,8 @@ export const WorkspaceManager = () => {
                   setCreating(false)
                 }
               }}
-              placeholder="Nom du workspace…"
-              aria-label="Nom du nouveau workspace"
+              placeholder="Workspace name…"
+              aria-label="New workspace name"
               style={{
                 flex: 1,
                 background: colors.bgInput,
@@ -252,7 +252,7 @@ export const WorkspaceManager = () => {
               }}
             />
             <button type="button" style={btnSecondary} onClick={commitCreate}>
-              Créer
+              Create
             </button>
             <button
               type="button"
@@ -262,7 +262,7 @@ export const WorkspaceManager = () => {
                 setCreating(false)
               }}
             >
-              Annuler
+              Cancel
             </button>
           </>
         ) : (
@@ -277,7 +277,7 @@ export const WorkspaceManager = () => {
             }}
           >
             <Plus size={13} />
-            Nouveau workspace
+            New workspace
           </button>
         )}
       </div>

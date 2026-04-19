@@ -34,7 +34,7 @@ export interface ScreenHeaderProps {
    * so it inherits the screen's local context.
    */
   settings?: React.ReactNode
-  /** Title for the settings drawer (defaults to "Réglages — {title}"). */
+  /** Title for the settings drawer (defaults to "Settings — {title}"). */
   settingsTitle?: string
 }
 
@@ -83,7 +83,7 @@ export const ScreenHeader = ({
             <p
               style={{
                 margin: '4px 0 0',
-                fontSize: 12,
+                fontSize: 13,
                 color: colors.textMuted,
                 lineHeight: 1.4,
               }}
@@ -106,7 +106,7 @@ export const ScreenHeader = ({
           {settings && (
             <button
               type="button"
-              aria-label={`Réglages — ${title}`}
+              aria-label={`Settings — ${title}`}
               aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen((v) => !v)}
               style={{
@@ -131,7 +131,7 @@ export const ScreenHeader = ({
 
       {settings && drawerOpen && (
         <ScreenSettings
-          title={settingsTitle ?? `Réglages — ${title}`}
+          title={settingsTitle ?? `Settings — ${title}`}
           onClose={() => setDrawerOpen(false)}
         >
           {settings}

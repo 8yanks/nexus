@@ -49,7 +49,7 @@ describe('<ScreenHeader /> — settings drawer toggle', () => {
   it('renders no ⚙ button when settings is omitted', () => {
     render(<ScreenHeader title="Dashboard" />)
     expect(
-      screen.queryByRole('button', { name: /Réglages — Dashboard/i }),
+      screen.queryByRole('button', { name: /Settings — Dashboard/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -61,7 +61,7 @@ describe('<ScreenHeader /> — settings drawer toggle', () => {
       />,
     )
     expect(
-      screen.getByRole('button', { name: /Réglages — Dashboard/i }),
+      screen.getByRole('button', { name: /Settings — Dashboard/i }),
     ).toBeInTheDocument()
   })
 
@@ -72,7 +72,7 @@ describe('<ScreenHeader /> — settings drawer toggle', () => {
         settings={<div data-testid="drawer-content">payload</div>}
       />,
     )
-    const cog = screen.getByRole('button', { name: /Réglages — Dashboard/i })
+    const cog = screen.getByRole('button', { name: /Settings — Dashboard/i })
     expect(screen.queryByTestId('drawer-content')).not.toBeInTheDocument()
     expect(cog).toHaveAttribute('aria-expanded', 'false')
 
@@ -93,7 +93,7 @@ describe('<ScreenHeader /> — settings drawer toggle', () => {
         settingsTitle="Préférences"
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Réglages — Dashboard/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Settings — Dashboard/i }))
     expect(screen.getByRole('region', { name: 'Préférences' })).toBeInTheDocument()
   })
 })

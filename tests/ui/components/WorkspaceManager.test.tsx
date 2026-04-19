@@ -20,26 +20,26 @@ afterEach(() => {
 })
 
 describe('<WorkspaceManager /> — empty state', () => {
-  it('renders the empty placeholder + the "Nouveau workspace" CTA', () => {
+  it('renders the empty placeholder + the "New workspace" CTA', () => {
     render(<WorkspaceManager />)
-    expect(screen.getByText(/Aucun workspace enregistré/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Nouveau workspace/i })).toBeInTheDocument()
+    expect(screen.getByText(/No workspace saved/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /New workspace/i })).toBeInTheDocument()
   })
 })
 
 describe('<WorkspaceManager /> — create flow', () => {
-  it('opens the input row when "Nouveau workspace" is clicked', () => {
+  it('opens the input row when "New workspace" is clicked', () => {
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Nouveau workspace/i }))
-    expect(screen.getByLabelText('Nom du nouveau workspace')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Créer' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Annuler' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /New workspace/i }))
+    expect(screen.getByLabelText('New workspace name')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
   })
 
   it('creates a workspace via Enter and closes the input', () => {
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Nouveau workspace/i }))
-    const input = screen.getByLabelText('Nom du nouveau workspace')
+    fireEvent.click(screen.getByRole('button', { name: /New workspace/i }))
+    const input = screen.getByLabelText('New workspace name')
     fireEvent.change(input, { target: { value: 'Trading' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
@@ -47,13 +47,13 @@ describe('<WorkspaceManager /> — create flow', () => {
     expect(list).toHaveLength(1)
     expect(list[0]?.name).toBe('Trading')
     // The input row collapses back to the CTA.
-    expect(screen.queryByLabelText('Nom du nouveau workspace')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('New workspace name')).not.toBeInTheDocument()
   })
 
   it('Escape cancels the create input without persisting', () => {
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Nouveau workspace/i }))
-    const input = screen.getByLabelText('Nom du nouveau workspace')
+    fireEvent.click(screen.getByRole('button', { name: /New workspace/i }))
+    const input = screen.getByLabelText('New workspace name')
     fireEvent.change(input, { target: { value: 'Cancelled' } })
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(useWorkspacesStore.getState().workspaces).toHaveLength(0)
@@ -98,12 +98,12 @@ describe('<WorkspaceManager /> — list rendering', () => {
       activeId: null,
     })
     render(<WorkspaceManager />)
-    const list = screen.getByRole('list', { name: /Workspaces enregistrés/i })
+    const list = screen.getByRole('list', { name: /Saved workspaces/i })
     const items = within(list).getAllByRole('listitem')
     expect(items.map((li) => li.getAttribute('data-workspace-id'))).toEqual(['new', 'mid', 'old'])
   })
 
-  it('marks the active workspace and disables its Activer button', () => {
+  it('marks the active workspace and disables its Activate button', () => {
     useWorkspacesStore.setState({
       workspaces: [
         { id: 'a', name: 'Active',   createdAt: 1, theme: 'dark', density: 'comfy' },
@@ -112,16 +112,16 @@ describe('<WorkspaceManager /> — list rendering', () => {
       activeId: 'a',
     })
     render(<WorkspaceManager />)
-    expect(screen.getByLabelText('Workspace actif')).toBeInTheDocument()
-    const activeBtn = screen.getByRole('button', { name: /Activer Active/i })
-    const inactiveBtn = screen.getByRole('button', { name: /Activer Inactive/i })
+    expect(screen.getByLabelText('Active workspace')).toBeInTheDocument()
+    const activeBtn = screen.getByRole('button', { name: /Activate Active/i })
+    const inactiveBtn = screen.getByRole('button', { name: /Activate Inactive/i })
     expect(activeBtn).toBeDisabled()
     expect(inactiveBtn).not.toBeDisabled()
   })
 })
 
 describe('<WorkspaceManager /> — apply / delete / rename', () => {
-  it('clicking Activer writes prefs and flips activeId in the store', () => {
+  it('clicking Activate writes prefs and flips activeId in the store', () => {
     useWorkspacesStore.setState({
       workspaces: [
         { id: 'a', name: 'Light',  createdAt: 1, theme: 'light', density: 'spacious' },
@@ -129,7 +129,7 @@ describe('<WorkspaceManager /> — apply / delete / rename', () => {
       activeId: null,
     })
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Activer Light/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Activate Light/i }))
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
     expect(window.localStorage.getItem(DENSITY_STORAGE_KEY)).toBe('spacious')
     expect(useWorkspacesStore.getState().activeId).toBe('a')
@@ -143,7 +143,7 @@ describe('<WorkspaceManager /> — apply / delete / rename', () => {
       activeId: null,
     })
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Supprimer Doomed/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete Doomed/i }))
     expect(useWorkspacesStore.getState().workspaces).toHaveLength(0)
   })
 
@@ -155,15 +155,15 @@ describe('<WorkspaceManager /> — apply / delete / rename', () => {
       activeId: null,
     })
     render(<WorkspaceManager />)
-    fireEvent.click(screen.getByRole('button', { name: /Renommer Old/i }))
-    const input = screen.getByLabelText('Renommer le workspace')
+    fireEvent.click(screen.getByRole('button', { name: /Rename Old/i }))
+    const input = screen.getByLabelText('Rename workspace')
     fireEvent.change(input, { target: { value: 'Renamed' } })
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(useWorkspacesStore.getState().workspaces[0]?.name).toBe('Renamed')
 
     // Now reopen rename and Escape — should not change.
-    fireEvent.click(screen.getByRole('button', { name: /Renommer Renamed/i }))
-    const input2 = screen.getByLabelText('Renommer le workspace')
+    fireEvent.click(screen.getByRole('button', { name: /Rename Renamed/i }))
+    const input2 = screen.getByLabelText('Rename workspace')
     fireEvent.change(input2, { target: { value: 'Junk' } })
     fireEvent.keyDown(input2, { key: 'Escape' })
     expect(useWorkspacesStore.getState().workspaces[0]?.name).toBe('Renamed')

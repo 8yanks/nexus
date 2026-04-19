@@ -7,12 +7,12 @@ afterEach(() => cleanup())
 describe('<ScreenSettings /> — chrome', () => {
   it('renders as a region with the given title as accessible name', () => {
     render(
-      <ScreenSettings title="Réglages — Dashboard" onClose={() => {}}>
+      <ScreenSettings title="Settings — Dashboard" onClose={() => {}}>
         body
       </ScreenSettings>,
     )
     expect(
-      screen.getByRole('region', { name: 'Réglages — Dashboard' }),
+      screen.getByRole('region', { name: 'Settings — Dashboard' }),
     ).toBeInTheDocument()
   })
 
@@ -45,7 +45,7 @@ describe('<ScreenSettings /> — close behaviour', () => {
         body
       </ScreenSettings>,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer les réglages' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
