@@ -1,5 +1,29 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up #4: focus ring + selection + scrollbar
+
+Branch `ai-schemas-and-audit`. Three small global-CSS additions in
+`src/index.css`. Found by noticing that several components set
+`outline: none` on inputs/buttons (theme.ts inputStyle, WorkspaceManager
+inputs) without ever providing a keyboard-focus replacement — meaning
+Tab-navigation gave no visual feedback at all.
+
+### Shipped — `2bc87b8`
+
+- `:focus-visible` — slate-300 (`#94a3b8`) 2px ring at 1px offset.
+  Triggers only on keyboard focus (Tab), never on mouse click. Works
+  globally so we don't have to retrofit every input/button. Keyboard
+  navigation is now usable across the entire app.
+- `::selection` — slate-300 at 30% alpha. Replaces browser-default
+  blue, so selecting price/symbol text stays on the greyscale brand.
+- Scrollbar — track now matches the new `bg: #0d1117`, thumb matches
+  `borderStrong: #3d4555`, plus a hover state (`#4d5565`) so the
+  thumb lights up on interaction.
+
+CSS-only. 652/652 tests + tsc + build green.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up #3: density-driven table fonts
 
 Branch `ai-schemas-and-audit`. Closes the latent finding flagged in
