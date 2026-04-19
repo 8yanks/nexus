@@ -8,6 +8,11 @@ import {
   getSpotInstrumentIds,
   getFuturesInstrumentIds,
   BINANCE_MAPPINGS,
+  toCoinbaseProductId,
+  fromCoinbaseProductId,
+  isCoinbaseInstrument,
+  getCoinbaseInstrumentIds,
+  COINBASE_MAPPINGS,
 } from '@/normalization/instrument'
 
 describe('Normalization — Instrument Symbol Mapping', () => {
@@ -79,5 +84,46 @@ describe('Normalization — Instrument Symbol Mapping', () => {
 
   it('BINANCE_MAPPINGS has all 5 entries', () => {
     expect(BINANCE_MAPPINGS).toHaveLength(5)
+  })
+})
+
+describe('Normalization — Coinbase Symbol Mapping', () => {
+  it('toCoinbaseProductId returns correct product for spot', () => {
+    expect(toCoinbaseProductId('BTC-USD-SPOT')).toBe('BTC-USD')
+    expect(toCoinbaseProductId('ETH-USD-SPOT')).toBe('ETH-USD')
+    expect(toCoinbaseProductId('SOL-USD-SPOT')).toBe('SOL-USD')
+  })
+
+  it('toCoinbaseProductId returns null for unmapped instrument', () => {
+    expect(toCoinbaseProductId('AAPL')).toBeNull()
+    expect(toCoinbaseProductId('BTC-PERP')).toBeNull() // perps not on Coinbase
+  })
+
+  it('fromCoinbaseProductId resolves correctly', () => {
+    expect(fromCoinbaseProductId('BTC-USD')).toBe('BTC-USD-SPOT')
+    expect(fromCoinbaseProductId('ETH-USD')).toBe('ETH-USD-SPOT')
+    expect(fromCoinbaseProductId('SOL-USD')).toBe('SOL-USD-SPOT')
+  })
+
+  it('fromCoinbaseProductId returns null for unknown product', () => {
+    expect(fromCoinbaseProductId('UNKNOWN-USD')).toBeNull()
+  })
+
+  it('isCoinbaseInstrument distinguishes mapped vs unmapped', () => {
+    expect(isCoinbaseInstrument('BTC-USD-SPOT')).toBe(true)
+    expect(isCoinbaseInstrument('BTC-PERP')).toBe(false)
+    expect(isCoinbaseInstrument('AAPL')).toBe(false)
+  })
+
+  it('getCoinbaseInstrumentIds returns the spot subset', () => {
+    const ids = getCoinbaseInstrumentIds()
+    expect(ids).toContain('BTC-USD-SPOT')
+    expect(ids).toContain('ETH-USD-SPOT')
+    expect(ids).toContain('SOL-USD-SPOT')
+    expect(ids).not.toContain('BTC-PERP')
+  })
+
+  it('COINBASE_MAPPINGS covers the 3 starter pairs', () => {
+    expect(COINBASE_MAPPINGS).toHaveLength(3)
   })
 })

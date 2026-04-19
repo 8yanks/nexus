@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSpotTicker, normalizeFuturesTicker } from '@/normalization/snapshot'
-import type { BinanceTickerData, BinanceFuturesTickerData } from '@/normalization/snapshot'
+import { normalizeSpotTicker, normalizeFuturesTicker, normalizeCoinbaseTicker } from '@/normalization/snapshot'
+import type { BinanceTickerData, BinanceFuturesTickerData, CoinbaseTickerData } from '@/normalization/snapshot'
 
 const mkTickerData = (overrides: Partial<BinanceTickerData> = {}): BinanceTickerData => ({
   instrumentId: 'BTC-USD-SPOT',
@@ -101,5 +101,54 @@ describe('Normalization — Futures Ticker', () => {
     const snap = normalizeFuturesTicker(mkFuturesData())
     expect(snap._source).toBe('binance_futures')
     expect(snap._provenance.source).toBe('binance_futures')
+  })
+})
+
+describe('Normalization — Coinbase Ticker', () => {
+  const mkCoinbaseData = (overrides: Partial<CoinbaseTickerData> = {}): CoinbaseTickerData => ({
+    instrumentId: 'BTC-USD-SPOT',
+    price: 67500,
+    bid: 67490,
+    ask: 67510,
+    high24h: 68000,
+    low24h: 66000,
+    volume24h: 12345.67,
+    open24h: 66700,
+    fetchMethod: 'ws',
+    latencyMs: 30,
+    ...overrides,
+  })
+
+  it('derives change24h from open24h vs price', () => {
+    const snap = normalizeCoinbaseTicker(mkCoinbaseData({ price: 100, open24h: 80 }))
+    // (100 - 80) / 80 = 0.25 → 25%
+    expect(snap.change24h).toBeCloseTo(0.25, 6)
+    expect(snap.change24hPct).toBeCloseTo(25, 6)
+  })
+
+  it('handles open24h === 0 without dividing', () => {
+    const snap = normalizeCoinbaseTicker(mkCoinbaseData({ open24h: 0 }))
+    expect(snap.change24h).toBe(0)
+    expect(snap.change24hPct).toBe(0)
+  })
+
+  it('sets _source to coinbase', () => {
+    const snap = normalizeCoinbaseTicker(mkCoinbaseData())
+    expect(snap._source).toBe('coinbase')
+    expect(snap._provenance.source).toBe('coinbase')
+  })
+
+  it('preserves rest vs ws fetchMethod', () => {
+    const restSnap = normalizeCoinbaseTicker(mkCoinbaseData({ fetchMethod: 'rest' }))
+    expect(restSnap._provenance.fetchMethod).toBe('rest')
+
+    const wsSnap = normalizeCoinbaseTicker(mkCoinbaseData({ fetchMethod: 'ws' }))
+    expect(wsSnap._provenance.fetchMethod).toBe('ws')
+  })
+
+  it('keeps spot-shape (no openInterest / fundingRate)', () => {
+    const snap = normalizeCoinbaseTicker(mkCoinbaseData())
+    expect(snap.openInterest).toBeNull()
+    expect(snap.fundingRate).toBeNull()
   })
 })

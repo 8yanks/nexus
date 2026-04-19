@@ -44,3 +44,35 @@ export const getSpotInstrumentIds = (): string[] =>
 
 export const getFuturesInstrumentIds = (): string[] =>
   BINANCE_MAPPINGS.filter((m) => m.type === 'futures').map((m) => m.instrumentId)
+
+// ─── COINBASE EXCHANGE MAPPINGS ─────────────────────────────
+// Coinbase uses dash-separated product IDs (e.g. BTC-USD, ETH-USD).
+// We map the same internal spot IDs that Binance covers, so Coinbase
+// can serve as a fallback when Binance fails — same instruments,
+// different exchange, cross-validated prices.
+
+export interface CoinbaseSymbolMapping {
+  instrumentId: string
+  coinbaseProductId: string
+}
+
+export const COINBASE_MAPPINGS: CoinbaseSymbolMapping[] = [
+  { instrumentId: 'BTC-USD-SPOT', coinbaseProductId: 'BTC-USD' },
+  { instrumentId: 'ETH-USD-SPOT', coinbaseProductId: 'ETH-USD' },
+  { instrumentId: 'SOL-USD-SPOT', coinbaseProductId: 'SOL-USD' },
+]
+
+const _byCoinbaseInstrumentId = new Map(COINBASE_MAPPINGS.map((m) => [m.instrumentId, m]))
+const _byCoinbaseProductId = new Map(COINBASE_MAPPINGS.map((m) => [m.coinbaseProductId, m]))
+
+export const toCoinbaseProductId = (instrumentId: string): string | null =>
+  _byCoinbaseInstrumentId.get(instrumentId)?.coinbaseProductId ?? null
+
+export const fromCoinbaseProductId = (productId: string): string | null =>
+  _byCoinbaseProductId.get(productId)?.instrumentId ?? null
+
+export const isCoinbaseInstrument = (instrumentId: string): boolean =>
+  _byCoinbaseInstrumentId.has(instrumentId)
+
+export const getCoinbaseInstrumentIds = (): string[] =>
+  COINBASE_MAPPINGS.map((m) => m.instrumentId)

@@ -80,3 +80,50 @@ export const normalizeFuturesTicker = (data: BinanceFuturesTickerData): MarketSn
     },
   }
 }
+
+// ─── NORMALIZE COINBASE TICKER → MarketSnapshot ─────────────
+// Coinbase Exchange ticker payload is similar to Binance's but uses
+// snake_case keys and a different shape for 24h stats. The wrapper
+// here re-uses normalizeSpotTicker by remapping fields, keeping a
+// single MarketSnapshot shape downstream regardless of source.
+
+export interface CoinbaseTickerData {
+  instrumentId: string
+  price: number
+  bid: number
+  ask: number
+  high24h: number
+  low24h: number
+  volume24h: number      // base volume (Coinbase reports base, not quote)
+  open24h: number
+  fetchMethod: 'rest' | 'ws'
+  latencyMs: number
+}
+
+export const normalizeCoinbaseTicker = (data: CoinbaseTickerData): MarketSnapshot => {
+  const change24h = data.open24h > 0 ? (data.price - data.open24h) / data.open24h : 0
+  const change24hPct = change24h * 100
+
+  const base = normalizeSpotTicker({
+    instrumentId: data.instrumentId,
+    price: data.price,
+    bid: data.bid,
+    ask: data.ask,
+    high24h: data.high24h,
+    low24h: data.low24h,
+    volume24h: data.volume24h,
+    change24h,
+    change24hPct,
+    latencyMs: data.latencyMs,
+  })
+
+  return {
+    ...base,
+    _source: 'coinbase',
+    _provenance: {
+      ...base._provenance,
+      source: 'coinbase',
+      fetchMethod: data.fetchMethod,
+    },
+  }
+}

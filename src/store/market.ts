@@ -27,7 +27,7 @@ import { computeReadiness } from '@/quality/readiness'
 import { evaluateAllRules } from '@/alerts/engine'
 import { notifyAll } from '@/alerts/notifier'
 import { DEFAULT_RULES } from '@/alerts/rules'
-import { isBinanceInstrument, getBinanceMapping } from '@/normalization/instrument'
+import { isBinanceInstrument, getBinanceMapping, isCoinbaseInstrument } from '@/normalization/instrument'
 import { computeCorrelationMatrix } from '@/analytics/correlation'
 import { detectPatterns } from '@/analytics/patterns'
 import { saveSnapshots, pruneOldSnapshots } from '@/storage/snapshots'
@@ -84,6 +84,7 @@ export interface MarketStore {
   registry: ProviderRegistry
   lastRefresh: string | null
   binanceConnected: boolean
+  coinbaseConnected: boolean
 
   // Actions
   setScreen: (screen: Screen) => void
@@ -126,6 +127,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   registry: createRegistry(),
   lastRefresh: null,
   binanceConnected: false,
+  coinbaseConnected: false,
 
   // ── Navigation ──────────────────────────────────────────
   setScreen: (screen) => set({ screen }),
@@ -134,50 +136,77 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
     set({ selectedInstrumentId: id, screen: 'detail' }),
 
   // ── Connect live providers ─────────────────────────────
+  // Each exchange connects independently — a Coinbase outage doesn't
+  // block Binance and vice-versa. The refreshAll fallback chain
+  // (binance → coinbase → mock) routes per-instrument based on which
+  // providers actually reported success.
   connectProviders: async () => {
-    const { registry, binanceConnected } = get()
-    if (binanceConnected) return
+    const { registry, binanceConnected, coinbaseConnected } = get()
 
-    try {
-      console.log('[Store] Connecting Binance providers...')
-      await Promise.all([
-        registry['binance_spot'].connect(),
-        registry['binance_futures'].connect(),
-      ])
-      set({ binanceConnected: true })
-      console.log('[Store] Binance providers connected')
-    } catch (err) {
-      console.error('[Store] Failed to connect Binance:', err)
-      // Fallback: mock will be used for crypto instruments
+    if (!binanceConnected) {
+      try {
+        console.log('[Store] Connecting Binance providers...')
+        await Promise.all([
+          registry['binance_spot'].connect(),
+          registry['binance_futures'].connect(),
+        ])
+        set({ binanceConnected: true })
+        console.log('[Store] Binance providers connected')
+      } catch (err) {
+        console.error('[Store] Failed to connect Binance:', err)
+      }
+    }
+
+    if (!coinbaseConnected) {
+      try {
+        console.log('[Store] Connecting Coinbase provider...')
+        await registry['coinbase'].connect()
+        set({ coinbaseConnected: true })
+        console.log('[Store] Coinbase provider connected')
+      } catch (err) {
+        console.error('[Store] Failed to connect Coinbase:', err)
+      }
     }
   },
 
   // ── Core refresh cycle ──────────────────────────────────
   refreshAll: async () => {
-    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected } = get()
+    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected, coinbaseConnected } = get()
 
-    // 1. Fetch snapshots + candles for all instruments
+    // 1. Fetch snapshots + candles for all instruments.
+    // Per-instrument provider chain (try in order, fall back on throw):
+    //   crypto spot → binance_spot → coinbase → mock
+    //   crypto perp → binance_futures → mock
+    //   anything else → mock
+    // Each step is gated by the corresponding `*Connected` flag, so
+    // we don't waste a request on a provider that failed to start.
     const snapshots: Record<string, MarketSnapshot> = {}
     const candles: Record<string, CandleSeries> = {}
 
+    const buildProviderChain = (instrumentId: string): string[] => {
+      const chain: string[] = []
+      if (isBinanceInstrument(instrumentId) && binanceConnected) {
+        chain.push(getProviderId(instrumentId))
+      }
+      if (isCoinbaseInstrument(instrumentId) && coinbaseConnected) {
+        chain.push('coinbase')
+      }
+      chain.push('mock')
+      return chain
+    }
+
     await Promise.all(
       instruments.map(async (inst) => {
-        const isBinance = isBinanceInstrument(inst.id) && binanceConnected
-        const providerId = isBinance ? getProviderId(inst.id) : 'mock'
-        const provider = registry[providerId]
-
-        try {
-          snapshots[inst.id] = await provider.getSnapshot(inst.id)
-          candles[inst.id] = await provider.getCandles(inst.id, '1h', 200)
-        } catch {
-          // Fallback to mock if live provider fails
-          if (providerId !== 'mock') {
-            try {
-              snapshots[inst.id] = await registry['mock'].getSnapshot(inst.id)
-              candles[inst.id] = await registry['mock'].getCandles(inst.id, '1h', 200)
-            } catch {
-              // Skip instrument entirely
-            }
+        const chain = buildProviderChain(inst.id)
+        for (const providerId of chain) {
+          const provider = registry[providerId]
+          if (!provider) continue
+          try {
+            snapshots[inst.id] = await provider.getSnapshot(inst.id)
+            candles[inst.id] = await provider.getCandles(inst.id, '1h', 200)
+            return
+          } catch {
+            // Try next provider in the chain
           }
         }
       }),
