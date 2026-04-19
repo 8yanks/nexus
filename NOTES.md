@@ -1,5 +1,32 @@
 # Session notes
 
+## 2026-04-19 — UX polish, follow-up: English chrome (drawer + workspace manager)
+
+Branch `ai-schemas-and-audit`. Same intent as the prior nav-labels pass
+("English by default"), applied to the remaining FR strings that surface
+in the chrome the user actually clicks on.
+
+### Shipped — `d2e872d`
+
+- **ScreenHeader**: settings cog `aria-label` and drawer title default
+  `Réglages — {title}` → `Settings — {title}`. Subtitle font 12 → 13 so
+  it matches the new comfy body scale.
+- **ScreenSettings**: close-button `aria-label` → `Close settings`.
+- **ChainMonitor**: explicit `settingsTitle` override translated.
+- **WorkspaceManager**: every visible string + every `aria-label` now
+  English (`Activate / Active / Rename / Delete / Create / Cancel /
+  New workspace / No workspace saved… / Workspace name…`).
+- **Tests**: ScreenHeader / ScreenSettings / WorkspaceManager
+  re-pinned to the new English strings.
+
+`Options.tsx` Phase-2 placeholder French copy intentionally left alone
+(those screens get rewritten when actually built — translating a
+placeholder you're about to replace is wasted churn).
+
+650/650 tests + tsc + build green.
+
+---
+
 ## 2026-04-19 — UX polish (palette / font / nav symmetry / English labels)
 
 Branch `ai-schemas-and-audit`. Direct user feedback after a first pass
