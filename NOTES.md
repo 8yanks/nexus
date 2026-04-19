@@ -1,5 +1,32 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.8 (retrofit Detail)
+
+Branch `ux-overhaul`. Detail screen retrofit. Closes the per-instrument
+drilldown — last of the "core" Phase-3 screens (Dashboard / Chain /
+Trader / Sentinel / Detail). Informations + remaining Marchés screens
+follow.
+
+### Shipped
+
+1. **`<HASH>` Detail adopts `<ScreenHeader />`**
+   - Title: dynamic `inst.symbol` (varies per drilldown).
+   - Subtitle: `inst.name — inst.exchange` so the user knows what
+     they're looking at without parsing the symbol.
+   - Badge: live `<StatusBadge>` showing LIVE / STALE / SIM.
+   - Actions: price block (mono, big) + 24h change + a compact
+     "← back" button. The back button moves into the header instead
+     of floating on its own — keeps the screen content tighter.
+   - Inner padding tightened 16 → 14 to match the established pattern.
+   - All 599 existing tests still pass — no Detail RTL coverage yet
+     (gap noted for Phase 4).
+   - Type-check + build clean.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.7 (retrofit Sentinel)
 
 Branch `ux-overhaul`. Sentinel screen retrofit. Closes the bots

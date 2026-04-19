@@ -17,6 +17,7 @@ import { QualityBar } from '@/ui/components/QualityBar'
 import { fmt, fmtVol, fmtPct, fmtTime } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
 import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── STAT PAIR ──────────────────────────────────────────────
 
@@ -70,34 +71,55 @@ export const Detail = () => {
     })) ?? []
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <button
-          onClick={() => setScreen('dashboard')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textMuted, padding: 4, borderRadius: 4 }}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>{inst.symbol}</h1>
-            <StatusBadge status={snap._status} />
+    <>
+      <ScreenHeader
+        title={inst.symbol}
+        subtitle={`${inst.name} — ${inst.exchange}`}
+        badge={<StatusBadge status={snap._status} />}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  fontFamily: fonts.mono,
+                  color: colors.text,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.1,
+                }}
+              >
+                {fmt(snap.price, decimals)}
+              </div>
+              <PriceChange
+                change={snap.change24h}
+                suffix="24h"
+                title={`Rolling 24h change from ${inst.exchange}. May differ from TradingView/Google because those show "since midnight" or aggregate exchanges.`}
+              />
+            </div>
+            <button
+              onClick={() => setScreen('dashboard')}
+              title="Back to Dashboard (Esc)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: 'none',
+                border: `1px solid ${colors.border}`,
+                cursor: 'pointer',
+                color: colors.textSecondary,
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontFamily: fonts.sans,
+              }}
+            >
+              <ArrowLeft size={13} /> back
+            </button>
           </div>
-          <span style={{ fontSize: 11, color: colors.textMuted }}>{inst.name} — {inst.exchange}</span>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.mono, color: colors.text, letterSpacing: '-0.02em' }}>
-            {fmt(snap.price, decimals)}
-          </div>
-          <PriceChange
-            change={snap.change24h}
-            suffix="24h"
-            title={`Rolling 24h change from ${inst.exchange}. May differ from TradingView/Google because those show "since midnight" or aggregate exchanges.`}
-          />
-        </div>
-      </div>
-
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Chart + Key Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
         <div style={card}>
@@ -270,6 +292,7 @@ export const Detail = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
