@@ -56,6 +56,17 @@ integration branch — `master` is still on the pre-bots checkpoint and
 will catch up via the next integration PR). UX overhaul is now the
 head of the integration branch.
 
+### Phase 4 follow-up — `da6cd5d` hook coverage
+
+Closed the `tests/hooks/` gap (which previously didn't exist):
+- `useAnalytics`: nulls when id is null/unknown, returns slice for
+  known id.
+- `useDataQuality`: empty defaults + reflects store updates.
+- `useMarketData`: starts auto-refresh on mount, stops on unmount,
+  exposes the dashboard watchlist slice.
+
++7 tests (643 → 650).
+
 ---
 
 ## 2026-04-19 — UX overhaul, Phase 3.10 (retrofit Scanner + Correlation + MacroPulse + Backtest)
