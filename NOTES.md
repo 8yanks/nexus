@@ -9,7 +9,7 @@ target screen now adopts `<ScreenHeader />`** — Phase 3 is complete.
 
 ### Shipped
 
-1. **PHASE_310_HASH Scanner + Correlation + MacroPulse + Backtest adopt `<ScreenHeader />`**
+1. **`25d4318` Scanner + Correlation + MacroPulse + Backtest adopt `<ScreenHeader />`**
    - **Scanner**: badge `{withSignals.length} inst · {signals.length}
      signal(s)` in yellow when active, muted when zero. Subtitle
      describes the grouping logic (active first, then quiet).
