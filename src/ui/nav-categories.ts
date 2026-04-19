@@ -25,7 +25,7 @@ export interface CategoryDef {
 export const CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'markets',
-    label: 'Marchés',
+    label: 'Markets',
     screens: ['dashboard', 'scanner', 'correlation', 'macro'],
   },
   {
@@ -35,17 +35,17 @@ export const CATEGORIES: readonly CategoryDef[] = [
   },
   {
     id: 'research',
-    label: 'Recherche',
+    label: 'Research',
     screens: ['backtest', 'quality'],
   },
   {
     id: 'info',
-    label: 'Informations',
+    label: 'Information',
     screens: ['vcflow', 'corporate', 'alerts', 'journal'],
   },
   {
     id: 'system',
-    label: 'Système',
+    label: 'System',
     screens: ['sources', 'export', 'options'],
   },
 ] as const

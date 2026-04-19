@@ -26,7 +26,7 @@ describe('<Nav /> rendering', () => {
 
   it('renders all 5 category tabs in the primary row', () => {
     render(<Nav />)
-    for (const label of ['Marchés', 'Bots', 'Recherche', 'Informations', 'Système']) {
+    for (const label of ['Markets', 'Bots', 'Research', 'Information', 'System']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
   })
@@ -78,10 +78,10 @@ describe('<Nav /> primary navigation', () => {
   })
 
   it('clicking the active category does NOT change the screen', () => {
-    // Already on dashboard (markets). Clicking Marchés should be a no-op.
+    // Already on dashboard (markets). Clicking Markets should be a no-op.
     useMarketStore.setState({ screen: 'scanner' })
     render(<Nav />)
-    fireEvent.click(screen.getByRole('button', { name: 'Marchés' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Markets' }))
     expect(useMarketStore.getState().screen).toBe('scanner')
   })
 
@@ -96,9 +96,9 @@ describe('<Nav /> primary navigation', () => {
     useMarketStore.setState({ screen: 'chain' })
     render(<Nav />)
     const active = screen.getByRole('button', { name: 'Bots' })
-    const inactive = screen.getByRole('button', { name: 'Marchés' })
+    const inactive = screen.getByRole('button', { name: 'Markets' })
     expect(active).toHaveStyle({ fontWeight: '600' })
-    expect(inactive).toHaveStyle({ fontWeight: '400' })
+    expect(inactive).toHaveStyle({ fontWeight: '500' })
   })
 })
 

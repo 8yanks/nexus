@@ -57,21 +57,27 @@ export interface Palette {
   accentDim: string
 }
 
-// Dark — true black background, layered greys, sharp semantic accents.
-// The deeper the layer, the lighter the grey. This way every nested
-// panel can stack one level brighter than its parent without ambiguity.
+// Dark — soft slate background à la TradingView/Hyperliquid, layered
+// neutral-blue greys, sharp semantic accents. The deeper the layer, the
+// lighter the surface — every nested panel can stack one level brighter
+// than its parent without ambiguity. Backgrounds carry a subtle
+// blue-grey hue (≈ #131722 family) instead of pure black: easier on the
+// eyes during long sessions and more obviously "professional" than
+// pitch-black.
 export const dark: Palette = {
-  bg: '#000000',
-  surface1: '#0c0c0c',
-  surface2: '#161616',
-  surface3: '#1f1f1f',
-  border: '#262626',
-  borderStrong: '#3a3a3a',
+  bg: '#0d1117',
+  surface1: '#151a22',
+  surface2: '#1c222d',
+  surface3: '#252b38',
+  border: '#2a313e',
+  borderStrong: '#3d4555',
 
-  textDim: '#525252',
-  textMuted: '#737373',
-  textSecondary: '#a3a3a3',
-  text: '#fafafa',
+  // Text gets a meaningful boost at every tier so labels and table cells
+  // pop instead of fading into the surface.
+  textDim: '#64748b',
+  textMuted: '#94a3b8',
+  textSecondary: '#cbd5e1',
+  text: '#f1f5f9',
 
   success: '#22c55e',
   successDim: '#22c55e22',
@@ -86,11 +92,11 @@ export const dark: Palette = {
   delayed: '#f59e0b',
   simulated: '#a855f7',
   stale: '#f97316',
-  unavailable: '#737373',
+  unavailable: '#94a3b8',
   error: '#ef4444',
 
-  accent: '#fafafa',
-  accentDim: '#fafafa18',
+  accent: '#f1f5f9',
+  accentDim: '#f1f5f918',
 }
 
 // Light — true white background, inverted greyscale ladder, slightly
@@ -161,22 +167,22 @@ export const density = {
     padPanel: 10,
     gap: 10,
     rowH: 30,
-    fontBody: 12,
-    fontHeader: 11,
+    fontBody: 13,
+    fontHeader: 12,
   },
   spacious: {
     padCard: 20,
     padPanel: 14,
     gap: 14,
     rowH: 36,
-    fontBody: 13,
-    fontHeader: 12,
+    fontBody: 14,
+    fontHeader: 13,
   },
 } as const
 
 export type DensityName = keyof typeof density
 
 export const fonts = {
-  sans: "'IBM Plex Sans', system-ui, -apple-system, sans-serif",
+  sans: "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   mono: "'JetBrains Mono', 'Fira Code', monospace",
 } as const

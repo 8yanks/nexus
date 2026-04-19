@@ -86,23 +86,30 @@ export const Nav = () => {
         fontFamily: fonts.sans,
       }}
     >
-      {/* ─── PRIMARY ROW — brand + 5 categories + status ─── */}
+      {/* ─── PRIMARY ROW — 3-column grid for horizontal symmetry ─── */}
+      {/*
+       * The grid template `1fr auto 1fr` pins the brand to the left edge
+       * and the status cluster to the right edge while letting the
+       * category tab group center itself in the remaining space. This
+       * gives the chrome a balanced, terminal-like feel rather than the
+       * old left-clustered layout where the tabs sat just-after the logo.
+       */}
       <nav
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          gap: 2,
           padding: '6px 16px',
         }}
       >
-        {/* Logo */}
+        {/* Logo (left column) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            marginRight: 24,
             cursor: 'pointer',
+            justifySelf: 'start',
           }}
           onClick={() => setScreen('dashboard')}
         >
@@ -120,82 +127,90 @@ export const Nav = () => {
           </span>
         </div>
 
-        {/* Category tabs */}
-        {CATEGORIES.map((cat) => {
-          const isActive = cat.id === activeCategory
-          return (
-            <button
-              key={cat.id}
-              onClick={() => {
-                if (cat.id !== activeCategory) {
-                  setScreen(landingOf(cat.id))
-                }
-              }}
-              data-category={cat.id}
-              data-active={isActive ? 'true' : 'false'}
-              style={{
-                padding: '6px 14px',
-                border: 'none',
-                borderRadius: radius.btn,
-                cursor: 'pointer',
-                fontSize: 12,
-                fontFamily: fonts.sans,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? colors.text : colors.textMuted,
-                background: isActive ? colors.bgHover : 'transparent',
-                letterSpacing: '0.02em',
-                transition: 'background 0.12s ease, color 0.12s ease',
-              }}
-            >
-              {cat.label}
-            </button>
-          )
-        })}
+        {/* Category tabs (centered) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifySelf: 'center' }}>
+          {CATEGORIES.map((cat) => {
+            const isActive = cat.id === activeCategory
+            return (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  if (cat.id !== activeCategory) {
+                    setScreen(landingOf(cat.id))
+                  }
+                }}
+                data-category={cat.id}
+                data-active={isActive ? 'true' : 'false'}
+                style={{
+                  padding: '6px 16px',
+                  border: 'none',
+                  borderRadius: radius.btn,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontFamily: fonts.sans,
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? colors.text : colors.textMuted,
+                  background: isActive ? colors.bgHover : 'transparent',
+                  letterSpacing: '0.02em',
+                  transition: 'background 0.12s ease, color 0.12s ease',
+                }}
+              >
+                {cat.label}
+              </button>
+            )
+          })}
+        </div>
 
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* Analyst Mode badge */}
+        {/* Status cluster (right column) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '3px 10px',
-            borderRadius: radius.badge,
-            background: colors.bgHover,
-            border: `1px solid ${colors.border}`,
-            marginRight: 12,
+            gap: 12,
+            justifySelf: 'end',
           }}
         >
-          <span
+          {/* Analyst Mode badge */}
+          <div
             style={{
-              fontSize: 10,
-              fontFamily: fonts.mono,
-              fontWeight: 700,
-              color: colors.textSecondary,
-              letterSpacing: '0.08em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 10px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
             }}
           >
-            ANALYST MODE
-          </span>
-        </div>
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: fonts.mono,
+                fontWeight: 700,
+                color: colors.textSecondary,
+                letterSpacing: '0.08em',
+              }}
+            >
+              ANALYST MODE
+            </span>
+          </div>
 
-        {/* Live indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              borderRadius: radius.pill,
-              background: binanceConnected ? colors.green : colors.red,
-              boxShadow: binanceConnected ? `0 0 6px ${colors.green}` : undefined,
-            }}
-          />
-          <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textDim, letterSpacing: '0.04em' }}>
-            {binanceConnected ? 'LIVE' : 'OFFLINE'}
-          </span>
+          {/* Live indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 6,
+                borderRadius: radius.pill,
+                background: binanceConnected ? colors.green : colors.red,
+                boxShadow: binanceConnected ? `0 0 6px ${colors.green}` : undefined,
+              }}
+            />
+            <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textDim, letterSpacing: '0.04em' }}>
+              {binanceConnected ? 'LIVE' : 'OFFLINE'}
+            </span>
+          </div>
         </div>
       </nav>
 
@@ -231,11 +246,11 @@ export const Nav = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 5,
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   border: 'none',
                   borderRadius: radius.btn,
                   cursor: 'pointer',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: fonts.sans,
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? colors.accent : colors.textMuted,
