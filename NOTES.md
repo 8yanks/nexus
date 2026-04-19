@@ -7,7 +7,7 @@ adopt `<ScreenHeader />` in a single commit.
 
 ### Shipped
 
-1. **`<HASH>` VCFlow + Corporate adopt `<ScreenHeader />`**
+1. **`f6efb15` VCFlow + Corporate adopt `<ScreenHeader />`**
    - VCFlow: badge `{n} deals · {n} sectors` in purple. Subtitle
      calls out the data source (mock — adapters Crunchbase / PitchBook
      / CB Insights for live).
