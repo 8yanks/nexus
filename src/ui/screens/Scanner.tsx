@@ -3,7 +3,8 @@ import { StatusBadge } from '@/ui/components/StatusBadge'
 import { PriceChange } from '@/ui/components/PriceChange'
 import { fmt } from '@/utils/format'
 import { safeFixed } from '@/utils/math'
-import { colors, fonts, card, tagStyle, sectionHeader, emptyState } from '@/ui/theme'
+import { colors, fonts, radius, card, tagStyle, sectionHeader, emptyState } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import { SIGNAL_CONFIGS } from '@/signals/types'
 
 export const Scanner = () => {
@@ -31,16 +32,29 @@ export const Scanner = () => {
   const withoutSignals = sorted.filter((i) => (signalsByInst[i.id]?.length ?? 0) === 0)
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
-          Signal Scanner
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: colors.textMuted }}>
-          {withSignals.length} instrument{withSignals.length !== 1 ? 's' : ''} with active signals — {signals.length} total signals
-        </p>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Signal Scanner"
+        subtitle="Vue par instrument: signaux actifs détectés (techniques + corporate + macro), groupés et triés par densité de signaux."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: signals.length > 0 ? colors.yellow : colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="scanner-signals-badge"
+          >
+            {withSignals.length} inst · {signals.length} signal{signals.length !== 1 ? 's' : ''}
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Active signals section */}
       {withSignals.length > 0 && (
         <>
@@ -172,6 +186,7 @@ export const Scanner = () => {
       {signals.length === 0 && (
         <div style={emptyState}>No signals detected across any instruments</div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

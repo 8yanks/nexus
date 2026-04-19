@@ -4,7 +4,8 @@ import { MACRO_CATEGORY_CONFIGS } from '@/macro/types'
 import type { MacroIndicator, MacroCalendarEvent, MacroCategory } from '@/macro/types'
 import { fmtAge, fmtDate } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
-import { colors, fonts, card, sectionHeader, tagStyle, emptyState, thStyle, tdStyle, monoTd, statLabel, statValue } from '@/ui/theme'
+import { colors, fonts, radius, card, sectionHeader, tagStyle, emptyState, thStyle, tdStyle, monoTd, statLabel, statValue } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── INDICATOR ROW ──────────────────────────────────────────
 
@@ -156,19 +157,44 @@ export const MacroPulse = () => {
     </button>
   )
 
-  if (loading) return <div style={emptyState}>Loading macro data...</div>
+  if (loading) {
+    return (
+      <>
+        <ScreenHeader
+          title="Macro Pulse"
+          subtitle="Indicateurs macro (FFR, CPI, VIX, DXY, NFP) + calendrier des events. Source mock — adapters FRED / Trading Economics / Investing.com pour live."
+        />
+        <div style={{ padding: '14px 20px' }}>
+          <div style={emptyState}>Loading macro data...</div>
+        </div>
+      </>
+    )
+  }
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.text }}>
-          Macro Pulse
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: colors.textMuted }}>
-          {indicators.length} indicators — {upcomingEvents.length} upcoming events
-        </p>
-      </div>
-
+    <>
+      <ScreenHeader
+        title="Macro Pulse"
+        subtitle="Indicateurs macro (FFR, CPI, VIX, DXY, NFP) + calendrier des events. Source mock — adapters FRED / Trading Economics / Investing.com pour live."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="macro-counts-badge"
+          >
+            {indicators.length} ind · {upcomingEvents.length} upcoming
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Key KPI strip */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <KPI label="Fed Funds" value={ffr ? `${safeFixed(ffr.value, 2)}%` : '—'} color={colors.accent} />
@@ -242,6 +268,7 @@ export const MacroPulse = () => {
           Macro data is mock. Connect FRED, Trading Economics, or Investing.com adapters for live feeds.
         </span>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

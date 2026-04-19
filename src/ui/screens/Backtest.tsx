@@ -13,7 +13,8 @@ import {
 import { Play, RotateCcw } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
-import { colors, fonts, card, statLabel, statValue, inputStyle as themeInputStyle } from '@/ui/theme'
+import { colors, fonts, radius, card, statLabel, statValue, inputStyle as themeInputStyle } from '@/ui/theme'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import { fmt, fmtPct, fmtTime } from '@/utils/format'
 import type { BacktestConfig, BacktestResult } from '@/backtest/types'
 import { DEFAULT_CONFIG } from '@/backtest/types'
@@ -383,11 +384,29 @@ export const Backtest = () => {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: colors.text }}>
-        Backtest Engine
-      </h2>
-
+    <>
+      <ScreenHeader
+        title="Backtest Engine"
+        subtitle="Configure entry signals + risk params, lance un backtest sur l'historique de candles, examine équité et trades."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: result ? colors.green : colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="backtest-state-badge"
+          >
+            {running ? 'running…' : result ? `${result.trades.length} trades` : 'idle'}
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16 }}>
         {/* Left: Config */}
         <ConfigPanel
@@ -419,6 +438,7 @@ export const Backtest = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

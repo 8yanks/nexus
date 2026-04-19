@@ -1,5 +1,45 @@
 # Session notes
 
+## 2026-04-19 — UX overhaul, Phase 3.10 (retrofit Scanner + Correlation + MacroPulse + Backtest)
+
+Branch `ux-overhaul`. The last four screens of the Phase-3 cosmetic
+refonte: Scanner (Marchés), Correlation (Recherche), MacroPulse
+(Recherche), Backtest (Recherche). With this commit, **every Phase-3
+target screen now adopts `<ScreenHeader />`** — Phase 3 is complete.
+
+### Shipped
+
+1. **PHASE_310_HASH Scanner + Correlation + MacroPulse + Backtest adopt `<ScreenHeader />`**
+   - **Scanner**: badge `{withSignals.length} inst · {signals.length}
+     signal(s)` in yellow when active, muted when zero. Subtitle
+     describes the grouping logic (active first, then quiet).
+   - **Correlation**: badge `{n} instruments`. Both the empty/loading
+     branch and the populated branch wrap in a fragment + ScreenHeader
+     so the chrome is consistent regardless of state.
+   - **MacroPulse**: badge `{indicators.length} ind · {upcomingEvents.length}
+     upcoming`. Same dual-branch fragment treatment as Correlation
+     (loading state shares the chrome).
+   - **Backtest**: badge `running…` / `{trades.length} trades` /
+     `idle` driven by run state. Hand-rolled `<h2>` header dropped.
+   - All four screens follow the established pattern: outer
+     ScreenHeader edge-to-edge, inner content `padding: '14px 20px'`.
+   - All 599 existing tests still pass — none of the four had RTL
+     coverage; gaps now flagged for Phase 4.
+   - Type-check + build clean.
+
+### Phase 3 wrap
+
+That closes Phase 3 — every screen in the app now uses the
+standardised `<ScreenHeader />` building block. Phase 4 picks up
+the RTL coverage backfill (Journal, Alerts, Sources, Export, Quality,
+Dashboard, Detail, VCFlow, Corporate, Scanner, Correlation,
+MacroPulse, Backtest) before merging `ux-overhaul → main`.
+
+### Suite stats
+- 599 tests across 63 files. All green.
+
+---
+
 ## 2026-04-19 — UX overhaul, Phase 3.9 (retrofit VCFlow + Corporate)
 
 Branch `ux-overhaul`. Informations group: both VCFlow and Corporate

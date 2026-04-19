@@ -1,8 +1,8 @@
-import { GitCompareArrows } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { getStrongestCorrelations, getMostDecorrelated } from '@/analytics/correlation'
-import { colors, fonts, card, sectionHeader, emptyState } from '@/ui/theme'
+import { colors, fonts, radius, card, sectionHeader, emptyState } from '@/ui/theme'
 import { isValidNumber } from '@/utils/math'
+import { ScreenHeader } from '@/ui/components/ScreenHeader'
 
 // ─── COLOR SCALE: -1 (red) → 0 (neutral) → +1 (green) ─────
 
@@ -74,7 +74,17 @@ export const Correlation = () => {
   const symbolMap = useSymbolMap()
 
   if (!correlation) {
-    return <div style={emptyState}>Waiting for data to compute correlation matrix...</div>
+    return (
+      <>
+        <ScreenHeader
+          title="Correlation Matrix"
+          subtitle="Pearson rolling 50 périodes sur log-returns. Heatmap + paires les plus corrélées et les plus décorrélées."
+        />
+        <div style={{ padding: '14px 20px' }}>
+          <div style={emptyState}>Waiting for data to compute correlation matrix...</div>
+        </div>
+      </>
+    )
   }
 
   const { instrumentIds, matrix, pairs } = correlation
@@ -86,18 +96,29 @@ export const Correlation = () => {
   const labelWidth = 68
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <GitCompareArrows size={18} style={{ color: colors.accent }} />
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text, fontFamily: fonts.sans }}>
-          Correlation Matrix
-        </h1>
-      </div>
-      <p style={{ margin: '0 0 16px', fontSize: 12, color: colors.textDim, fontFamily: fonts.mono }}>
-        Rolling 50-period log-return Pearson correlation — {n} instruments
-      </p>
-
+    <>
+      <ScreenHeader
+        title="Correlation Matrix"
+        subtitle="Pearson rolling 50 périodes sur log-returns. Heatmap + paires les plus corrélées et les plus décorrélées."
+        badge={
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: radius.badge,
+              background: colors.bgHover,
+              border: `1px solid ${colors.border}`,
+              fontSize: 10,
+              fontFamily: fonts.mono,
+              color: colors.textMuted,
+              letterSpacing: '0.04em',
+            }}
+            data-testid="correlation-instruments-badge"
+          >
+            {n} instruments
+          </span>
+        }
+      />
+      <div style={{ padding: '14px 20px' }}>
       {/* Heatmap */}
       <div style={{ ...card, overflowX: 'auto', marginBottom: 16 }}>
         <div style={{ display: 'inline-block' }}>
@@ -227,6 +248,7 @@ export const Correlation = () => {
           {decorrelated.length === 0 && <div style={{ fontSize: 12, color: colors.textDim, padding: 8 }}>No pairs yet</div>}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
