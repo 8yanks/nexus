@@ -1,5 +1,79 @@
 # Session notes
 
+## 2026-04-19 — Live Coinbase provider + TradingView chart on Detail
+
+Branch `ai-schemas-and-audit`. Two real features (not polish), both
+asked for verbatim by the user:
+- "il faut connecter les autres api aussi, coinbase etc"
+- "pour l'affichage sur 24h, je veux le meme que tradingview, parce
+  que c'est difficile d'etre precis avec celui actuel"
+
+### Shipped — Coinbase live spot (`9cb09cf`)
+
+A second live crypto provider next to Binance, no API key required
+(public market-data endpoints, browser CORS OK).
+
+- New `src/providers/coinbase/{types,ws,spot}.ts` modeled on the
+  Binance pattern. REST init (ticker + 24h stats + candles), then
+  WS ticker channel for live price/bid/ask updates. Coinbase candles
+  arrive in DESCENDING time order — reversed before storage.
+- `coinbase/ws.ts` is a Coinbase-specific WS manager (Coinbase
+  subscribes via JSON message after open, not URL path like Binance).
+- `normalization/instrument.ts` gains `COINBASE_MAPPINGS` + helpers
+  for the same 3 spot pairs (BTC/ETH/SOL-USD).
+- `normalization/snapshot.ts` gains `normalizeCoinbaseTicker` —
+  derives `change24h` from `open24h` since Coinbase doesn't return
+  the change directly.
+- `store/market.ts`: `coinbaseConnected` flag + per-instrument
+  fallback chain in `refreshAll` — `binance → coinbase → mock`. An
+  outage on one exchange keeps the dashboard live via the other.
+- 12 new unit tests (mapping + normalizer).
+- `PROVIDER_DEFS[coinbase].status` flipped from `disconnected` to
+  `active`. Sources screen now shows Coinbase as live.
+
+### Shipped — TradingView 24h chart (`ef06463`)
+
+Recharts `ComposedChart` on Detail replaced with TradingView's
+open-source `lightweight-charts` engine — the user-facing thing the
+user explicitly asked for.
+
+- New `<TradingViewChart />` component: candlestick body + volume
+  histogram on a separate price-scale pane (78/22 split via
+  `scaleMargins`). Full crosshair + a top-left status row that
+  mirrors TradingView's own (date · O/H/L/C · % vs prior close ·
+  volume), themed to the slate-50 accent palette.
+- Defensive: dedupes + sorts candles by timestamp before `setData`.
+  The lib hard-asserts strict-ascending timestamps, and real-world
+  WS streams can briefly emit duplicates (last partial candle
+  replayed alongside a fresh REST seed).
+- Detail.tsx: drops every recharts import for the chart block,
+  passes the raw 60-candle window straight through.
+- `tests/setup.ts`: matchMedia + ResizeObserver polyfills for
+  JSDom. Without them, lightweight-charts → fancy-canvas crashes at
+  import time and every test that touches the chart import chain
+  blows up.
+- 5 new smoke tests for the chart component (renders container,
+  no tooltip until interaction, dedup path, height prop).
+
+Bundle: Detail lazy chunk grows 25 → 170 KB raw (8 → 54 KB gzip).
+Acceptable: Detail is lazy-loaded so first-paint is unaffected, and
+the visual + interaction quality jump is exactly what was asked for.
+Backtest + MiniChart still use Recharts (different needs).
+
+669/669 tests + tsc + build green.
+
+### Open follow-ups
+
+- Connect equity providers (Polygon / Alpaca) — needs API keys.
+- Apply TradingView chart to Backtest equity curve too if user
+  wants visual consistency.
+- The fallback chain is binance → coinbase → mock, which means
+  Binance always wins when both are live. A future "preferred
+  source" toggle (or a cross-source disagreement alert) could be
+  useful — Coinbase prices already arrive, just not displayed.
+
+---
+
 ## 2026-04-19 — UX polish, follow-up #6: more white-on-white button fixes
 
 Branch `ai-schemas-and-audit`. The DemoSplash audit (follow-up #5)
