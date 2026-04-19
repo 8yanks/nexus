@@ -18,6 +18,12 @@ import { fmt, fmtVol, fmtPct, fmtTime } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
 import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
+import type { DetectedPattern } from '@/analytics/patterns'
+
+// Stable empty-pattern reference — used as the `patterns` fallback so we don't
+// emit a new array literal on every render (which would trip zustand's
+// ref-equality check and re-render forever).
+const EMPTY_PATTERNS: DetectedPattern[] = []
 
 // ─── STAT PAIR ──────────────────────────────────────────────
 
@@ -45,7 +51,11 @@ export const Detail = () => {
   const q = instrumentId ? quality[instrumentId] : undefined
   const instSignals = signals.filter((s) => s.instrumentId === instrumentId)
   const { analytics, structure, volatility } = useAnalytics(instrumentId)
-  const patterns = useMarketStore((s) => instrumentId ? s.patterns[instrumentId] ?? [] : [])
+  // Read the raw map slice (stable reference) and resolve the per-instrument
+  // entry below — using `?? []` inside the selector returns a fresh array
+  // every render and triggers a zustand re-render loop when the entry is missing.
+  const patternsMap = useMarketStore((s) => s.patterns)
+  const patterns = instrumentId ? patternsMap[instrumentId] ?? EMPTY_PATTERNS : EMPTY_PATTERNS
 
   if (!inst || !snap) {
     return (
