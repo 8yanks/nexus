@@ -28,4 +28,14 @@ describe('shared styles read padding from active density', () => {
     expect(activeDensity.padCard).toBe(14)
     expect(card.padding).toBe(14)
   })
+
+  it('thStyle font-size tracks activeDensity.fontHeader', () => {
+    // Comfy default: 12. Switching to compact gives 10, spacious 13.
+    expect(thStyle.fontSize).toBe(activeDensity.fontHeader)
+  })
+
+  it('tdStyle font-size tracks activeDensity.fontBody', () => {
+    // Comfy default: 13. Switching to compact gives 11, spacious 14.
+    expect(tdStyle.fontSize).toBe(activeDensity.fontBody)
+  })
 })
