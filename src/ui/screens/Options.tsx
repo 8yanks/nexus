@@ -6,14 +6,14 @@
 // per-screen, hotkeys hardcoded).
 //
 // Sections (in display order):
-//   1. Apparence        — theme + density (live-wired via prefs.ts)
-//   2. Données          — refresh interval + visible columns (placeholder)
+//   1. Appearance       — theme + density (live-wired via prefs.ts)
+//   2. Data             — refresh interval + visible columns (placeholder)
 //   3. Notifications    — alert routing (placeholder)
 //   4. Layout           — column ordering + panel sizes (placeholder)
 //   5. Hotkeys          — read-only list of current shortcuts
 //   6. Audit retention  — log lifecycle policy (placeholder)
 //   7. Workspaces       — saved layout presets (Phase 1.5)
-//   8. Avancé           — debug, telemetry, dev flags (placeholder)
+//   8. Advanced         — debug, telemetry, dev flags (placeholder)
 //
 // Sections marked "placeholder" render a labelled stub with a one-line
 // note about what they'll do when wired up. The chrome (section header,
@@ -213,9 +213,9 @@ const Placeholder = ({ note }: { note: string }) => (
 // Keeping it local + small here documents what's already wired so users
 // can discover shortcuts from one place.
 const HOTKEYS: { keys: string; desc: string; scope: string }[] = [
-  { keys: 'r',      desc: 'Lance la chaîne de décision',    scope: 'Chain monitor' },
-  { keys: 'Esc',    desc: 'Ferme la fenêtre de drilldown',   scope: 'Detail / Drilldown' },
-  { keys: '⌘ / Ctrl + K', desc: 'Recherche globale (à venir)',     scope: 'Global' },
+  { keys: 'r',      desc: 'Run the decision chain',         scope: 'Chain monitor' },
+  { keys: 'Esc',    desc: 'Close the drilldown window',     scope: 'Detail / Drilldown' },
+  { keys: '⌘ / Ctrl + K', desc: 'Global search (coming soon)', scope: 'Global' },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────
@@ -228,21 +228,21 @@ export const Options = () => {
   const density = loadDensity()
 
   const themeOptions: readonly SegmentedOption<ThemeName>[] = [
-    { value: 'dark',  label: 'Sombre', icon: <Moon size={13} /> },
-    { value: 'light', label: 'Clair',  icon: <Sun size={13} /> },
+    { value: 'dark',  label: 'Dark',  icon: <Moon size={13} /> },
+    { value: 'light', label: 'Light', icon: <Sun size={13} /> },
   ]
 
   const densityOptions: readonly SegmentedOption<DensityName>[] = [
     { value: 'compact',  label: 'Compact'  },
-    { value: 'comfy',    label: 'Confort'  },
-    { value: 'spacious', label: 'Spacieux' },
+    { value: 'comfy',    label: 'Comfy'    },
+    { value: 'spacious', label: 'Spacious' },
   ]
 
   return (
     <>
       <ScreenHeader
         title="Options"
-        subtitle="Réglages globaux de l'interface, des données et du comportement. Les changements de thème et de densité rechargent la page pour réappliquer la palette ; les autres réglages sont appliqués en direct."
+        subtitle="Global settings for the interface, data, and behaviour. Theme and density changes reload the page to reapply the palette; everything else applies live."
       />
       <div
         style={{
@@ -253,23 +253,23 @@ export const Options = () => {
           color: colors.text,
         }}
       >
-      {/* 1. APPARENCE — fully wired */}
+      {/* 1. APPEARANCE — fully wired */}
       <Section
         icon={<Settings size={14} />}
-        title="Apparence"
-        hint="Thème et densité d'affichage. Persistés dans le navigateur sous nexus.theme.v1 et nexus.density.v1."
+        title="Appearance"
+        hint="Theme and display density. Persisted in the browser under nexus.theme.v1 and nexus.density.v1."
       >
-        <Row label="Thème" description="Sombre par défaut. Le mode clair utilise une palette inversée avec contrastes AA.">
+        <Row label="Theme" description="Dark by default. Light mode uses an inverted palette with AA contrast.">
           <Segmented<ThemeName>
-            ariaLabel="Thème de l'interface"
+            ariaLabel="Interface theme"
             value={theme}
             options={themeOptions}
             onChange={setTheme}
           />
         </Row>
-        <Row label="Densité" description="Échelle des paddings, gaps et hauteurs de ligne. Compact pour les power users, Spacieux pour l'accessibilité.">
+        <Row label="Density" description="Scales paddings, gaps, and row heights. Compact for power users, Spacious for accessibility.">
           <Segmented<DensityName>
-            ariaLabel="Densité d'affichage"
+            ariaLabel="Display density"
             value={density}
             options={densityOptions}
             onChange={setDensity}
@@ -277,38 +277,38 @@ export const Options = () => {
         </Row>
       </Section>
 
-      {/* 2. DONNÉES — placeholder */}
+      {/* 2. DATA — placeholder */}
       <Section
         icon={<Database size={14} />}
-        title="Données"
-        hint="Sources de marché, intervalles de rafraîchissement, colonnes visibles."
+        title="Data"
+        hint="Market sources, refresh intervals, visible columns."
       >
-        <Placeholder note="À venir — Phase 2. Inclura : intervalle de polling, colonnes affichées dans le scanner, format des prix (USD/USDT), seuils de fraîcheur." />
+        <Placeholder note="Coming in Phase 2. Will include: polling interval, scanner column visibility, price format (USD/USDT), freshness thresholds." />
       </Section>
 
       {/* 3. NOTIFICATIONS — placeholder */}
       <Section
         icon={<Bell size={14} />}
         title="Notifications"
-        hint="Routage des alertes, seuils, canaux de sortie."
+        hint="Alert routing, thresholds, output channels."
       >
-        <Placeholder note="À venir — Phase 2. Inclura : seuils de prix, routage vers desktop / e-mail, regroupement des alertes répétées." />
+        <Placeholder note="Coming in Phase 2. Will include: price thresholds, desktop / e-mail routing, deduping of repeated alerts." />
       </Section>
 
       {/* 4. LAYOUT — placeholder */}
       <Section
         icon={<Layout size={14} />}
         title="Layout"
-        hint="Disposition des panels, ordre des colonnes, ce qui est épinglé."
+        hint="Panel arrangement, column ordering, what stays pinned."
       >
-        <Placeholder note="À venir — Phase 2. Inclura : ordre des colonnes du dashboard, panels épinglés en haut, taille de la sidebar de drilldown." />
+        <Placeholder note="Coming in Phase 2. Will include: dashboard column ordering, top-pinned panels, drilldown sidebar width." />
       </Section>
 
       {/* 5. HOTKEYS — read-only list */}
       <Section
         icon={<Keyboard size={14} />}
-        title="Raccourcis clavier"
-        hint="Vue d'ensemble des raccourcis actuellement câblés. La personnalisation arrivera dans une prochaine phase."
+        title="Keyboard shortcuts"
+        hint="Overview of the shortcuts currently wired up. Customisation arrives in a later phase."
       >
         <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {HOTKEYS.map((h) => (
@@ -349,28 +349,28 @@ export const Options = () => {
       {/* 6. AUDIT RETENTION — placeholder */}
       <Section
         icon={<ScrollText size={14} />}
-        title="Rétention de l'audit"
-        hint="Cycle de vie des entrées d'audit-log de la chaîne de décision."
+        title="Audit retention"
+        hint="Lifecycle policy for decision-chain audit-log entries."
       >
-        <Placeholder note="À venir — Phase 2. Inclura : nombre maximal d'entrées, age max, purge manuelle, export avant purge." />
+        <Placeholder note="Coming in Phase 2. Will include: max entries, max age, manual purge, export-before-purge." />
       </Section>
 
       {/* 7. WORKSPACES — wired (Phase 1.5) */}
       <Section
         icon={<LayoutGrid size={14} />}
         title="Workspaces"
-        hint="Snapshots nommés de votre combinaison thème + densité. Phase 1.5 ne couvre que ces deux champs ; les filtres et le layout viendront s'y greffer plus tard."
+        hint="Named snapshots of your theme + density combo. Phase 1.5 only covers those two fields; filters and layout will graft on later."
       >
         <WorkspaceManager />
       </Section>
 
-      {/* 8. AVANCÉ — placeholder */}
+      {/* 8. ADVANCED — placeholder */}
       <Section
         icon={<Wrench size={14} />}
-        title="Avancé"
-        hint="Outils de debug, télémétrie, drapeaux expérimentaux."
+        title="Advanced"
+        hint="Debug tooling, telemetry, experimental flags."
       >
-        <Placeholder note="À venir — Phase 2. Inclura : niveau de log, dump de l'état Zustand, reset complet du localStorage, drapeaux pour activer les screens en dev." />
+        <Placeholder note="Coming in Phase 2. Will include: log level, Zustand state dump, full localStorage reset, dev-only screen flags." />
       </Section>
       </div>
     </>
