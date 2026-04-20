@@ -74,9 +74,31 @@ export const Nav = () => {
   const screen = useMarketStore((s) => s.screen)
   const setScreen = useMarketStore((s) => s.setScreen)
   const binanceConnected = useMarketStore((s) => s.binanceConnected)
+  const coinbaseConnected = useMarketStore((s) => s.coinbaseConnected)
+  const krakenConnected = useMarketStore((s) => s.krakenConnected)
 
   const activeCategory = categoryOf(screen)
   const subscreens = screensForCategory(activeCategory)
+
+  // ─── LIVE / OFFLINE aggregation ───────────────────────────
+  // Was previously a purely cosmetic green dot hard-wired to Binance.
+  // Now counts every market-data exchange that actually finished
+  // connect() + tooltip lists each one's state. Click routes to
+  // Sources (the screen dedicated to provider status) so the
+  // indicator stops being decoration and becomes a real entry point.
+  const providerStates = [
+    { id: 'binance',  connected: binanceConnected  },
+    { id: 'coinbase', connected: coinbaseConnected },
+    { id: 'kraken',   connected: krakenConnected   },
+  ]
+  const liveCount = providerStates.filter((p) => p.connected).length
+  const totalCount = providerStates.length
+  const allLive = liveCount === totalCount
+  const anyLive = liveCount > 0
+
+  const liveTooltip = providerStates
+    .map((p) => `${p.id}: ${p.connected ? 'connected' : 'offline'}`)
+    .join('\n')
 
   return (
     <div
@@ -170,8 +192,17 @@ export const Nav = () => {
             justifySelf: 'end',
           }}
         >
-          {/* Analyst Mode badge */}
-          <div
+          {/* Analyst Mode badge — click → Options (where the analyst-mode
+              guarantees are documented); title = what the mode means */}
+          <button
+            type="button"
+            onClick={() => setScreen('options')}
+            aria-label="Analyst mode — research only, no live trades. Open Options."
+            title={
+              'Analyst mode\n' +
+              'Research & monitoring only. No live trading — every order routes\n' +
+              'to the paper broker. Click to open Options.'
+            }
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -180,12 +211,13 @@ export const Nav = () => {
               borderRadius: radius.badge,
               background: colors.bgHover,
               border: `1px solid ${colors.border}`,
+              cursor: 'pointer',
+              fontFamily: fonts.mono,
             }}
           >
             <span
               style={{
                 fontSize: 10,
-                fontFamily: fonts.mono,
                 fontWeight: 700,
                 color: colors.textSecondary,
                 letterSpacing: '0.08em',
@@ -193,24 +225,39 @@ export const Nav = () => {
             >
               ANALYST MODE
             </span>
-          </div>
+          </button>
 
-          {/* Live indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Live indicator — counts connected exchanges, click → Sources */}
+          <button
+            type="button"
+            onClick={() => setScreen('sources')}
+            aria-label={`${liveCount} of ${totalCount} market-data providers connected. Open Sources.`}
+            title={`Market-data providers (click to open Sources):\n${liveTooltip}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '3px 8px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              borderRadius: radius.badge,
+            }}
+          >
             <span
               style={{
                 display: 'inline-block',
                 width: 6,
                 height: 6,
                 borderRadius: radius.pill,
-                background: binanceConnected ? colors.green : colors.red,
-                boxShadow: binanceConnected ? `0 0 6px ${colors.green}` : undefined,
+                background: anyLive ? (allLive ? colors.green : colors.yellow) : colors.red,
+                boxShadow: anyLive ? `0 0 6px ${allLive ? colors.green : colors.yellow}` : undefined,
               }}
             />
             <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textDim, letterSpacing: '0.04em' }}>
-              {binanceConnected ? 'LIVE' : 'OFFLINE'}
+              {anyLive ? `LIVE · ${liveCount}/${totalCount}` : 'OFFLINE'}
             </span>
-          </div>
+          </button>
         </div>
       </nav>
 

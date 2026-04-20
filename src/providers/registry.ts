@@ -5,6 +5,7 @@ import { generateSnapshot, generateCandles } from './mock/generator'
 import { createBinanceSpotProvider } from './binance/spot'
 import { createBinanceFuturesProvider } from './binance/futures'
 import { createCoinbaseSpotProvider } from './coinbase/spot'
+import { createKrakenSpotProvider } from './kraken/spot'
 
 // ─── PROVIDER DEFINITION (static metadata) ───────────────────
 
@@ -22,6 +23,7 @@ export interface ProviderDef {
 export const PROVIDER_DEFS: ProviderDef[] = [
   { id: 'binance',  name: 'Binance',      type: 'crypto',    status: 'active',       supports: ['crypto_spot', 'crypto_perp'], endpoint: 'wss://stream.binance.com',                  rateLimit: '1200/min' },
   { id: 'coinbase', name: 'Coinbase',     type: 'crypto',    status: 'active',       supports: ['crypto_spot'],                endpoint: 'wss://ws-feed.exchange.coinbase.com',        rateLimit: '10/sec' },
+  { id: 'kraken',   name: 'Kraken',       type: 'crypto',    status: 'active',       supports: ['crypto_spot'],                endpoint: 'https://api.kraken.com/0/public',            rateLimit: '1/sec' },
   { id: 'alpaca',   name: 'Alpaca',       type: 'equities',  status: 'disconnected', supports: ['us_equity'],                  endpoint: 'wss://stream.data.alpaca.markets',           rateLimit: '200/min' },
   { id: 'polygon',  name: 'Polygon.io',   type: 'multi',     status: 'disconnected', supports: ['us_equity', 'forex', 'crypto_spot'], endpoint: 'wss://socket.polygon.io',            rateLimit: 'unlimited' },
   { id: 'oanda',    name: 'OANDA',        type: 'forex',     status: 'disconnected', supports: ['forex'],                      endpoint: 'wss://stream-fxpractice.oanda.com',          rateLimit: '120/sec' },
@@ -64,6 +66,7 @@ export const createRegistry = (): ProviderRegistry => ({
   binance_spot: createBinanceSpotProvider(),
   binance_futures: createBinanceFuturesProvider(),
   coinbase: createCoinbaseSpotProvider(),
+  kraken: createKrakenSpotProvider(),
 })
 
 export const runHealthChecks = async (

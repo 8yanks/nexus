@@ -76,3 +76,30 @@ export const isCoinbaseInstrument = (instrumentId: string): boolean =>
 
 export const getCoinbaseInstrumentIds = (): string[] =>
   COINBASE_MAPPINGS.map((m) => m.instrumentId)
+
+// ─── KRAKEN MAPPINGS ────────────────────────────────────────
+// Kraken uses XBT for BTC (legacy). Other pairs round-trip as-is.
+// Kept to the same 3 spot pairs as Binance / Coinbase so the
+// fallback chain runs on identical instruments across all three.
+
+export interface KrakenSymbolMapping {
+  instrumentId: string
+  krakenPair: string
+}
+
+export const KRAKEN_MAPPINGS: KrakenSymbolMapping[] = [
+  { instrumentId: 'BTC-USD-SPOT', krakenPair: 'XBTUSD' },
+  { instrumentId: 'ETH-USD-SPOT', krakenPair: 'ETHUSD' },
+  { instrumentId: 'SOL-USD-SPOT', krakenPair: 'SOLUSD' },
+]
+
+const _byKrakenInstrumentId = new Map(KRAKEN_MAPPINGS.map((m) => [m.instrumentId, m]))
+
+export const toKrakenPair = (instrumentId: string): string | null =>
+  _byKrakenInstrumentId.get(instrumentId)?.krakenPair ?? null
+
+export const isKrakenInstrument = (instrumentId: string): boolean =>
+  _byKrakenInstrumentId.has(instrumentId)
+
+export const getKrakenInstrumentIds = (): string[] =>
+  KRAKEN_MAPPINGS.map((m) => m.instrumentId)

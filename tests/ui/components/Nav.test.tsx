@@ -11,6 +11,8 @@ const resetMarketStore = () => {
   useMarketStore.setState({
     screen: 'dashboard',
     binanceConnected: false,
+    coinbaseConnected: false,
+    krakenConnected: false,
   })
 }
 
@@ -55,17 +57,44 @@ describe('<Nav /> rendering', () => {
 })
 
 describe('<Nav /> live indicator', () => {
-  it('shows OFFLINE when binance is not connected', () => {
+  it('shows OFFLINE when no exchange is connected', () => {
     render(<Nav />)
     expect(screen.getByText('OFFLINE')).toBeInTheDocument()
-    expect(screen.queryByText('LIVE')).not.toBeInTheDocument()
+    expect(screen.queryByText(/LIVE/)).not.toBeInTheDocument()
   })
 
-  it('flips to LIVE when the store reports a connection', () => {
+  it('shows "LIVE · N/total" and counts each connected exchange', () => {
+    useMarketStore.setState({
+      binanceConnected: true,
+      coinbaseConnected: false,
+      krakenConnected: false,
+    })
+    render(<Nav />)
+    expect(screen.getByText('LIVE · 1/3')).toBeInTheDocument()
+    expect(screen.queryByText('OFFLINE')).not.toBeInTheDocument()
+  })
+
+  it('all three connected reads "LIVE · 3/3"', () => {
+    useMarketStore.setState({
+      binanceConnected: true,
+      coinbaseConnected: true,
+      krakenConnected: true,
+    })
+    render(<Nav />)
+    expect(screen.getByText('LIVE · 3/3')).toBeInTheDocument()
+  })
+
+  it('clicking the LIVE badge routes to Sources', () => {
     useMarketStore.setState({ binanceConnected: true })
     render(<Nav />)
-    expect(screen.getByText('LIVE')).toBeInTheDocument()
-    expect(screen.queryByText('OFFLINE')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('LIVE · 1/3'))
+    expect(useMarketStore.getState().screen).toBe('sources')
+  })
+
+  it('clicking the ANALYST MODE badge routes to Options', () => {
+    render(<Nav />)
+    fireEvent.click(screen.getByText('ANALYST MODE'))
+    expect(useMarketStore.getState().screen).toBe('options')
   })
 })
 

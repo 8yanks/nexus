@@ -27,7 +27,7 @@ import { computeReadiness } from '@/quality/readiness'
 import { evaluateAllRules } from '@/alerts/engine'
 import { notifyAll } from '@/alerts/notifier'
 import { DEFAULT_RULES } from '@/alerts/rules'
-import { isBinanceInstrument, getBinanceMapping, isCoinbaseInstrument } from '@/normalization/instrument'
+import { isBinanceInstrument, getBinanceMapping, isCoinbaseInstrument, isKrakenInstrument } from '@/normalization/instrument'
 import { computeCorrelationMatrix } from '@/analytics/correlation'
 import { detectPatterns } from '@/analytics/patterns'
 import { saveSnapshots, pruneOldSnapshots } from '@/storage/snapshots'
@@ -85,6 +85,7 @@ export interface MarketStore {
   lastRefresh: string | null
   binanceConnected: boolean
   coinbaseConnected: boolean
+  krakenConnected: boolean
 
   // Actions
   setScreen: (screen: Screen) => void
@@ -128,6 +129,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   lastRefresh: null,
   binanceConnected: false,
   coinbaseConnected: false,
+  krakenConnected: false,
 
   // ── Navigation ──────────────────────────────────────────
   setScreen: (screen) => set({ screen }),
@@ -141,7 +143,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   // (binance → coinbase → mock) routes per-instrument based on which
   // providers actually reported success.
   connectProviders: async () => {
-    const { registry, binanceConnected, coinbaseConnected } = get()
+    const { registry, binanceConnected, coinbaseConnected, krakenConnected } = get()
 
     if (!binanceConnected) {
       try {
@@ -167,15 +169,26 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
         console.error('[Store] Failed to connect Coinbase:', err)
       }
     }
+
+    if (!krakenConnected) {
+      try {
+        console.log('[Store] Connecting Kraken provider...')
+        await registry['kraken'].connect()
+        set({ krakenConnected: true })
+        console.log('[Store] Kraken provider connected')
+      } catch (err) {
+        console.error('[Store] Failed to connect Kraken:', err)
+      }
+    }
   },
 
   // ── Core refresh cycle ──────────────────────────────────
   refreshAll: async () => {
-    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected, coinbaseConnected } = get()
+    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected, coinbaseConnected, krakenConnected } = get()
 
     // 1. Fetch snapshots + candles for all instruments.
     // Per-instrument provider chain (try in order, fall back on throw):
-    //   crypto spot → binance_spot → coinbase → mock
+    //   crypto spot → binance_spot → coinbase → kraken → mock
     //   crypto perp → binance_futures → mock
     //   anything else → mock
     // Each step is gated by the corresponding `*Connected` flag, so
@@ -190,6 +203,9 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
       }
       if (isCoinbaseInstrument(instrumentId) && coinbaseConnected) {
         chain.push('coinbase')
+      }
+      if (isKrakenInstrument(instrumentId) && krakenConnected) {
+        chain.push('kraken')
       }
       chain.push('mock')
       return chain

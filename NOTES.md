@@ -1,5 +1,60 @@
 # Session notes
 
+## 2026-04-20 — Kraken live provider + functional LIVE / ANALYST badges
+
+Branch `ai-schemas-and-audit`. Two user-driven bits in one commit:
+- "on essaie quand meme de connecter quelques api gratuit?" → Kraken
+  (third live crypto source, no API key).
+- "'Analyst mode' en haut a droite, pareil pour le live en vert, c'est
+  purement gadget" → both badges now carry real state + click-through.
+
+### Shipped — Kraken spot provider
+
+Third crypto source next to Binance + Coinbase. REST-only (no WS),
+public endpoints, no key, browser CORS OK.
+
+- `src/providers/kraken/{types,spot}.ts` modeled on the Coinbase
+  shape. `Ticker` + `OHLC` fetched in parallel at connect() and on
+  every `getSnapshot`. Kraken has no push channel, so the refresh
+  cycle drives the live path — rate-limit (~1 req/sec anonymous) is
+  comfortable for 3 instruments polled every 5s.
+- `normalization/instrument.ts`: `KRAKEN_MAPPINGS` + helpers. Pair
+  legacy is handled (BTC → XBT); response key lookup uses
+  `Object.values()[0]` so we don't care whether Kraken returns
+  `XBTUSD` or `XXBTZUSD`.
+- 24h rolling open is derived from candle `[length-24].open`, not
+  Kraken's `o` (which is "today's 00:00 UTC open", not rolling).
+  Matches what we did for Polygon's intraday stats.
+- `store/market.ts`: `krakenConnected` flag + third step in the
+  per-instrument fallback chain: binance → coinbase → kraken →
+  mock. Independent connect block so a Kraken 403 doesn't break the
+  other providers.
+- `PROVIDER_DEFS[kraken]` added with status `active`. The Sources
+  screen now lists Binance + Coinbase + Kraken all live.
+
+### Shipped — LIVE + ANALYST MODE badges stop being decoration
+
+Both badges in the top-right corner of `Nav.tsx` were purely
+cosmetic. Now they carry state + route to the relevant screen.
+
+- **LIVE badge**: was hard-wired to `binanceConnected`, now
+  aggregates over {binance, coinbase, kraken}. Reads
+  `LIVE · N/3` (green dot if all, yellow if partial, red +
+  `OFFLINE` if none). Click routes to Sources. `title` tooltip
+  lists each provider's state.
+- **ANALYST MODE badge**: previously a static label. Now a button
+  (`cursor: pointer`, keyboard-accessible `aria-label`) that routes
+  to Options. `title` tooltip explains what the mode guarantees:
+  "Research & monitoring only. No live trading — every order
+  routes to the paper broker."
+- Tests: Nav live-indicator suite rewritten for the new string
+  format (`LIVE · N/3` instead of `LIVE`) and two new assertions
+  cover the click-through on both badges.
+
+692/692 tests (was 689/689). Type-check + build clean.
+
+---
+
 ## 2026-04-20 — RTL coverage: MiniChart + DemoSplash (9/9 components)
 
 Branch `ai-schemas-and-audit`. Quick-hit session — closed the last two
