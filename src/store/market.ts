@@ -36,6 +36,7 @@ import { saveSignals, pruneOldSignals } from '@/storage/signals'
 import { corporateToSignals, macroToSignals } from '@/signals/corporate-bridge'
 import { createMockCorporateProvider } from '@/corporate/mock'
 import { createMockMacroProvider } from '@/macro/mock'
+import { loadScreenState, saveScreenState } from '@/ui/screen-memory'
 
 // ─── SCREEN TYPE ────────────────────────────────────────────
 
@@ -108,6 +109,16 @@ const getProviderId = (instrumentId: string): string => {
   return mapping.type === 'spot' ? 'binance_spot' : 'binance_futures'
 }
 
+// ─── INITIAL SCREEN — restored from localStorage ────────────
+// Survives the reload triggered by `setTheme` / `setDensity` /
+// `applyWorkspace`. Falls back to dashboard on first visit, stale
+// schema, or corrupted storage — see `screen-memory.ts` for the
+// validation path.
+const _restoredScreen = loadScreenState()
+const _initialScreen: Screen = _restoredScreen?.screen ?? 'dashboard'
+const _initialSelectedInstrumentId: string | null =
+  _restoredScreen?.selectedInstrumentId ?? null
+
 export const useMarketStore = create<MarketStore>((set, get) => ({
   // ── Initial state ───────────────────────────────────────
   instruments: INSTRUMENTS,
@@ -122,8 +133,8 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   readiness: null,
   correlation: null,
   patterns: {},
-  screen: 'dashboard',
-  selectedInstrumentId: null,
+  screen: _initialScreen,
+  selectedInstrumentId: _initialSelectedInstrumentId,
   refreshInterval: null,
   registry: createRegistry(),
   lastRefresh: null,
@@ -132,10 +143,19 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   krakenConnected: false,
 
   // ── Navigation ──────────────────────────────────────────
-  setScreen: (screen) => set({ screen }),
+  // Persist on every screen change so a theme/density/workspace
+  // reload lands the user back where they were instead of the
+  // default dashboard. Writing is cheap (single localStorage call)
+  // and scoped to navigation — no per-frame churn.
+  setScreen: (screen) => {
+    set({ screen })
+    saveScreenState(screen, get().selectedInstrumentId)
+  },
 
-  selectInstrument: (id) =>
-    set({ selectedInstrumentId: id, screen: 'detail' }),
+  selectInstrument: (id) => {
+    set({ selectedInstrumentId: id, screen: 'detail' })
+    saveScreenState('detail', id)
+  },
 
   // ── Connect live providers ─────────────────────────────
   // Each exchange connects independently — a Coinbase outage doesn't
