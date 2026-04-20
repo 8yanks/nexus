@@ -1,5 +1,38 @@
 # Session notes
 
+## 2026-04-20 — RTL coverage: MiniChart + DemoSplash (9/9 components)
+
+Branch `ai-schemas-and-audit`. Quick-hit session — closed the last two
+gaps in UI-component RTL coverage. Was 7/9 after the 2026-04-18
+after-arc; now 9/9.
+
+### Shipped
+
+- `tests/ui/components/MiniChart.test.tsx` — 8 tests. The recharts
+  SVG doesn't render measurable paths in JSDom (no layout), so the
+  assertions focus on what we own: the em-dash empty-state branch
+  (empty array, single point, all-invalid), the NaN/Infinity filter
+  (mixed valid + invalid still hits the chart branch once ≥2 valid
+  remain), and the outer wrapper's `width` / `height` (prop + default).
+- `tests/ui/components/DemoSplash.test.tsx` — 12 tests. Chrome
+  (NEXUS h1, ANALYST MODE eyebrow, 3 bots all ACTIVE, 5 shared-package
+  chips, stats strip with refreshed counts, Enter CTA), dismissal
+  paths (Enter button click, Escape key, Enter key, backdrop click),
+  negative cases (unrelated keys ignored, clicks inside card don't
+  bubble to backdrop), and the keydown-listener cleanup on unmount.
+
+689/689 tests (was 669/669). Type-check + build clean. No source
+changes — coverage-only commit.
+
+### Parked items (untouched this session)
+
+- **Polygon / Alpaca equity providers** — needs API keys, parked
+  per user directive.
+- **TradingView chart on Backtest equity curve** — medium lift, deferred.
+- **Cross-source disagreement alert (binance vs coinbase)** — deferred.
+
+---
+
 ## 2026-04-19 — Live Coinbase provider + TradingView chart on Detail
 
 Branch `ai-schemas-and-audit`. Two real features (not polish), both
