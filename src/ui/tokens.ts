@@ -99,40 +99,46 @@ export const dark: Palette = {
   accentDim: '#f1f5f918',
 }
 
-// Light — true white background, inverted greyscale ladder, slightly
-// darker semantic colours so they read on white (e.g. success goes
-// 22c55e → 16a34a for AA contrast).
+// Light — warm-neutral "paper" palette per the v3 design handoff.
+// Background drifts off-white toward a pale beige (#f8f7f5) and the
+// neutral ladder warms with it (#dbd8d3 borders, #a89f94 dim text).
+// Semantic colours are slightly dustier than the dark palette so they
+// sit comfortably on the warm background instead of vibrating against
+// it: success/danger pull a touch of brown, info shifts from sky-blue
+// to a deeper editorial blue used as the accent.
 export const light: Palette = {
-  bg: '#ffffff',
-  surface1: '#fafafa',
-  surface2: '#f4f4f5',
-  surface3: '#e4e4e7',
-  border: '#d4d4d8',
-  borderStrong: '#a1a1aa',
+  bg: '#f8f7f5',
+  surface1: '#ffffff',
+  surface2: '#f2f1ef',
+  surface3: '#e9e7e3',
+  border: '#dbd8d3',
+  borderStrong: '#c2bdb6',
 
-  textDim: '#a1a1aa',
-  textMuted: '#71717a',
-  textSecondary: '#52525b',
-  text: '#0a0a0a',
+  textDim: '#a89f94',
+  textMuted: '#7a7166',
+  textSecondary: '#4a4338',
+  text: '#1e1a14',
 
-  success: '#16a34a',
-  successDim: '#16a34a18',
-  danger: '#dc2626',
-  dangerDim: '#dc262618',
-  warn: '#d97706',
-  warnDim: '#d9770618',
-  info: '#2563eb',
-  infoDim: '#2563eb18',
+  success: '#1e7e5a',
+  successDim: '#1e7e5a18',
+  danger: '#c0392b',
+  dangerDim: '#c0392b18',
+  warn: '#b86e00',
+  warnDim: '#b86e0018',
+  info: '#2c5fad',
+  infoDim: '#2c5fad18',
 
-  live: '#16a34a',
-  delayed: '#d97706',
-  simulated: '#7c3aed',
-  stale: '#ea580c',
-  unavailable: '#71717a',
-  error: '#dc2626',
+  live: '#1e7e5a',
+  delayed: '#b86e00',
+  simulated: '#6d42b8',
+  stale: '#c95c1a',
+  unavailable: '#a89f94',
+  error: '#c0392b',
 
-  accent: '#0a0a0a',
-  accentDim: '#0a0a0a18',
+  // In light mode the accent is the editorial blue, used for the nav
+  // active bar, focus ring, and the brand mark in the sidebar.
+  accent: '#2c5fad',
+  accentDim: '#2c5fad18',
 }
 
 export const palettes = { dark, light } as const
