@@ -56,9 +56,12 @@ export const ScreenHeader = ({
           alignItems: 'flex-start',
           justifyContent: 'space-between',
           gap: 16,
-          padding: '14px 24px 12px',
+          // v3 handoff: 12px 20px padding on a card-coloured background
+          // (instead of bg) so the header reads as a distinct band above
+          // the content area.
+          padding: '12px 20px',
           borderBottom: `1px solid ${colors.border}`,
-          background: colors.bg,
+          background: colors.bgCard,
           fontFamily: fonts.sans,
         }}
       >
@@ -68,7 +71,7 @@ export const ScreenHeader = ({
             <h1
               style={{
                 margin: 0,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 700,
                 letterSpacing: '0.02em',
                 color: colors.text,
@@ -82,10 +85,11 @@ export const ScreenHeader = ({
           {subtitle && (
             <p
               style={{
-                margin: '4px 0 0',
-                fontSize: 13,
+                margin: '3px 0 0',
+                fontSize: 11,
                 color: colors.textMuted,
                 lineHeight: 1.4,
+                maxWidth: 600,
               }}
             >
               {subtitle}
