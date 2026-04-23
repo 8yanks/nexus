@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .claude/scheduled_tasks.lock
+
+# Design handoff bundle (reference only — not for production)
+.design_handoff/

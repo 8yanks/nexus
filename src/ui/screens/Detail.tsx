@@ -5,11 +5,13 @@ import { StatusBadge } from '@/ui/components/StatusBadge'
 import { PriceChange } from '@/ui/components/PriceChange'
 import { QualityBar } from '@/ui/components/QualityBar'
 import { TradingViewChart } from '@/ui/components/TradingViewChart'
+import { PerformanceStrip } from '@/ui/components/PerformanceStrip'
 import { fmt, fmtVol, fmtPct } from '@/utils/format'
 import { safeFixed, isValidNumber } from '@/utils/math'
 import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import type { DetectedPattern } from '@/analytics/patterns'
+import { computePerformance, computeKeyStats } from '@/analytics/performance'
 
 // Stable empty-pattern reference — used as the `patterns` fallback so we don't
 // emit a new array literal on every render (which would trip zustand's
@@ -68,6 +70,12 @@ export const Detail = () => {
   // its own time/volume formatting internally and needs the OHLC fields.
   const chartCandles = series?.candles.slice(-60) ?? []
 
+  // Performance + key stats are computed from the full 200-bar window so
+  // 7D (168 bars) stays reachable. Pure compute, no extra fetch.
+  const allCandles = series?.candles ?? []
+  const performancePoints = computePerformance(allCandles)
+  const keyStats = computeKeyStats(allCandles, snap.price, snap.low24h, snap.high24h)
+
   return (
     <>
       <ScreenHeader
@@ -118,6 +126,12 @@ export const Detail = () => {
         }
       />
       <div style={{ padding: '14px 20px' }}>
+      {/* Performance strip — TradingView-style % over 1H/6H/1D/3D/7D.
+          Pure compute on the candle window already in-store. */}
+      <div style={{ marginBottom: 12 }}>
+        <PerformanceStrip points={performancePoints} />
+      </div>
+
       {/* Chart + Key Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
@@ -134,7 +148,53 @@ export const Detail = () => {
           <Stat label="Bid / Ask" value={`${fmt(snap.bid, decimals)} / ${fmt(snap.ask, decimals)}`} />
           <Stat label="Spread" value={`${fmt(snap.spreadBps)} bps`} />
           <Stat label="24h Range" value={`${fmt(snap.low24h, decimals)} — ${fmt(snap.high24h, decimals)}`} />
+          {/* Range position — where we sit in today's low→high band.
+              A TradingView staple; 0% = at the low, 100% = at the high. */}
+          {keyStats.rangePosition24h != null && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={statLabel}>Range Position</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <div style={{ position: 'relative', flex: 1, height: 6, background: colors.bgHover, borderRadius: 3 }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: `${keyStats.rangePosition24h * 100}%`,
+                      transform: 'translateX(-50%)',
+                      width: 3,
+                      height: 6,
+                      borderRadius: 2,
+                      background: colors.accent,
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: 11, fontFamily: fonts.mono, color: colors.textSecondary, minWidth: 38, textAlign: 'right' }}>
+                  {(keyStats.rangePosition24h * 100).toFixed(0)}%
+                </span>
+              </div>
+            </div>
+          )}
           <Stat label="Volume 24h" value={fmtVol(snap.volume24h)} />
+          {keyStats.relativeVolume != null && (
+            <Stat
+              label={`Rel. Vol. (${keyStats.relativeVolumeBase}b)`}
+              value={`${safeFixed(keyStats.relativeVolume, 2)}x`}
+              color={
+                keyStats.relativeVolume > 2.5 ? colors.yellow
+                : keyStats.relativeVolume < 0.5 ? colors.textDim
+                : undefined
+              }
+            />
+          )}
+          {keyStats.athWindow != null && keyStats.atlWindow != null && (
+            <Stat
+              label="Window H / L"
+              value={`${fmt(keyStats.athWindow, decimals)} / ${fmt(keyStats.atlWindow, decimals)}`}
+            />
+          )}
+          {snap.vwap != null && (
+            <Stat label="VWAP 24h" value={fmt(snap.vwap, decimals)} />
+          )}
           {snap.openInterest != null && <Stat label="Open Interest" value={fmtVol(snap.openInterest)} />}
           {snap.fundingRate != null && <Stat label="Funding" value={fmtPct(snap.fundingRate)} color={
             isValidNumber(snap.fundingRate)
