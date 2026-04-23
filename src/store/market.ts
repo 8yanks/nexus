@@ -91,6 +91,12 @@ export interface MarketStore {
   // Actions
   setScreen: (screen: Screen) => void
   selectInstrument: (id: string) => void
+  /**
+   * Focus an instrument WITHOUT navigating. Used by the Dashboard
+   * split-view (left watchlist row → right preview pane) where a
+   * single click focuses, a double click drills into Detail.
+   */
+  focusInstrument: (id: string) => void
   connectProviders: () => Promise<void>
   refreshAll: () => Promise<void>
   startAutoRefresh: (intervalMs?: number) => void
@@ -155,6 +161,15 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   selectInstrument: (id) => {
     set({ selectedInstrumentId: id, screen: 'detail' })
     saveScreenState('detail', id)
+  },
+
+  // Focus-only — no screen change. The Dashboard split-view uses this
+  // on single-click to update the right preview pane while keeping the
+  // user on the dashboard. We still persist so a reload restores the
+  // last-focused instrument alongside the current screen.
+  focusInstrument: (id) => {
+    set({ selectedInstrumentId: id })
+    saveScreenState(get().screen, id)
   },
 
   // ── Connect live providers ─────────────────────────────

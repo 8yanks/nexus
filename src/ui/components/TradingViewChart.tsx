@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   createChart,
   CandlestickSeries,
@@ -36,7 +36,12 @@ import { colors, fonts } from '@/ui/theme'
 interface Props {
   candles: OHLCV[]
   decimals: number
-  height?: number
+  /**
+   * Either a fixed pixel height (default 240), or `"auto"` to fill the
+   * parent container. "auto" requires the parent to set a deterministic
+   * height — typically `flex: 1; min-height: 0; position: relative`.
+   */
+  height?: number | 'auto'
 }
 
 interface HoverState {
@@ -63,6 +68,8 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
   const volSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const [hover, setHover] = useState<HoverState | null>(null)
 
+  const isAuto = height === 'auto'
+
   // Mount/unmount: create the chart once. Data + resize are handled
   // in dedicated effects so we don't tear down the chart on every
   // candle update (60s cadence ≫ render cost).
@@ -72,8 +79,10 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
 
     let chart: IChartApi
     try {
+      // In auto mode we let the container dictate the size — autoSize
+      // observes the parent and resizes the canvas accordingly.
       chart = createChart(container, {
-        height,
+        ...(isAuto ? {} : { height: height as number }),
         autoSize: true,
         layout: {
           background: { color: colors.bgCard },
@@ -223,9 +232,19 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
   const isUp = hover != null && hover.changePct >= 0
   const changeColor = isUp ? colors.green : colors.red
 
+  // In auto mode the wrapper fills its parent (which must be sized);
+  // in fixed mode it falls back to the explicit pixel height. The
+  // tooltip overlay is positioned absolutely against this wrapper.
+  const wrapperStyle: CSSProperties = isAuto
+    ? { position: 'relative', width: '100%', height: '100%' }
+    : { position: 'relative' }
+  const innerStyle: CSSProperties = isAuto
+    ? { width: '100%', height: '100%' }
+    : { width: '100%', height: height as number }
+
   return (
-    <div style={{ position: 'relative' }}>
-      <div ref={containerRef} style={{ width: '100%', height }} data-testid="tv-chart-container" />
+    <div style={wrapperStyle}>
+      <div ref={containerRef} style={innerStyle} data-testid="tv-chart-container" />
 
       {/* Tooltip overlay — anchored top-left, mirrors TradingView's status row. */}
       {hover && (
