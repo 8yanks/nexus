@@ -1,7 +1,9 @@
 import { useState, useCallback, lazy, Suspense } from 'react'
 import { useMarketStore } from '@/store/market'
 import { useMarketData } from '@/hooks/useMarketData'
-import { Nav } from '@/ui/components/Nav'
+import { Sidebar } from '@/ui/components/Sidebar'
+import { TopBar } from '@/ui/components/TopBar'
+import { StatusBar } from '@/ui/components/StatusBar'
 import { DemoSplash } from '@/ui/components/DemoSplash'
 import { colors, fonts } from '@/ui/theme'
 
@@ -113,6 +115,11 @@ function App() {
     setShowSplash(false)
   }, [])
 
+  // ─── LAYOUT — v3 redesign shell ───────────────────────────
+  // Two-column: vertical Sidebar on the left, then a flex-column with
+  // the slim TopBar on top, the routed screen filling the middle, and
+  // the StatusBar pinned at the bottom of the viewport. The middle
+  // <main> scrolls independently so the chrome stays sticky.
   return (
     <div
       style={{
@@ -120,13 +127,29 @@ function App() {
         background: colors.bg,
         color: colors.text,
         fontFamily: fonts.sans,
+        display: 'flex',
+        flexDirection: 'row',
       }}
     >
       {showSplash && <DemoSplash onDismiss={dismissSplash} />}
-      <Nav />
-      <Suspense fallback={<ScreenLoading />}>
-        <ScreenRouter />
-      </Suspense>
+      <Sidebar />
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          minHeight: '100vh',
+        }}
+      >
+        <TopBar />
+        <main style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <Suspense fallback={<ScreenLoading />}>
+            <ScreenRouter />
+          </Suspense>
+        </main>
+        <StatusBar />
+      </div>
     </div>
   )
 }
