@@ -99,20 +99,64 @@ because it became the sole consumer of recharts (so the 290 KB
 CartesianChart code-split lost its independent home and folded
 into Backtest's lazy chunk). Removing recharts collapses that.
 
+### Shipped — Signal markers on TradingViewChart
+
+After the recharts removal landed, added signal markers as the next
+chart-level enhancement so users can see WHERE signals fired, not just
+read them in a list.
+
+- `TradingViewChart` accepts a new `markers?: SignalEvent[]` prop
+  (default `[]`). Each signal becomes a `SeriesMarker<Time>` pinned
+  to the bar whose timestamp it fired on:
+    • bullish → green `arrowUp` below the bar
+    • bearish → red `arrowDown` above the bar
+    • neutral → grey `circle` in-bar
+- Plugin lifecycle: `createSeriesMarkers` runs once in the mount
+  effect and the handle goes into `markersPluginRef`. A separate
+  effect translates the prop into the marker payload and pushes via
+  `setMarkers`, so signal updates don't tear the chart down.
+- Defensive guards: dedup by `(time, type)` so duplicate provider
+  emissions don't double-stamp; filter out non-finite timestamps;
+  sort ascending before push (lib requires it).
+- Wired in: Detail screen reuses the per-instrument signal slice
+  already built for the sidebar; Dashboard focus pane reuses
+  `focusedSignals` (top 12 for the focused row), so markers track
+  the watchlist selection live.
+- 5 new tests cover empty/default, mixed bullish+bearish+neutral,
+  same-bar dedup, ghost markers (timestamp not in candle window),
+  and invalid-timestamp filtering.
+
+Bundle: lightweight-charts chunk grew 164 → 172 KB raw / +3 KB gzip
+to include the markers plugin code path. Worth it.
+
 ### Status
 
-777/777 tests across 87 files (was 770/770). Type-check + build
-clean. Recharts is gone from the dependency tree. lightweight-charts
-is now the single chart engine across Detail, Dashboard focus pane,
-and Backtest; MiniChart owns the small-scale sparkline case with
-zero deps.
+782/782 tests across 87 files (started at 770/770; +12 across the
+session — 7 EquityChart + 5 markers). Type-check + build clean.
+Recharts is gone from the dependency tree. lightweight-charts is now
+the single chart engine across Detail, Dashboard focus pane, and
+Backtest; MiniChart owns the small-scale sparkline case with zero
+deps; signal markers ride on the same engine for both screens.
 
-Recent commits this session:
+Loop deadline (19h local) reached just after the markers commit
+landed. Stopping the autonomous loop here. Open follow-ups for the
+next session:
+- Bollinger / Donchian band overlays on TradingViewChart (need a
+  `calcBollingerSeries(data, period, stdDev)` helper analogous to
+  `calcEMASeries`, then 3 LineSeries sharing a colour family).
+- Backtest entry/exit markers on the Detail chart when a backtest
+  result is in-store — same plugin, different source.
+- Chart-toolbar / interval picker — bigger lift, needs a multi-
+  timeframe candle store; park until store layer is ready.
+
+Commits this session (oldest → newest):
 - `7823270` feat(dashboard): split-view watchlist + focus pane per v3
 - `11df048` test(dashboard): cover split-view focus + DragHandle
 - `6451786` feat(chart): EMA 20/50 overlays + legend
 - `45eaebd` refactor(minichart): swap recharts for inline SVG
 - `7e7f837` refactor(backtest): migrate equity curve, drop recharts
+- `59fbaae` docs: NOTES — redesign-phase session log
+- `4861f2e` feat(chart): signal markers on TradingViewChart
 
 ---
 
