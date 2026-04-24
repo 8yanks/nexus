@@ -1,21 +1,11 @@
 import { useState } from 'react'
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
 import { Play, RotateCcw } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
 import { colors, fonts, radius, card, statLabel, statValue, inputStyle as themeInputStyle } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
-import { fmt, fmtPct, fmtTime } from '@/utils/format'
+import { EquityChart } from '@/ui/components/EquityChart'
+import { fmt, fmtPct } from '@/utils/format'
 import type { BacktestConfig, BacktestResult } from '@/backtest/types'
 import { DEFAULT_CONFIG } from '@/backtest/types'
 import type { SignalType } from '@/types'
@@ -250,36 +240,21 @@ const ResultsPanel = ({ result }: { result: BacktestResult }) => {
   )
 }
 
-// ─── EQUITY CHART ───────────────────────────────────────────
+// ─── EQUITY CHART CARD ──────────────────────────────────────
+// Thin wrapper around the shared <EquityChart /> component (which now
+// uses lightweight-charts under the hood). Keeps the card chrome here
+// so the rest of Backtest's results column stays visually coherent.
 
-const EquityChart = ({ result }: { result: BacktestResult }) => {
-  const data = result.equity.map((pt) => ({
-    t: fmtTime(pt.timestamp),
-    equity: parseFloat(pt.equity.toFixed(2)),
-    drawdown: parseFloat((pt.drawdown * 100).toFixed(2)),
-  }))
-
-  return (
-    <div style={card}>
-      <h3 style={{ margin: '0 0 12px', fontSize: 14, color: colors.text }}>Equity Curve</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <ComposedChart data={data}>
-          <CartesianGrid stroke={colors.border} strokeDasharray="3 3" />
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: colors.textDim }} />
-          <YAxis yAxisId="eq" tick={{ fontSize: 10, fill: colors.textDim }} />
-          <YAxis yAxisId="dd" orientation="right" tick={{ fontSize: 10, fill: colors.textDim }} reversed />
-          <Tooltip
-            contentStyle={{ background: colors.bgCard, border: `1px solid ${colors.border}`, fontSize: 12 }}
-            labelStyle={{ color: colors.textMuted }}
-          />
-          <ReferenceLine yAxisId="eq" y={result.config.initialCapital} stroke={colors.textDim} strokeDasharray="3 3" />
-          <Area yAxisId="dd" type="monotone" dataKey="drawdown" fill={`${colors.red}20`} stroke="none" name="Drawdown %" />
-          <Line yAxisId="eq" type="monotone" dataKey="equity" stroke={colors.accent} strokeWidth={1.5} dot={false} isAnimationActive={false} name="Equity" />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
+const EquityChartCard = ({ result }: { result: BacktestResult }) => (
+  <div style={card}>
+    <h3 style={{ margin: '0 0 12px', fontSize: 14, color: colors.text }}>Equity Curve</h3>
+    <EquityChart
+      points={result.equity}
+      initialCapital={result.config.initialCapital}
+      height={220}
+    />
+  </div>
+)
 
 // ─── TRADE TABLE ────────────────────────────────────────────
 
@@ -422,7 +397,7 @@ export const Backtest = () => {
           {result ? (
             <>
               <ResultsPanel result={result} />
-              <EquityChart result={result} />
+              <EquityChartCard result={result} />
               <TradeTable result={result} />
             </>
           ) : (
