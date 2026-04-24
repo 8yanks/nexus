@@ -1,5 +1,121 @@
 # Session notes
 
+## 2026-04-24 — Redesign phase: Dashboard split-view, EMA overlays, full Recharts removal
+
+Branch `ai-schemas-and-audit`. Autonomous /loop session continuing the
+v3 design handoff merge with `lightweight-charts`. The four NOTES items
+the user originally listed (btnSecondary extract, audit-filter persist,
+'r' keybind, drilldown polish) all already shipped on 2026-04-18, so
+this session realigned to the open redesign roadmap: Dashboard split-
+view, chart overlays, and finishing the Recharts → lightweight-charts
+migration kicked off on Detail.
+
+### Shipped — Dashboard split-view + draggable handle
+
+- New `<DragHandle />` component (full keyboard support, ARIA
+  separator role, window-scoped move/up listeners that release on
+  mouseup). Persists the user's chosen height to
+  `localStorage['nexus_focus_bottom_h']`.
+- Dashboard reworks the watchlist into two stacked panes: top = the
+  existing watchlist table; bottom = a focus pane showing OHLCV chart
+  + signals for the row a user single-clicks. Double-click still
+  navigates to Detail; an "Open Full Detail" button mirrors the
+  same intent for keyboard users.
+- Empty-state placeholder when nothing is focused yet ("Click a row
+  to preview, double-click for full detail").
+- Tests: 14 new for `<DragHandle />` (ARIA, keyboard nudge with 8/16
+  steps + clamping, mouse drag down-shrinks/up-grows + clamp + body-
+  cursor restore on mouseup); 9 new for Dashboard split-view (focus
+  pane render, click vs dblclick semantics, separator presence,
+  empty-state placeholder, localStorage init + write).
+
+### Shipped — EMA 20/50 overlays on TradingViewChart
+
+- Added `calcEMASeries(data, period)` to `analytics/indicators.ts` —
+  rolling EMA that returns one value per input position (nulls for
+  the seed window). Final value matches `calcEMA` on the same data;
+  flat input converges; non-positive periods rejected.
+- `TradingViewChart` now accepts `emaPeriods?: number[]` (default
+  `[20, 50]`, pass `[]` to disable). Each period gets a colour-coded
+  LineSeries (orange/cyan/purple/accent at 20/50/100/200) sharing
+  the candle price scale. Whitespace data fills positions before
+  the seed so the line starts exactly at bar `period - 1` instead of
+  pinning to 0.
+- Bottom-left legend with colour dots + "EMA {period}" labels;
+  hidden entirely when `emaPeriods` is empty.
+- Also added `height="auto"` mode for the chart wrapper — fills a
+  sized parent (used by Dashboard's focus pane). Back-compat: the
+  default 240 px stays the default for existing call sites.
+- 7 new indicator tests (length, null prefix, seed = SMA, final =
+  calcEMA, flat convergence, period === length, non-positive
+  rejection). 5 new chart tests (auto-height, legend default, custom
+  periods, hidden when empty, tolerates short window).
+
+### Shipped — MiniChart: Recharts → inline SVG
+
+Sparklines don't need an axis engine; lightweight-charts would create
+a WebGL context per row (catastrophic for 20+ watchlist rows). So
+MiniChart got a hand-rolled inline SVG path instead.
+
+- Pure exported `buildSparklinePath(values, w, h, inset)` — returns
+  `"M x0 y0 L x1 y1 …"`. Min → bottom, max → top, even x-spacing,
+  flat input draws a horizontal mid-line (no divide-by-zero).
+- Component contract preserved 1:1: <2 valid samples → em-dash
+  empty state; NaN/Inf filtered; auto green-up / red-down; `color`
+  prop wins; default 80×30; `strokeWidth` prop honoured.
+- Both `useMemo` calls (clean filter + path) sit before the early
+  return so hooks fire unconditionally on every render.
+- Tests rewritten — 19 cases now: 4 empty-state, 3 wrapper geometry,
+  6 SVG output (stroke colours, aria, custom strokeWidth), 6 pure
+  geometry on `buildSparklinePath`.
+
+### Shipped — Backtest equity curve: Recharts → lightweight-charts
+
+Backtest was the last consumer of recharts in the app, so finishing
+this migration also lets us drop the dependency entirely.
+
+- New shared `<EquityChart points initialCapital height />` built
+  on lightweight-charts. Two series: equity LineSeries on the
+  default right scale (top ~70%) + drawdown AreaSeries pinned to a
+  bottom price scale (~30%). Initial capital appears as a dashed
+  PriceLine on the equity series, mirroring the old ReferenceLine.
+- `EquityChartCard` in Backtest is now a thin card-chrome wrapper
+  around `<EquityChart />` — same visual layout, much smaller bundle.
+- 7 new smoke tests modelled on the TradingViewChart suite (JSDom
+  bail, no-tooltip-on-mount, dedupe + sort, empty array, fixed +
+  auto height, missing initial capital).
+- `recharts` removed from `package.json` + `package-lock.json`.
+
+### Bundle impact
+
+```
+                       before      after
+Backtest chunk      374 KB raw    19 KB raw
+                  (108 KB gzip) ( 6 KB gzip)
+```
+
+The Backtest chunk had ballooned after the MiniChart migration
+because it became the sole consumer of recharts (so the 290 KB
+CartesianChart code-split lost its independent home and folded
+into Backtest's lazy chunk). Removing recharts collapses that.
+
+### Status
+
+777/777 tests across 87 files (was 770/770). Type-check + build
+clean. Recharts is gone from the dependency tree. lightweight-charts
+is now the single chart engine across Detail, Dashboard focus pane,
+and Backtest; MiniChart owns the small-scale sparkline case with
+zero deps.
+
+Recent commits this session:
+- `7823270` feat(dashboard): split-view watchlist + focus pane per v3
+- `11df048` test(dashboard): cover split-view focus + DragHandle
+- `6451786` feat(chart): EMA 20/50 overlays + legend
+- `45eaebd` refactor(minichart): swap recharts for inline SVG
+- `7e7f837` refactor(backtest): migrate equity curve, drop recharts
+
+---
+
 ## 2026-04-20 — Kraken live provider + functional LIVE / ANALYST badges
 
 Branch `ai-schemas-and-audit`. Two user-driven bits in one commit:
