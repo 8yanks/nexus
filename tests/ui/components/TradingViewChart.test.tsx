@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { TradingViewChart } from '@/ui/components/TradingViewChart'
 import type { OHLCV, SignalEvent } from '@/types'
+import type { BacktestTrade } from '@/backtest/types'
 
 // ─── TRADINGVIEW CHART — JSDom smoke test ───────────────────
 // lightweight-charts uses <canvas>, which JSDom doesn't implement.
@@ -259,5 +260,118 @@ describe('<TradingViewChart /> — Bollinger Bands overlay', () => {
         />,
       ),
     ).not.toThrow()
+  })
+})
+
+describe('<TradingViewChart /> — backtest trade markers', () => {
+  const trade = (overrides: Partial<BacktestTrade> = {}): BacktestTrade => ({
+    id: 1,
+    direction: 'long',
+    entryIndex: 0,
+    entryPrice: 100,
+    entryTimestamp: '2026-04-19T10:00:00Z',
+    entrySignal: 'RSI_OVERSOLD',
+    exitIndex: 5,
+    exitPrice: 105,
+    exitTimestamp: '2026-04-19T15:00:00Z',
+    exitReason: 'take_profit',
+    pnl: 5,
+    pnlPct: 0.05,
+    commission: 0.1,
+    bars: 5,
+    maxFavorable: 0.06,
+    maxAdverse: -0.01,
+    ...overrides,
+  })
+
+  it('mounts cleanly with empty tradeMarkers (default)', () => {
+    expect(() =>
+      render(<TradingViewChart candles={[candle()]} decimals={2} />),
+    ).not.toThrow()
+  })
+
+  it('accepts a long trade (entry + exit markers) without throwing', () => {
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[
+            candle(),
+            candle({ timestamp: '2026-04-19T15:00:00Z', close: 105 }),
+          ]}
+          decimals={2}
+          tradeMarkers={[trade()]}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('accepts a losing short trade (red entry + red square exit)', () => {
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[
+            candle(),
+            candle({ timestamp: '2026-04-19T15:00:00Z', close: 103 }),
+          ]}
+          decimals={2}
+          tradeMarkers={[
+            trade({
+              id: 2,
+              direction: 'short',
+              entryPrice: 100,
+              exitPrice: 103,
+              pnl: -3,
+              pnlPct: -0.03,
+              exitReason: 'stop_loss',
+            }),
+          ]}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('merges signal markers + trade markers without collision', () => {
+    // Both arrays populated with distinct timestamps — component should
+    // render both sources through the same plugin without error.
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[
+            candle(),
+            candle({ timestamp: '2026-04-19T12:00:00Z' }),
+            candle({ timestamp: '2026-04-19T15:00:00Z' }),
+          ]}
+          decimals={2}
+          markers={[
+            {
+              id: 's1',
+              instrumentId: 'BTC-USD-SPOT',
+              type: 'RSI_OVERSOLD',
+              direction: 'bullish',
+              strength: 0.8,
+              description: 'RSI dipped',
+              price: 100,
+              timestamp: '2026-04-19T12:00:00Z',
+              _source: 'mock',
+              _status: 'LIVE',
+            },
+          ]}
+          tradeMarkers={[trade()]}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('tolerates trades with invalid timestamps (filtered silently)', () => {
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[candle()]}
+          decimals={2}
+          tradeMarkers={[trade({ entryTimestamp: 'not-a-date', exitTimestamp: 'also-bad' })]}
+        />,
+      ),
+    ).not.toThrow()
+    expect(screen.getByTestId('tv-chart-container')).toBeInTheDocument()
   })
 })

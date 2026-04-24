@@ -20,6 +20,7 @@ import {
   type WhitespaceData,
 } from 'lightweight-charts'
 import type { OHLCV, SignalEvent } from '@/types'
+import type { BacktestTrade } from '@/backtest/types'
 import { calcEMASeries, calcBollingerSeries } from '@/analytics/indicators'
 import { colors, fonts } from '@/ui/theme'
 
@@ -74,6 +75,15 @@ interface Props {
    * Typical config: `{ period: 20, stdDev: 2 }`.
    */
   bollinger?: { period: number; stdDev: number } | null
+  /**
+   * Backtest trades to render as entry + exit markers on the candles.
+   * Long entry → green arrow-up below the bar; short entry → red
+   * arrow-down above the bar. Exits render as squares colour-coded by
+   * PnL (green if winning, red if losing). Merged with the `markers`
+   * prop — both are pushed to the same plugin so the two sources
+   * coexist cleanly. Pass `[]` (default) to disable.
+   */
+  tradeMarkers?: BacktestTrade[]
 }
 
 // Orange for the fast EMA, cyan for the slow — palette-aligned and
@@ -112,6 +122,7 @@ export const TradingViewChart = ({
   emaPeriods = [20, 50],
   markers = [],
   bollinger = null,
+  tradeMarkers = [],
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -426,15 +437,18 @@ export const TradingViewChart = ({
     // exhaustive-deps stays honest without over-rendering.
   }, [candles, bbKey])
 
-  // Signal markers — colour-coded arrows pinned to the bar whose
-  // timestamp matches each signal. Bullish → green arrow-up below the
-  // bar; bearish → red arrow-down above; neutral → grey circle in-bar.
-  // We dedupe by `${time}-${type}` so a duplicate signal in the array
-  // (rare, but possible across providers) doesn't double-stamp the bar.
+  // Markers — signal arrows + backtest trade entries/exits merged into
+  // the single plugin. Signal bullish → green arrow-up below the bar,
+  // bearish → red arrow-down above, neutral → grey circle in-bar. Trade
+  // entries mirror the direction semantics (long = bull, short = bear);
+  // trade exits render as squares coloured by PnL (green if winning,
+  // red if losing). Both sources share the same dedup key space
+  // (`${time}-${kind}-${discriminator}`) so a duplicate in either array
+  // doesn't double-stamp the bar.
   useEffect(() => {
     const plugin = markersPluginRef.current
     if (!plugin) return
-    if (markers.length === 0) {
+    if (markers.length === 0 && tradeMarkers.length === 0) {
       try {
         plugin.setMarkers([])
       } catch {
@@ -444,23 +458,69 @@ export const TradingViewChart = ({
     }
     const seen = new Set<string>()
     const out: SeriesMarker<Time>[] = []
-    for (const sig of markers) {
-      const t = Math.floor(new Date(sig.timestamp).getTime() / 1000)
-      if (!Number.isFinite(t)) continue
-      const key = `${t}-${sig.type}`
-      if (seen.has(key)) continue
+
+    const pushIso = (iso: string, builder: (t: UTCTimestamp) => SeriesMarker<Time> | null, keyTag: string) => {
+      const t = Math.floor(new Date(iso).getTime() / 1000)
+      if (!Number.isFinite(t)) return
+      const key = `${t}-${keyTag}`
+      if (seen.has(key)) return
       seen.add(key)
-      const isBull = sig.direction === 'bullish'
-      const isBear = sig.direction === 'bearish'
-      out.push({
-        time: t as UTCTimestamp,
-        position: isBull ? 'belowBar' : isBear ? 'aboveBar' : 'inBar',
-        shape: isBull ? 'arrowUp' : isBear ? 'arrowDown' : 'circle',
-        color: isBull ? colors.green : isBear ? colors.red : colors.textMuted,
-        text: sig.type,
-        size: 1,
-      })
+      const marker = builder(t as UTCTimestamp)
+      if (marker) out.push(marker)
     }
+
+    for (const sig of markers) {
+      pushIso(
+        sig.timestamp,
+        (t) => {
+          const isBull = sig.direction === 'bullish'
+          const isBear = sig.direction === 'bearish'
+          return {
+            time: t,
+            position: isBull ? 'belowBar' : isBear ? 'aboveBar' : 'inBar',
+            shape: isBull ? 'arrowUp' : isBear ? 'arrowDown' : 'circle',
+            color: isBull ? colors.green : isBear ? colors.red : colors.textMuted,
+            text: sig.type,
+            size: 1,
+          }
+        },
+        `sig-${sig.type}`,
+      )
+    }
+
+    for (const trade of tradeMarkers) {
+      const isLong = trade.direction === 'long'
+      // Entry — same direction semantics as signals so the two sources
+      // read consistently on the chart.
+      pushIso(
+        trade.entryTimestamp,
+        (t) => ({
+          time: t,
+          position: isLong ? 'belowBar' : 'aboveBar',
+          shape: isLong ? 'arrowUp' : 'arrowDown',
+          color: isLong ? colors.green : colors.red,
+          text: `ENTRY #${trade.id}`,
+          size: 1,
+        }),
+        `trade-entry-${trade.id}`,
+      )
+      // Exit — square colour-coded by PnL. Position mirrors the entry
+      // so the two markers stack vertically on the same side of the
+      // price series, making entry→exit pairs visually traceable.
+      pushIso(
+        trade.exitTimestamp,
+        (t) => ({
+          time: t,
+          position: isLong ? 'aboveBar' : 'belowBar',
+          shape: 'square',
+          color: trade.pnl >= 0 ? colors.green : colors.red,
+          text: `EXIT #${trade.id} ${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}`,
+          size: 1,
+        }),
+        `trade-exit-${trade.id}`,
+      )
+    }
+
     // setMarkers wants strictly-ascending time order (same constraint as
     // setData) — sort defensively before pushing. Times are seconds-since-
     // epoch numbers (we built them as UTCTimestamp), so a numeric cast is
@@ -471,7 +531,7 @@ export const TradingViewChart = ({
     } catch {
       // Plugin gone or chart torn down — no-op.
     }
-  }, [markers])
+  }, [markers, tradeMarkers])
 
   const isUp = hover != null && hover.changePct >= 0
   const changeColor = isUp ? colors.green : colors.red

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
-import { colors, fonts, radius, card, statLabel, statValue, inputStyle as themeInputStyle } from '@/ui/theme'
+import { colors, fonts, radius, card, statLabel, statValue, emptyState, inputStyle as themeInputStyle } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import { EquityChart } from '@/ui/components/EquityChart'
+import { TradingViewChart } from '@/ui/components/TradingViewChart'
 import { fmt, fmtPct } from '@/utils/format'
 import type { BacktestConfig, BacktestResult } from '@/backtest/types'
 import { DEFAULT_CONFIG } from '@/backtest/types'
@@ -256,6 +257,62 @@ const EquityChartCard = ({ result }: { result: BacktestResult }) => (
   </div>
 )
 
+// ─── TRADE CHART CARD ───────────────────────────────────────
+// Shows the underlying candle series the backtest ran against with
+// entry + exit markers plotted on each trade. This is the piece that
+// makes the backtest tangible — users can see WHERE the engine entered
+// and exited, not just read a trade table.
+//
+// The candle window is clamped to a span that actually covers the
+// trades (first entry → last exit, plus a small margin of pre-entry
+// context). Showing the full 200-bar window would swamp the markers
+// in flat pre-signal territory.
+
+const TradeChartCard = ({ result }: { result: BacktestResult }) => {
+  const candleMap = useMarketStore((s) => s.candles)
+  const series = candleMap[result.config.instrumentId]
+  const allCandles = series?.candles ?? []
+
+  // Clamp to the trade window — first entry index back by 10 bars for
+  // context, last exit forward by 5 bars. When there are no trades fall
+  // back to the last 80 bars so users still see the instrument price.
+  let chartCandles = allCandles
+  if (result.trades.length > 0 && allCandles.length > 0) {
+    const firstEntry = Math.min(...result.trades.map((t) => t.entryIndex))
+    const lastExit = Math.max(...result.trades.map((t) => t.exitIndex))
+    const start = Math.max(0, firstEntry - 10)
+    const end = Math.min(allCandles.length, lastExit + 5)
+    chartCandles = allCandles.slice(start, end)
+  } else if (allCandles.length > 80) {
+    chartCandles = allCandles.slice(-80)
+  }
+
+  return (
+    <div style={card}>
+      <h3 style={{ margin: '0 0 12px', fontSize: 14, color: colors.text }}>
+        Trades on Chart
+      </h3>
+      {chartCandles.length > 2 ? (
+        <TradingViewChart
+          candles={chartCandles}
+          decimals={2}
+          height={280}
+          tradeMarkers={result.trades}
+          // Keep the chart read-only focused — no EMA overlays by
+          // default so the trade arrows dominate visually. Bollinger
+          // Bands stay off too; users can enable on Detail if they
+          // want the envelope.
+          emaPeriods={[]}
+        />
+      ) : (
+        <div style={emptyState}>
+          No candle series available for {result.config.instrumentId}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── TRADE TABLE ────────────────────────────────────────────
 
 const TradeTable = ({ result }: { result: BacktestResult }) => {
@@ -398,6 +455,7 @@ export const Backtest = () => {
             <>
               <ResultsPanel result={result} />
               <EquityChartCard result={result} />
+              <TradeChartCard result={result} />
               <TradeTable result={result} />
             </>
           ) : (
