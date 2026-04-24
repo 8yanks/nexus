@@ -1,5 +1,87 @@
 # Session notes
 
+## 2026-04-24 (post-deadline) — Bollinger Bands overlay + Backtest trade chart
+
+Loop deadline had already fired at 19h. User picked up the thread with
+"donc on fait quoi maintenant?" then "je te laisse faire ton plan et le
+suivre". I took two items off the open-follow-ups list from the earlier
+entry in this same file: Bollinger Bands on TradingViewChart, and
+entry/exit markers on the backtest candle view. Both shipped.
+
+### Shipped — Bollinger Bands overlay on TradingViewChart
+
+- `calcBollingerSeries(closes, period=20, mult=2)` in
+  `analytics/indicators.ts`. O(n) sliding window using `sum` + `sumSq`
+  and `Var = E[X²] − E[X]²`, clamped against float drift. Returns
+  `Array<{upper, middle, lower, bandwidth} | null>` — null for the
+  first `period-1` positions so the lines start cleanly at seed.
+- `TradingViewChart` accepts `bollinger?: {period, stdDev} | null`
+  (default `null` — off by default). When non-null, three LineSeries
+  are added sharing the candle price scale: upper (dashed yellow),
+  middle (dotted grey, SMA anchor), lower (dashed yellow). All three
+  remount on `bbKey = "${period}:${stdDev}"` so param changes land
+  cleanly without tearing down the chart.
+- Whitespace data fills positions before the first full window so the
+  lines don't pin to 0.
+- 4 new chart tests: `bollinger=null` default, config provided, window
+  shorter than period, non-positive period rejected. 8 new indicator
+  tests (length, nulls before seed, values against spot-check,
+  symmetric bands on flat input, zero-mean bandwidth guard, etc.).
+
+### Shipped — BB toggle on Detail
+
+Shown as a chart-toolbar button top-right of the Detail candle view.
+Starts unpressed; click flips `aria-pressed`; preference persists to
+`localStorage['nexus_detail_bb_overlay']` so remounts keep it on. The
+toggle is only rendered when the chart branch renders (so we don't
+expose a control that does nothing when candles are scarce).
+
+5 new tests on Detail cover: presence, default unpressed, click flips
+state, localStorage round-trip across unmount, hidden when the chart
+branch bails.
+
+### Shipped — Trade markers on TradingViewChart + Backtest trade chart
+
+Same `createSeriesMarkers` plugin as the signal markers from earlier
+today — added a second source so signals + trades can coexist without
+tearing each other down.
+
+- New `tradeMarkers?: BacktestTrade[]` prop. Long entry = green
+  arrow-up below the bar; short entry = red arrow-down above the bar.
+  Exits are coloured squares (green if PnL ≥ 0, red otherwise) with
+  the net-$ amount in the label. Invalid timestamps filtered silently.
+- `<TradeChartCard />` on the Backtest screen reads candles from the
+  store and clamps the window to `[firstEntry-10, lastExit+5]` so the
+  arrows dominate instead of drowning in pre-signal flat territory.
+  EMAs default off on this card for the same reason. Falls back to an
+  empty-state string when no candles are loaded for the instrument.
+- Slotted between `<EquityChartCard />` and `<TradeTable />` in the
+  Backtest results column.
+- 5 new chart tests: empty default, long trade, losing short trade,
+  signal + trade merge in the same render, invalid timestamps.
+
+### Status
+
+804/804 tests across 87 files (+22 from the earlier 782/782 — 8
+Bollinger indicator, 4 BB chart, 5 Detail toggle, 5 trade markers).
+Type-check + build clean. Backtest chunk stays at 19.83 KB raw
+(+none), lightweight-charts chunk at 178.75 KB raw (+~6 KB for the
+Bollinger LineSeries + marker plumbing). Worth it.
+
+Open follow-ups carried forward:
+- Chart-toolbar / interval picker (still needs a multi-timeframe
+  store — park until that lands).
+- Donchian channels (mechanically the same shape as Bollinger but
+  max/min over window instead of mean ± σ).
+- Surface backtest markers on Detail when a result exists in state —
+  would need to move backtest results into the store first. Deferred.
+
+Commits this sub-session (oldest → newest):
+- `56b9519` feat(chart): Bollinger Bands overlay with per-user toggle
+- `38aab95` feat(backtest): trade chart with entry/exit markers
+
+---
+
 ## 2026-04-24 — Redesign phase: Dashboard split-view, EMA overlays, full Recharts removal
 
 Branch `ai-schemas-and-audit`. Autonomous /loop session continuing the
