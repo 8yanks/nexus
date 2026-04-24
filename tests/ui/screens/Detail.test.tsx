@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { Detail } from '@/ui/screens/Detail'
 import { useMarketStore } from '@/store/market'
-import type { MarketSnapshot } from '@/types'
+import type { CandleSeries, MarketSnapshot, OHLCV } from '@/types'
 
 const snap = (id: string, over: Partial<MarketSnapshot> = {}): MarketSnapshot => ({
   instrumentId: id,
@@ -34,8 +34,46 @@ const snap = (id: string, over: Partial<MarketSnapshot> = {}): MarketSnapshot =>
   ...over,
 })
 
+// Build a synthetic 30-candle window for the chart branch (chart only
+// renders when chartCandles.length > 2; 30 keeps us well above that and
+// gives BB(20) enough history to seed if the test needs it).
+const mkCandles = (instrumentId: string): CandleSeries => {
+  const bars: OHLCV[] = Array.from({ length: 30 }, (_, i) => ({
+    open: 60_000 + i,
+    high: 60_100 + i,
+    low: 59_900 + i,
+    close: 60_050 + i,
+    volume: 1_000,
+    timestamp: new Date(Date.UTC(2026, 3, 19, i)).toISOString(),
+    _source: 'mock',
+    _status: 'LIVE',
+  }))
+  return {
+    instrumentId,
+    timeframe: '1h',
+    candles: bars,
+    _source: 'mock',
+    _status: 'LIVE',
+    _provenance: {
+      source: 'mock',
+      fetchMethod: 'mock',
+      latencyMs: null,
+      timestamp: '2026-04-19T10:00:00Z',
+      receivedAt: '2026-04-19T10:00:00Z',
+    },
+    generatedAt: '2026-04-19T10:00:00Z',
+  }
+}
+
 beforeEach(() => {
-  useMarketStore.setState({ selectedInstrumentId: null, snapshots: {} })
+  useMarketStore.setState({ selectedInstrumentId: null, snapshots: {}, candles: {} })
+  // Detail persists the BB toggle to localStorage — clear between tests
+  // so toggles in one test don't leak into the next.
+  try {
+    window.localStorage.removeItem('nexus_detail_bb_overlay')
+  } catch {
+    /* storage disabled */
+  }
 })
 afterEach(() => cleanup())
 
@@ -69,5 +107,61 @@ describe('<Detail />', () => {
     render(<Detail />)
     fireEvent.click(screen.getByTitle(/Back to Dashboard/i))
     expect(useMarketStore.getState().screen).toBe('dashboard')
+  })
+})
+
+describe('<Detail /> — Bollinger Bands toggle', () => {
+  const seedWithCandles = () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      candles: { [inst.id]: mkCandles(inst.id) },
+    })
+    return inst
+  }
+
+  it('exposes a BB toggle button in the chart toolbar', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-bb-toggle')).toBeInTheDocument()
+  })
+
+  it('BB toggle starts unpressed by default', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-bb-toggle').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('clicking the BB toggle flips aria-pressed', () => {
+    seedWithCandles()
+    render(<Detail />)
+    const btn = screen.getByTestId('detail-bb-toggle')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('persists the BB toggle to localStorage so the preference survives remounts', () => {
+    seedWithCandles()
+    const { unmount } = render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-bb-toggle'))
+    expect(window.localStorage.getItem('nexus_detail_bb_overlay')).toBe('1')
+    unmount()
+    // Remount — stored preference should be read back.
+    render(<Detail />)
+    expect(screen.getByTestId('detail-bb-toggle').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('hides the toolbar when the chart branch is not rendered (insufficient candles)', () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      candles: {},
+    })
+    render(<Detail />)
+    expect(screen.queryByTestId('detail-bb-toggle')).not.toBeInTheDocument()
   })
 })

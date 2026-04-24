@@ -6,6 +6,7 @@ import {
   calcATR,
   calcVWAP,
   calcBollinger,
+  calcBollingerSeries,
   calcDonchian,
   calcZScore,
   calcRelativeVolume,
@@ -191,6 +192,82 @@ describe('calcBollinger', () => {
     expect(bb.bandwidth).toBe(0)
     expect(bb.upper).toBe(bb.middle)
     expect(bb.lower).toBe(bb.middle)
+  })
+})
+
+// ─── BOLLINGER SERIES (for chart overlays) ──────────────────
+
+describe('calcBollingerSeries', () => {
+  it('returns an array of the same length as the input', () => {
+    const data = range(40, (i) => 100 + i)
+    expect(calcBollingerSeries(data, 20)).toHaveLength(40)
+  })
+
+  it('returns all nulls when data is shorter than period', () => {
+    const out = calcBollingerSeries([1, 2, 3], 20)
+    expect(out.length).toBe(3)
+    expect(out.every((v) => v === null)).toBe(true)
+  })
+
+  it('fills null before the seed window and a bands object after', () => {
+    const data = range(25, (i) => 100 + i)
+    const out = calcBollingerSeries(data, 20)
+    for (let i = 0; i < 19; i++) expect(out[i]).toBeNull()
+    expect(out[19]).not.toBeNull()
+    expect(out[24]).not.toBeNull()
+  })
+
+  it('final value matches calcBollinger on the same window', () => {
+    const data = range(50, (i) => 100 + Math.sin(i / 3) * 5)
+    const snap = calcBollinger(data, 20, 2)!
+    const series = calcBollingerSeries(data, 20, 2)
+    const last = series[series.length - 1]!
+    expect(last.middle).toBeCloseTo(snap.middle, 8)
+    expect(last.upper).toBeCloseTo(snap.upper, 8)
+    expect(last.lower).toBeCloseTo(snap.lower, 8)
+    expect(last.bandwidth).toBeCloseTo(snap.bandwidth, 8)
+  })
+
+  it('collapses all three bands onto the mean for flat input', () => {
+    const data = range(40, () => 100)
+    const out = calcBollingerSeries(data, 20)
+    for (let i = 19; i < 40; i++) {
+      const bb = out[i]!
+      expect(bb.middle).toBeCloseTo(100, 10)
+      expect(bb.upper).toBeCloseTo(100, 10)
+      expect(bb.lower).toBeCloseTo(100, 10)
+      expect(bb.bandwidth).toBe(0)
+    }
+  })
+
+  it('upper > middle > lower at every filled position for noisy input', () => {
+    const data = range(60, (i) => 100 + Math.sin(i / 2) * 4)
+    const out = calcBollingerSeries(data, 20)
+    for (let i = 19; i < 60; i++) {
+      const bb = out[i]!
+      expect(bb.upper).toBeGreaterThan(bb.middle)
+      expect(bb.middle).toBeGreaterThan(bb.lower)
+    }
+  })
+
+  it('rejects non-positive period or multiplier', () => {
+    const data = range(25, (i) => i)
+    expect(calcBollingerSeries(data, 0)).toEqual(new Array(25).fill(null))
+    expect(calcBollingerSeries(data, 20, 0)).toEqual(new Array(25).fill(null))
+    expect(calcBollingerSeries(data, 20, -1)).toEqual(new Array(25).fill(null))
+  })
+
+  it('respects the multiplier: wider mult → wider bands', () => {
+    const data = range(40, (i) => 100 + Math.sin(i / 2) * 4)
+    const tight = calcBollingerSeries(data, 20, 1)
+    const wide = calcBollingerSeries(data, 20, 3)
+    const lastTight = tight[tight.length - 1]!
+    const lastWide = wide[wide.length - 1]!
+    expect(lastWide.upper - lastWide.lower).toBeGreaterThan(
+      lastTight.upper - lastTight.lower,
+    )
+    // Middle (SMA) is independent of mult.
+    expect(lastTight.middle).toBeCloseTo(lastWide.middle, 10)
   })
 })
 

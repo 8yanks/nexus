@@ -129,6 +129,61 @@ export const calcBollinger = (
   }
 }
 
+/**
+ * Rolling Bollinger Bands — returns one `BollingerBands | null` entry
+ * per input position, with `null` for positions before the seed window
+ * (`period - 1`). Used by chart overlays where we want to plot the
+ * three bands as continuous lines rather than a single snapshot value.
+ *
+ * Implementation uses a sliding-window sum + sum-of-squares, so the
+ * whole series runs in O(n) regardless of `period`. Variance is
+ * computed as E[X²] − (E[X])² to avoid re-iterating the window.
+ *
+ * Flat input (zero variance) produces all three bands collapsed onto
+ * the mean — callers can still plot them without special-casing.
+ * Non-positive `period` or `mult` produces an all-null series.
+ */
+export const calcBollingerSeries = (
+  closes: number[],
+  period = 20,
+  mult = 2,
+): Array<BollingerBands | null> => {
+  const out: Array<BollingerBands | null> = new Array(closes.length).fill(null)
+  if (period <= 0 || mult <= 0 || closes.length < period) return out
+
+  let sum = 0
+  let sumSq = 0
+  for (let i = 0; i < period; i++) {
+    sum += closes[i]
+    sumSq += closes[i] * closes[i]
+  }
+
+  const compute = (s: number, sq: number): BollingerBands => {
+    const mean = s / period
+    // Clamp negative variance from float drift to 0 — can happen when
+    // all values in the window are identical and the E[X²] − E[X]²
+    // identity loses precision.
+    const variance = Math.max(0, sq / period - mean * mean)
+    const sd = Math.sqrt(variance)
+    return {
+      upper: mean + mult * sd,
+      middle: mean,
+      lower: mean - mult * sd,
+      bandwidth: mean === 0 ? 0 : (mult * sd * 2) / mean,
+    }
+  }
+
+  out[period - 1] = compute(sum, sumSq)
+  for (let i = period; i < closes.length; i++) {
+    const drop = closes[i - period]
+    const add = closes[i]
+    sum += add - drop
+    sumSq += add * add - drop * drop
+    out[i] = compute(sum, sumSq)
+  }
+  return out
+}
+
 export const calcDonchian = (
   candles: OHLCV[],
   period = 20,

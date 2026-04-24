@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { useAnalytics } from '@/hooks/useAnalytics'
@@ -12,6 +13,29 @@ import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } 
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import type { DetectedPattern } from '@/analytics/patterns'
 import { computePerformance, computeKeyStats } from '@/analytics/performance'
+
+// localStorage key for the Bollinger Bands chart toggle. Persisted so a
+// user who turned bands on once doesn't have to re-toggle them on every
+// instrument change. Same `nexus_*` namespace as the other UI prefs
+// (sidebar collapse, focus pane height).
+const BB_TOGGLE_KEY = 'nexus_detail_bb_overlay'
+
+const loadBBToggle = (): boolean => {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(BB_TOGGLE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const saveBBToggle = (v: boolean) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(BB_TOGGLE_KEY, v ? '1' : '0')
+  } catch {
+    /* swallow — storage may be disabled */
+  }
+}
 
 // Stable empty-pattern reference — used as the `patterns` fallback so we don't
 // emit a new array literal on every render (which would trip zustand's
@@ -49,6 +73,11 @@ export const Detail = () => {
   // every render and triggers a zustand re-render loop when the entry is missing.
   const patternsMap = useMarketStore((s) => s.patterns)
   const patterns = instrumentId ? patternsMap[instrumentId] ?? EMPTY_PATTERNS : EMPTY_PATTERNS
+
+  // Bollinger Bands chart overlay — opt-in toggle, persisted to
+  // localStorage so the preference sticks across instrument changes.
+  const [showBB, setShowBB] = useState<boolean>(loadBBToggle)
+  useEffect(() => saveBBToggle(showBB), [showBB])
 
   if (!inst || !snap) {
     return (
@@ -134,14 +163,54 @@ export const Detail = () => {
 
       {/* Chart + Key Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
-        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={{ ...card, padding: 0, overflow: 'hidden', position: 'relative' }}>
           {chartCandles.length > 2 ? (
-            <TradingViewChart
-              candles={chartCandles}
-              decimals={decimals}
-              height={240}
-              markers={instSignals}
-            />
+            <>
+              {/* Chart toolbar — opt-in overlay toggles. Anchored top-right
+                  inside the card so it floats over the chart's top margin
+                  (above the price scale labels). Currently houses just the
+                  Bollinger Bands toggle; future overlays (Donchian, VWAP,
+                  pattern shading) will sit alongside as additional pills. */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 6,
+                  right: 60,
+                  display: 'flex',
+                  gap: 4,
+                  zIndex: 2,
+                }}
+                data-testid="detail-chart-toolbar"
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowBB((v) => !v)}
+                  aria-pressed={showBB}
+                  title={showBB ? 'Hide Bollinger Bands (20, 2σ)' : 'Show Bollinger Bands (20, 2σ)'}
+                  data-testid="detail-bb-toggle"
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: 10,
+                    fontFamily: fonts.mono,
+                    border: `1px solid ${showBB ? colors.purple : colors.border}`,
+                    borderRadius: 3,
+                    background: showBB ? `${colors.purple}20` : `${colors.bg}b0`,
+                    color: showBB ? colors.purple : colors.textMuted,
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  BB
+                </button>
+              </div>
+              <TradingViewChart
+                candles={chartCandles}
+                decimals={decimals}
+                height={240}
+                markers={instSignals}
+                bollinger={showBB ? { period: 20, stdDev: 2 } : null}
+              />
+            </>
           ) : (
             <div style={emptyState}>Insufficient candle data for chart</div>
           )}

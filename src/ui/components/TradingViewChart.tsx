@@ -20,7 +20,7 @@ import {
   type WhitespaceData,
 } from 'lightweight-charts'
 import type { OHLCV, SignalEvent } from '@/types'
-import { calcEMASeries } from '@/analytics/indicators'
+import { calcEMASeries, calcBollingerSeries } from '@/analytics/indicators'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── TRADINGVIEW LIGHTWEIGHT CHART ──────────────────────────
@@ -66,6 +66,14 @@ interface Props {
    * to disable.
    */
   markers?: SignalEvent[]
+  /**
+   * Optional Bollinger Bands overlay config. `null` (default) hides the
+   * overlay entirely; pass an object to show all three bands (upper,
+   * middle, lower) as LineSeries on the candle price scale. Middle is
+   * the SMA; upper/lower sit `stdDev` standard deviations away from it.
+   * Typical config: `{ period: 20, stdDev: 2 }`.
+   */
+  bollinger?: { period: number; stdDev: number } | null
 }
 
 // Orange for the fast EMA, cyan for the slow — palette-aligned and
@@ -103,6 +111,7 @@ export const TradingViewChart = ({
   height = 240,
   emaPeriods = [20, 50],
   markers = [],
+  bollinger = null,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -116,12 +125,23 @@ export const TradingViewChart = ({
   // dedicated markers effect below so signal updates don't tear the
   // chart down.
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  // Bollinger bands — three line series (upper, middle, lower) created
+  // together or not at all based on the `bollinger` prop's presence.
+  const bbSeriesRef = useRef<{
+    upper: ISeriesApi<'Line'>
+    middle: ISeriesApi<'Line'>
+    lower: ISeriesApi<'Line'>
+  } | null>(null)
   const [hover, setHover] = useState<HoverState | null>(null)
 
   const isAuto = height === 'auto'
   // Memo-equivalent: JSON.stringify makes the periods array a stable
   // dep for the mount effect so new periods actually re-create lines.
   const emaKey = emaPeriods.join(',')
+  // Same trick for Bollinger — any config change remounts the bands.
+  // `null` config is encoded as the empty string so enable/disable flips
+  // are picked up too.
+  const bbKey = bollinger ? `${bollinger.period}:${bollinger.stdDev}` : ''
 
   // Mount/unmount: create the chart once. Data + resize are handled
   // in dedicated effects so we don't tear down the chart on every
@@ -209,11 +229,48 @@ export const TradingViewChart = ({
     // here; the dedicated markers effect feeds it.
     const markersPlugin = createSeriesMarkers<Time>(candleSeries, [])
 
+    // Bollinger Bands overlay — three LineSeries that share the candle
+    // price scale. Middle is the SMA (solid), upper/lower are dashed so
+    // they read as "envelope" rather than signal lines. Only created
+    // when the caller opted in via the `bollinger` prop.
+    let bbBundle: {
+      upper: ISeriesApi<'Line'>
+      middle: ISeriesApi<'Line'>
+      lower: ISeriesApi<'Line'>
+    } | null = null
+    if (bollinger && Number.isInteger(bollinger.period) && bollinger.period > 0) {
+      const bandOpts = {
+        color: colors.purple,
+        lineWidth: 1 as const,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        priceFormat: { type: 'price' as const, precision: decimals, minMove: 1 / 10 ** decimals },
+      }
+      const upper = chart.addSeries(LineSeries, {
+        ...bandOpts,
+        lineStyle: LineStyle.Dashed,
+        title: `BB${bollinger.period} upper`,
+      })
+      const middle = chart.addSeries(LineSeries, {
+        ...bandOpts,
+        lineStyle: LineStyle.Solid,
+        title: `BB${bollinger.period} mid`,
+      })
+      const lower = chart.addSeries(LineSeries, {
+        ...bandOpts,
+        lineStyle: LineStyle.Dashed,
+        title: `BB${bollinger.period} lower`,
+      })
+      bbBundle = { upper, middle, lower }
+    }
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volSeriesRef.current = volSeries
     emaSeriesRef.current = emaMap
     markersPluginRef.current = markersPlugin
+    bbSeriesRef.current = bbBundle
 
     // Crosshair → tooltip overlay. We compute change vs prior close
     // here so the hover state mirrors what a TradingView pop-up shows.
@@ -269,13 +326,15 @@ export const TradingViewChart = ({
       volSeriesRef.current = null
       emaSeriesRef.current.clear()
       markersPluginRef.current = null
+      bbSeriesRef.current = null
     }
-    // height/decimals/emaKey shouldn't recreate the chart constantly —
-    // chart options can be applied without remounting. But for now those
-    // props are effectively static per-screen, so a remount on change
-    // is fine. emaKey changing does warrant a remount (new line series).
+    // height/decimals/emaKey/bbKey shouldn't recreate the chart constantly
+    // — most chart options can be re-applied without remounting. But for
+    // now those props are effectively static per-screen, so a remount on
+    // change is fine. emaKey / bbKey changing does warrant a remount
+    // (new line series to add/remove).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height, decimals, emaKey])
+  }, [height, decimals, emaKey, bbKey])
 
   // Push data on every candles change. setData is fast and idempotent;
   // it replaces the series rather than appending, which is what we want
@@ -330,10 +389,42 @@ export const TradingViewChart = ({
         })
         series.setData(lineData)
       }
+
+      // Bollinger Bands overlay — same Whitespace pattern so the bands
+      // start exactly at `period - 1` rather than pinning to 0. We only
+      // push if the caller opted in AND the three series got created.
+      const bb = bbSeriesRef.current
+      if (bb && bollinger) {
+        const series = calcBollingerSeries(closes, bollinger.period, bollinger.stdDev)
+        const upperData: Array<LineData | WhitespaceData> = []
+        const middleData: Array<LineData | WhitespaceData> = []
+        const lowerData: Array<LineData | WhitespaceData> = []
+        for (let i = 0; i < sorted.length; i++) {
+          const t = sorted[i][0] as UTCTimestamp
+          const b = series[i]
+          if (b == null) {
+            upperData.push({ time: t })
+            middleData.push({ time: t })
+            lowerData.push({ time: t })
+          } else {
+            upperData.push({ time: t, value: b.upper })
+            middleData.push({ time: t, value: b.middle })
+            lowerData.push({ time: t, value: b.lower })
+          }
+        }
+        bb.upper.setData(upperData)
+        bb.middle.setData(middleData)
+        bb.lower.setData(lowerData)
+      }
     } catch {
       // Defensive: chart might already be torn down by a parallel effect.
     }
-  }, [candles])
+    // bollinger is read inside the effect but its config also triggers a
+    // chart remount via bbKey — after that remount this effect re-runs
+    // because candles is a stable reference at that point. bbKey change
+    // alone is enough to pick up period/stdDev tweaks; we list it so
+    // exhaustive-deps stays honest without over-rendering.
+  }, [candles, bbKey])
 
   // Signal markers — colour-coded arrows pinned to the bar whose
   // timestamp matches each signal. Bullish → green arrow-up below the

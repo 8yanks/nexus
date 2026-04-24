@@ -204,3 +204,60 @@ describe('<TradingViewChart /> — signal markers', () => {
     expect(screen.getByTestId('tv-chart-container')).toBeInTheDocument()
   })
 })
+
+describe('<TradingViewChart /> — Bollinger Bands overlay', () => {
+  const makeCandles = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      candle({
+        timestamp: new Date(Date.UTC(2026, 3, 19, 0, i)).toISOString(),
+        close: 100 + Math.sin(i / 3) * 5,
+      }),
+    )
+
+  it('mounts cleanly with bollinger=null (default)', () => {
+    expect(() =>
+      render(<TradingViewChart candles={makeCandles(30)} decimals={2} />),
+    ).not.toThrow()
+  })
+
+  it('mounts cleanly when bollinger config is provided', () => {
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={makeCandles(30)}
+          decimals={2}
+          bollinger={{ period: 20, stdDev: 2 }}
+        />,
+      ),
+    ).not.toThrow()
+    expect(screen.getByTestId('tv-chart-container')).toBeInTheDocument()
+  })
+
+  it('tolerates a window shorter than the Bollinger period', () => {
+    // Only 5 candles — BB(20) can't seed yet, bands stay null and the
+    // chart must still mount without exceptions.
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={makeCandles(5)}
+          decimals={2}
+          bollinger={{ period: 20, stdDev: 2 }}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('ignores non-positive Bollinger periods', () => {
+    // Zero / negative periods should no-op (the series helper rejects
+    // them too). The chart must still mount rather than crash.
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={makeCandles(30)}
+          decimals={2}
+          bollinger={{ period: 0, stdDev: 2 }}
+        />,
+      ),
+    ).not.toThrow()
+  })
+})
