@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
@@ -8,6 +9,9 @@ import {
   LineStyle,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
+  type Time,
   type UTCTimestamp,
   type MouseEventParams,
   type CandlestickData,
@@ -15,7 +19,7 @@ import {
   type LineData,
   type WhitespaceData,
 } from 'lightweight-charts'
-import type { OHLCV } from '@/types'
+import type { OHLCV, SignalEvent } from '@/types'
 import { calcEMASeries } from '@/analytics/indicators'
 import { colors, fonts } from '@/ui/theme'
 
@@ -53,6 +57,15 @@ interface Props {
    * series (filtered by the series loader) rather than erroring.
    */
   emaPeriods?: number[]
+  /**
+   * Signal events to render as arrow markers on the candles. Bullish
+   * → green arrow-up below the bar; bearish → red arrow-down above the
+   * bar; neutral → grey circle on bar. The marker uses the signal's
+   * type as text and is anchored to the candle whose timestamp matches
+   * the signal's bar (rounded to second-precision). Pass `[]` (default)
+   * to disable.
+   */
+  markers?: SignalEvent[]
 }
 
 // Orange for the fast EMA, cyan for the slow — palette-aligned and
@@ -89,6 +102,7 @@ export const TradingViewChart = ({
   decimals,
   height = 240,
   emaPeriods = [20, 50],
+  markers = [],
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -98,6 +112,10 @@ export const TradingViewChart = ({
   // Using a ref keeps the map stable across renders (we tear them down
   // in the mount effect's cleanup).
   const emaSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map())
+  // Markers plugin handle — created in the mount effect, fed in the
+  // dedicated markers effect below so signal updates don't tear the
+  // chart down.
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const [hover, setHover] = useState<HoverState | null>(null)
 
   const isAuto = height === 'auto'
@@ -186,10 +204,16 @@ export const TradingViewChart = ({
       emaMap.set(period, line)
     }
 
+    // Markers plugin lives outside the candle series itself in v5 — it's
+    // a SeriesPrimitive attached via createSeriesMarkers. Created empty
+    // here; the dedicated markers effect feeds it.
+    const markersPlugin = createSeriesMarkers<Time>(candleSeries, [])
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volSeriesRef.current = volSeries
     emaSeriesRef.current = emaMap
+    markersPluginRef.current = markersPlugin
 
     // Crosshair → tooltip overlay. We compute change vs prior close
     // here so the hover state mirrors what a TradingView pop-up shows.
@@ -231,11 +255,20 @@ export const TradingViewChart = ({
 
     return () => {
       chart.unsubscribeCrosshairMove(onCrosshairMove)
+      // Detach markers plugin first — chart.remove() should clean it
+      // up too but being explicit avoids dangling primitive references
+      // in dev hot-reload.
+      try {
+        markersPlugin.detach()
+      } catch {
+        // Already detached — chart teardown got there first.
+      }
       chart.remove()
       chartRef.current = null
       candleSeriesRef.current = null
       volSeriesRef.current = null
       emaSeriesRef.current.clear()
+      markersPluginRef.current = null
     }
     // height/decimals/emaKey shouldn't recreate the chart constantly —
     // chart options can be applied without remounting. But for now those
@@ -301,6 +334,53 @@ export const TradingViewChart = ({
       // Defensive: chart might already be torn down by a parallel effect.
     }
   }, [candles])
+
+  // Signal markers — colour-coded arrows pinned to the bar whose
+  // timestamp matches each signal. Bullish → green arrow-up below the
+  // bar; bearish → red arrow-down above; neutral → grey circle in-bar.
+  // We dedupe by `${time}-${type}` so a duplicate signal in the array
+  // (rare, but possible across providers) doesn't double-stamp the bar.
+  useEffect(() => {
+    const plugin = markersPluginRef.current
+    if (!plugin) return
+    if (markers.length === 0) {
+      try {
+        plugin.setMarkers([])
+      } catch {
+        // Plugin torn down — no-op.
+      }
+      return
+    }
+    const seen = new Set<string>()
+    const out: SeriesMarker<Time>[] = []
+    for (const sig of markers) {
+      const t = Math.floor(new Date(sig.timestamp).getTime() / 1000)
+      if (!Number.isFinite(t)) continue
+      const key = `${t}-${sig.type}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const isBull = sig.direction === 'bullish'
+      const isBear = sig.direction === 'bearish'
+      out.push({
+        time: t as UTCTimestamp,
+        position: isBull ? 'belowBar' : isBear ? 'aboveBar' : 'inBar',
+        shape: isBull ? 'arrowUp' : isBear ? 'arrowDown' : 'circle',
+        color: isBull ? colors.green : isBear ? colors.red : colors.textMuted,
+        text: sig.type,
+        size: 1,
+      })
+    }
+    // setMarkers wants strictly-ascending time order (same constraint as
+    // setData) — sort defensively before pushing. Times are seconds-since-
+    // epoch numbers (we built them as UTCTimestamp), so a numeric cast is
+    // safe; the SeriesMarker<Time> generic just makes TS pick the union.
+    out.sort((a, b) => (a.time as number) - (b.time as number))
+    try {
+      plugin.setMarkers(out)
+    } catch {
+      // Plugin gone or chart torn down — no-op.
+    }
+  }, [markers])
 
   const isUp = hover != null && hover.changePct >= 0
   const changeColor = isUp ? colors.green : colors.red

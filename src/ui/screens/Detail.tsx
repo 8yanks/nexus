@@ -136,7 +136,12 @@ export const Detail = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 12, marginBottom: 12 }}>
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           {chartCandles.length > 2 ? (
-            <TradingViewChart candles={chartCandles} decimals={decimals} height={240} />
+            <TradingViewChart
+              candles={chartCandles}
+              decimals={decimals}
+              height={240}
+              markers={instSignals}
+            />
           ) : (
             <div style={emptyState}>Insufficient candle data for chart</div>
           )}

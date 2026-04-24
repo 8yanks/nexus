@@ -395,6 +395,7 @@ export const Dashboard = () => {
                   candles={focusedCandles.slice(-120)}
                   decimals={focused.assetClass === 'forex' ? 5 : 2}
                   height="auto"
+                  markers={focusedSignals}
                 />
               </div>
 

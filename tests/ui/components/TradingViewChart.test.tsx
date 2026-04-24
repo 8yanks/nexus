@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { TradingViewChart } from '@/ui/components/TradingViewChart'
-import type { OHLCV } from '@/types'
+import type { OHLCV, SignalEvent } from '@/types'
 
 // ─── TRADINGVIEW CHART — JSDom smoke test ───────────────────
 // lightweight-charts uses <canvas>, which JSDom doesn't implement.
@@ -118,5 +118,89 @@ describe('<TradingViewChart /> — EMA overlays', () => {
     expect(() =>
       render(<TradingViewChart candles={seeded} decimals={2} />),
     ).not.toThrow()
+  })
+})
+
+describe('<TradingViewChart /> — signal markers', () => {
+  const sig = (overrides: Partial<SignalEvent> = {}): SignalEvent => ({
+    id: 's1',
+    instrumentId: 'BTC-USD-SPOT',
+    type: 'RSI_OVERSOLD',
+    direction: 'bullish',
+    strength: 0.8,
+    description: 'RSI dipped below 30',
+    price: 100,
+    timestamp: '2026-04-19T10:00:00Z',
+    _source: 'mock',
+    _status: 'LIVE',
+    ...overrides,
+  })
+
+  it('does not throw when markers is empty (default)', () => {
+    expect(() =>
+      render(<TradingViewChart candles={[candle()]} decimals={2} />),
+    ).not.toThrow()
+  })
+
+  it('accepts bullish + bearish + neutral markers without throwing', () => {
+    const markers: SignalEvent[] = [
+      sig({ id: '1', direction: 'bullish', type: 'RSI_OVERSOLD' }),
+      sig({ id: '2', direction: 'bearish', type: 'RSI_OVERBOUGHT', timestamp: '2026-04-19T11:00:00Z' }),
+      sig({ id: '3', direction: 'neutral', type: 'BB_SQUEEZE', timestamp: '2026-04-19T12:00:00Z' }),
+    ]
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[
+            candle(),
+            candle({ timestamp: '2026-04-19T11:00:00Z' }),
+            candle({ timestamp: '2026-04-19T12:00:00Z' }),
+          ]}
+          decimals={2}
+          markers={markers}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('tolerates duplicate markers on the same bar (dedup by time+type)', () => {
+    const markers: SignalEvent[] = [
+      sig({ id: '1' }),
+      sig({ id: '2' }), // identical time + type — deduped
+    ]
+    expect(() =>
+      render(
+        <TradingViewChart candles={[candle()]} decimals={2} markers={markers} />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('handles markers whose timestamp does not match any candle', () => {
+    // Marker at a time the chart has never seen — lightweight-charts
+    // tolerates "ghost" markers (placed at the timestamp regardless),
+    // so this should still mount cleanly.
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[candle()]}
+          decimals={2}
+          markers={[sig({ timestamp: '2030-01-01T00:00:00Z' })]}
+        />,
+      ),
+    ).not.toThrow()
+  })
+
+  it('still mounts the container when markers carry invalid timestamps', () => {
+    // NaN-time markers must be filtered, not crash the plugin.
+    expect(() =>
+      render(
+        <TradingViewChart
+          candles={[candle()]}
+          decimals={2}
+          markers={[sig({ timestamp: 'not-a-date' })]}
+        />,
+      ),
+    ).not.toThrow()
+    expect(screen.getByTestId('tv-chart-container')).toBeInTheDocument()
   })
 })
