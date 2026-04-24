@@ -42,6 +42,33 @@ export const calcEMA = (data: number[], period: number): number | null => {
   return ema
 }
 
+/**
+ * Rolling EMA — returns an array the same length as `data`, with
+ * `null` for the positions that don't yet have enough history. Used
+ * by chart overlays where we want one EMA value per candle.
+ *
+ * The seed EMA[period-1] is the SMA of the first `period` values,
+ * matching `calcEMA`. After the seed, standard exponential update.
+ */
+export const calcEMASeries = (
+  data: number[],
+  period: number,
+): Array<number | null> => {
+  const out: Array<number | null> = new Array(data.length).fill(null)
+  if (period <= 0 || data.length < period) return out
+
+  const k = 2 / (period + 1)
+  let sum = 0
+  for (let i = 0; i < period; i++) sum += data[i]
+  let ema = sum / period
+  out[period - 1] = ema
+  for (let i = period; i < data.length; i++) {
+    ema = data[i] * k + ema * (1 - k)
+    out[i] = ema
+  }
+  return out
+}
+
 export const calcRSI = (closes: number[], period = 14): number | null => {
   if (closes.length < period + 1) return null
   let gains = 0

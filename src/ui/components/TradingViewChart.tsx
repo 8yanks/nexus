@@ -3,15 +3,20 @@ import {
   createChart,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   CrosshairMode,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
   type MouseEventParams,
   type CandlestickData,
   type HistogramData,
+  type LineData,
+  type WhitespaceData,
 } from 'lightweight-charts'
 import type { OHLCV } from '@/types'
+import { calcEMASeries } from '@/analytics/indicators'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── TRADINGVIEW LIGHTWEIGHT CHART ──────────────────────────
@@ -42,7 +47,25 @@ interface Props {
    * height — typically `flex: 1; min-height: 0; position: relative`.
    */
   height?: number | 'auto'
+  /**
+   * EMA line overlays. Default `[20, 50]` (fast + slow); pass `[]` to
+   * disable. Periods larger than the candle window produce an empty
+   * series (filtered by the series loader) rather than erroring.
+   */
+  emaPeriods?: number[]
 }
+
+// Orange for the fast EMA, cyan for the slow — palette-aligned and
+// distinguishable both from the candles (green/red) and from each
+// other. Exposed via CSS-var-style lookups to stay theme-aware.
+const EMA_COLORS: Record<number, string> = {
+  20: colors.orange,
+  50: colors.cyan,
+  100: colors.purple,
+  200: colors.accent,
+}
+const emaColorFor = (period: number): string =>
+  EMA_COLORS[period] ?? colors.textSecondary
 
 interface HoverState {
   time: string
@@ -61,14 +84,26 @@ const formatHoverTime = (unixSec: number): string => {
   return `${date} ${time}`
 }
 
-export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => {
+export const TradingViewChart = ({
+  candles,
+  decimals,
+  height = 240,
+  emaPeriods = [20, 50],
+}: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  // EMA line series keyed by period — one line per configured period.
+  // Using a ref keeps the map stable across renders (we tear them down
+  // in the mount effect's cleanup).
+  const emaSeriesRef = useRef<Map<number, ISeriesApi<'Line'>>>(new Map())
   const [hover, setHover] = useState<HoverState | null>(null)
 
   const isAuto = height === 'auto'
+  // Memo-equivalent: JSON.stringify makes the periods array a stable
+  // dep for the mount effect so new periods actually re-create lines.
+  const emaKey = emaPeriods.join(',')
 
   // Mount/unmount: create the chart once. Data + resize are handled
   // in dedicated effects so we don't tear down the chart on every
@@ -132,9 +167,29 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
       scaleMargins: { top: 0.78, bottom: 0 },
     })
 
+    // EMA line overlays — one series per configured period, colour-coded
+    // from the palette. They share the candle's right price-scale so
+    // visually they sit directly on top of the candle bodies.
+    const emaMap = new Map<number, ISeriesApi<'Line'>>()
+    for (const period of emaPeriods) {
+      if (!Number.isInteger(period) || period <= 0) continue
+      const line = chart.addSeries(LineSeries, {
+        color: emaColorFor(period),
+        lineWidth: 2,
+        lineStyle: LineStyle.Solid,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        title: `EMA ${period}`,
+        priceFormat: { type: 'price', precision: decimals, minMove: 1 / 10 ** decimals },
+      })
+      emaMap.set(period, line)
+    }
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volSeriesRef.current = volSeries
+    emaSeriesRef.current = emaMap
 
     // Crosshair → tooltip overlay. We compute change vs prior close
     // here so the hover state mirrors what a TradingView pop-up shows.
@@ -180,12 +235,14 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
       chartRef.current = null
       candleSeriesRef.current = null
       volSeriesRef.current = null
+      emaSeriesRef.current.clear()
     }
-    // height/decimals shouldn't recreate the chart constantly — chart
-    // options can be applied without remounting. But for now those props
-    // are effectively static per-screen, so a remount on change is fine.
+    // height/decimals/emaKey shouldn't recreate the chart constantly —
+    // chart options can be applied without remounting. But for now those
+    // props are effectively static per-screen, so a remount on change
+    // is fine. emaKey changing does warrant a remount (new line series).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height, decimals])
+  }, [height, decimals, emaKey])
 
   // Push data on every candles change. setData is fast and idempotent;
   // it replaces the series rather than appending, which is what we want
@@ -224,6 +281,22 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
     try {
       candleSeries.setData(candleData)
       volSeries.setData(volData)
+
+      // EMA overlays — compute once per period from the deduped close
+      // series, then feed each LineSeries. Positions without enough
+      // history render as Whitespace (gap) so the line starts exactly
+      // at the seed bar rather than leaving a flat 0 at the origin.
+      const closes = sorted.map(([, c]) => c.close)
+      for (const [period, series] of emaSeriesRef.current.entries()) {
+        const ema = calcEMASeries(closes, period)
+        const lineData: Array<LineData | WhitespaceData> = sorted.map(([t], i) => {
+          const v = ema[i]
+          return v == null
+            ? { time: t as UTCTimestamp }
+            : { time: t as UTCTimestamp, value: v }
+        })
+        series.setData(lineData)
+      }
     } catch {
       // Defensive: chart might already be torn down by a parallel effect.
     }
@@ -245,6 +318,44 @@ export const TradingViewChart = ({ candles, decimals, height = 240 }: Props) => 
   return (
     <div style={wrapperStyle}>
       <div ref={containerRef} style={innerStyle} data-testid="tv-chart-container" />
+
+      {/* EMA legend — bottom-left, only when overlays are active. Small
+          colour-dots + period label so users know what the lines mean
+          without hovering the chart. */}
+      {emaPeriods.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 6,
+            left: 12,
+            display: 'flex',
+            gap: 10,
+            fontFamily: fonts.mono,
+            fontSize: 10,
+            color: colors.textMuted,
+            pointerEvents: 'none',
+            background: `${colors.bg}b0`,
+            padding: '2px 6px',
+            borderRadius: 3,
+          }}
+          data-testid="tv-chart-ema-legend"
+        >
+          {emaPeriods.map((p) => (
+            <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 10,
+                  height: 2,
+                  background: emaColorFor(p),
+                  borderRadius: 1,
+                }}
+              />
+              EMA {p}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Tooltip overlay — anchored top-left, mirrors TradingView's status row. */}
       {hover && (

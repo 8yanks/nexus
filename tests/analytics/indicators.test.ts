@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   calcEMA,
+  calcEMASeries,
   calcRSI,
   calcATR,
   calcVWAP,
@@ -54,6 +55,63 @@ describe('calcEMA', () => {
     const emaFlat = calcEMA(flat, 20)!
     const emaRising = calcEMA(rising, 20)!
     expect(emaRising).toBeGreaterThan(emaFlat)
+  })
+})
+
+// ─── EMA SERIES (for chart overlays) ────────────────────────
+
+describe('calcEMASeries', () => {
+  it('returns an array of the same length as the input', () => {
+    const data = range(50, (i) => 100 + i)
+    expect(calcEMASeries(data, 20)).toHaveLength(50)
+  })
+
+  it('returns nulls for every position when data is shorter than period', () => {
+    const out = calcEMASeries([1, 2, 3], 10)
+    expect(out).toEqual([null, null, null])
+  })
+
+  it('has nulls for positions before the seed window', () => {
+    const data = range(30, (i) => 100 + i)
+    const out = calcEMASeries(data, 20)
+    // Positions 0..18 have no seed yet.
+    for (let i = 0; i < 19; i++) expect(out[i]).toBeNull()
+    // Position 19 (period-1) holds the SMA seed.
+    expect(out[19]).not.toBeNull()
+  })
+
+  it('seed at index period-1 equals the SMA of the first `period` values', () => {
+    const data = range(25, (i) => i) // 0..24
+    const out = calcEMASeries(data, 20)
+    const sma = (0 + 19) / 2 // 0..19 avg
+    expect(out[19]).toBeCloseTo(sma, 10)
+  })
+
+  it('final value matches calcEMA on the same window', () => {
+    const data = range(60, (i) => 100 + Math.sin(i / 4) * 5)
+    const ema = calcEMA(data, 20)!
+    const series = calcEMASeries(data, 20)
+    expect(series[series.length - 1]).toBeCloseTo(ema, 10)
+  })
+
+  it('flat input converges to the constant value', () => {
+    const data = range(40, () => 100)
+    const out = calcEMASeries(data, 10)
+    // Every non-null entry should be exactly 100 (no drift).
+    for (let i = 9; i < 40; i++) expect(out[i]).toBeCloseTo(100, 10)
+  })
+
+  it('handles period === data length: only the last slot is filled', () => {
+    const data = range(10, (i) => i + 1) // 1..10
+    const out = calcEMASeries(data, 10)
+    expect(out.slice(0, 9).every((v) => v === null)).toBe(true)
+    // SMA of 1..10 = 5.5
+    expect(out[9]).toBeCloseTo(5.5, 10)
+  })
+
+  it('rejects non-positive periods', () => {
+    const data = range(10, (i) => i)
+    expect(calcEMASeries(data, 0)).toEqual(new Array(10).fill(null))
   })
 })
 

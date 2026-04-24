@@ -68,4 +68,55 @@ describe('<TradingViewChart />', () => {
     const container = screen.getByTestId('tv-chart-container')
     expect(container.style.height).toBe('400px')
   })
+
+  it('height="auto" makes the container fill its parent (100%)', () => {
+    render(<TradingViewChart candles={[candle()]} decimals={2} height="auto" />)
+    const container = screen.getByTestId('tv-chart-container')
+    expect(container.style.height).toBe('100%')
+    expect(container.style.width).toBe('100%')
+  })
+})
+
+describe('<TradingViewChart /> — EMA overlays', () => {
+  it('renders the EMA legend with default 20 + 50 periods', () => {
+    render(<TradingViewChart candles={[candle()]} decimals={2} />)
+    const legend = screen.getByTestId('tv-chart-ema-legend')
+    expect(legend).toHaveTextContent('EMA 20')
+    expect(legend).toHaveTextContent('EMA 50')
+  })
+
+  it('honours a custom emaPeriods list', () => {
+    render(
+      <TradingViewChart
+        candles={[candle()]}
+        decimals={2}
+        emaPeriods={[9, 21, 100]}
+      />,
+    )
+    const legend = screen.getByTestId('tv-chart-ema-legend')
+    expect(legend).toHaveTextContent('EMA 9')
+    expect(legend).toHaveTextContent('EMA 21')
+    expect(legend).toHaveTextContent('EMA 100')
+    expect(legend).not.toHaveTextContent('EMA 20')
+  })
+
+  it('hides the legend entirely when emaPeriods is empty', () => {
+    render(
+      <TradingViewChart candles={[candle()]} decimals={2} emaPeriods={[]} />,
+    )
+    expect(screen.queryByTestId('tv-chart-ema-legend')).not.toBeInTheDocument()
+  })
+
+  it('tolerates a candle window shorter than the longest EMA period', () => {
+    // Only 5 candles — EMA 50 cannot seed yet; the chart must not throw.
+    const seeded = Array.from({ length: 5 }, (_, i) =>
+      candle({
+        timestamp: new Date(Date.UTC(2026, 3, 19, 10 + i)).toISOString(),
+        close: 100 + i,
+      }),
+    )
+    expect(() =>
+      render(<TradingViewChart candles={seeded} decimals={2} />),
+    ).not.toThrow()
+  })
 })
