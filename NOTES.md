@@ -1,5 +1,55 @@
 # Session notes
 
+## 2026-04-25 — Session close at 19h deadline
+
+Loop closed at the user's 19h deadline. Eight features shipped over
+the day (real-time pipeline fixes already documented separately at
+the bottom of this file, then the seven listed below from the
+multi-TF onwards). Every commit is pushed to origin; tests, type-check,
+and build are green at every milestone.
+
+### Feature commits this day (oldest → newest)
+
+1. `4ec153e` fix(chart): snap to real-time after setData
+2. `1b14e81` feat(chart): live-tick pulse indicator
+3. `4a1b878` feat(ws): heartbeat watchdog
+4. `0c8951e` feat(chart): multi-timeframe picker (store + UI)
+5. `e063fa1` feat(providers): per-(id, tf) REST cache
+6. `2caf96c` feat(chart): Donchian Channels overlay
+7. `ac770f2` feat(detail): backtest markers on the live chart
+8. `dddd3e0` feat(backtest): persist last-tuned config
+9. `090dda3` feat(detail): timeframe keyboard shortcuts
+10. `745aaac` feat(backtest): "view on chart" button
+11. `4075886` feat(backtest): CSV export of trades
+
+Plus matching `docs: NOTES — …` commit after each feature so the
+session log mirrors what shipped.
+
+### Final stats
+
+- **Tests**: 905/905 across 93 files (+101 from the day-start 804).
+- **Type-check + build**: clean at every commit.
+- **Branch**: `ai-schemas-and-audit`, fully up to date with origin.
+
+### What's still open (carried into the next session)
+
+- **Kline WS subscription per TF** — the multi-TF picker reads sub-1h
+  TFs via the 60s REST TTL. Bar-close updates would need WS teardown
+  + re-subscribe on every TF click. Probably not worth the complexity
+  — the 60s read is good enough for the 1m / 5m / 15m / 4h cases the
+  picker exposes.
+- **Backtest markers across instruments selector** — Detail currently
+  surfaces only the active instrument's run. A "show all my recent
+  backtests" toggle would crowd the chart fast. Punt.
+- **Donchian width / N-bar breakout signals** in the Signals slice —
+  Donchian is now visualisable; turning it into a signal source would
+  be the next-rung use of the rolling channel data.
+
+User can resume by picking from any of the above or by running
+`/loop` again with a fresh directive.
+
+---
+
 ## 2026-04-25 (cont. 7) — CSV export of backtest trades
 
 Pure additive QoL — once you've validated a strategy in Backtest, you
