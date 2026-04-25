@@ -1,5 +1,106 @@
 # Session notes
 
+## 2026-04-25 — Real-time pipeline fixes (scroll snap + tick pulse + WS watchdog)
+
+User: "pourquoi les courbes de marchés ne s'actualisent pas d'ailleurs?"
+Diagnosis revealed three combined causes, all addressed in this session.
+
+### Root causes identified
+
+1. **lightweight-charts preserves scroll position across `setData`.** The
+   store refresh ran every 5s, candle data flowed in correctly, but new
+   bars landed off-screen to the right unless the user happened to be
+   pinned at the latest bar. Felt like the chart was frozen.
+2. **No way to see whether data was actually flowing into the chart.**
+   The StatusBar shows a global "REFRESHED Xs AGO" but it sits at the
+   bottom of the viewport — far from the eye when staring at a chart.
+3. **Browser WebSockets can stay OPEN long after the connection died.**
+   Zombie sockets behind NAT / corporate proxies / load balancers that
+   drop idle TCP without sending FIN. The existing onclose-driven
+   reconnect handles loud disconnects but silent staleness was invisible.
+   The chart pipeline kept reading the same cached candles forever.
+
+### Shipped — `4ec153e` Auto-snap scrollToRealTime when user is at the latest bar
+
+Inside the data-push effect of `<TradingViewChart />`:
+
+- Capture `timeScale().scrollPosition()` BEFORE pushing data.
+- After `setData` for all series, if `pos >= -1` (1-bar tolerance for
+  jitter), call `chart.timeScale().scrollToRealTime()`.
+- Manual back-scroll is preserved — only the auto-tracking case snaps.
+
+3-line behavioral fix wrapped in 27 lines of commentary.
+
+### Shipped — `1b14e81` Live-tick pulse indicator on every chart
+
+Small badge in the top-right corner of every TradingViewChart:
+
+- Dot turns green / yellow / red as the last successful `setData`
+  ages (< 10s / < 60s / beyond).
+- Label cycles "live" → "Xs" → "Xm" → "Xh" → "waiting…" (initial).
+- CSS keyframe pulse runs only while the tick is fresh (< 10s).
+- 1 Hz `setInterval` keeps the delta honest between data ticks
+  without re-rendering the chart engine.
+- `lastTickAt` stamped only when `sorted.length > 0` so an empty
+  push doesn't claim a successful tick.
+
+3 new tests: presence on mount, meaningful label after first push,
+fallback to "waiting…" with no candles.
+
+### Shipped — `4a1b878` WS heartbeat watchdog (Binance + Coinbase)
+
+Both WebSocket managers now track message arrival time and force a
+reconnect when silence exceeds the threshold:
+
+- `lastMsgAt` stamped on `onopen` AND on every `onmessage`.
+- A `setInterval` samples at `silenceTimeoutMs/3` (capped 1s..10s).
+- When silence > `silenceTimeoutMs` (default **30s**) AND the socket
+  still reports OPEN, the watchdog calls `ws.close()`.
+- The existing `onclose` handler then schedules reconnect via the
+  existing exponential-backoff path — no new reconnect logic needed.
+- `disconnect()` and `onclose` both clear the watchdog interval.
+
+Public API additions:
+- `WsManager.lastMessageAt(): number`
+- `CoinbaseWsManager.lastMessageAt(): number`
+
+Pass `silenceTimeoutMs: 0` to disable (used in tests).
+
+Defaults rationale: Binance combined ticker streams emit every 1-2s
+under normal load; Coinbase fires on every trade (busier). 30s is
+unambiguous staleness for both.
+
+6 new tests with `vi.useFakeTimers()` + mock WebSocket exercising:
+initial `lastMessageAt()=0`, update on each message, force-reconnect
+after silence, no reconnect while messages flow, `silenceTimeoutMs=0`
+disables watchdog, `disconnect()` cleanly stops it.
+
+### Status
+
+- Tests: **813/813** across 88 files (+9 from 804 — 3 chart, 6 WS).
+- Type-check + build clean.
+- Backtest chunk: 19.83 KB (unchanged).
+- TradingViewChart chunk: 180.11 KB (+1.4 KB for the tick indicator).
+- Branch: `ai-schemas-and-audit`, fully up to date with origin.
+
+### Open follow-ups
+
+Carried forward from the earlier overlays session:
+- **Multi-timeframe candle store** — would unlock a 1m/5m/15m/1h
+  picker. The current `'1h'` hard-code in `refreshAll` is the
+  single biggest reason the chart "feels" slow even when everything
+  is wired correctly. Bigger lift; deferred.
+- **Donchian channels** — same shape as Bollinger.
+- **Surface backtest markers on Detail** — needs backtest results
+  in the store first.
+
+Commits this session (oldest → newest):
+- `4ec153e` fix(chart): snap to real-time after setData
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4a1b878` feat(ws): heartbeat watchdog detects silent disconnects
+
+---
+
 ## 2026-04-24 (post-deadline) — Bollinger Bands overlay + Backtest trade chart
 
 Loop deadline had already fired at 19h. User picked up the thread with
