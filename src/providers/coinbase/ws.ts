@@ -20,12 +20,21 @@ export interface CoinbaseWsManagerOptions {
   onClose?: () => void
   onError?: (err: Event) => void
   maxReconnectAttempts?: number
+  /**
+   * Force-reconnect threshold for silent staleness — see the matching
+   * field on the Binance WS manager for the rationale. Coinbase ticker
+   * streams emit on every trade (busier than Binance), so the same
+   * 30s default is generous. Pass `0` to disable in tests.
+   */
+  silenceTimeoutMs?: number
 }
 
 export interface CoinbaseWsManager {
   connect(): void
   disconnect(): void
   isConnected(): boolean
+  /** Wall-clock ms of the last received message (or 0 if none yet). */
+  lastMessageAt(): number
 }
 
 export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): CoinbaseWsManager => {
@@ -34,6 +43,30 @@ export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): Coinbas
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let intentionalClose = false
   const maxAttempts = opts.maxReconnectAttempts ?? 10
+  const silenceTimeoutMs = opts.silenceTimeoutMs ?? 30_000
+
+  // ── Heartbeat watchdog (mirror of binance/ws.ts) ──────────
+  let lastMsgAt = 0
+  let watchdog: ReturnType<typeof setInterval> | null = null
+  const stopWatchdog = (): void => {
+    if (watchdog != null) {
+      clearInterval(watchdog)
+      watchdog = null
+    }
+  }
+  const startWatchdog = (): void => {
+    if (watchdog != null || silenceTimeoutMs <= 0) return
+    const sampleMs = Math.max(1_000, Math.min(silenceTimeoutMs / 3, 10_000))
+    watchdog = setInterval(() => {
+      const silence = Date.now() - lastMsgAt
+      if (silence > silenceTimeoutMs && ws?.readyState === WebSocket.OPEN) {
+        console.warn(
+          `[Coinbase WS] Silence ${silence}ms > ${silenceTimeoutMs}ms — forcing reconnect`,
+        )
+        try { ws.close() } catch { /* already closing */ }
+      }
+    }, sampleMs)
+  }
 
   const subscribeMessage = (): string =>
     JSON.stringify({
@@ -69,11 +102,14 @@ export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): Coinbas
     ws.onopen = () => {
       console.log('[Coinbase WS] Connected — subscribing')
       reconnectAttempts = 0
+      lastMsgAt = Date.now()
+      startWatchdog()
       ws?.send(subscribeMessage())
       opts.onOpen?.()
     }
 
     ws.onmessage = (event: MessageEvent) => {
+      lastMsgAt = Date.now()
       try {
         const parsed = JSON.parse(event.data as string) as CoinbaseWsEvent
         opts.onMessage(parsed)
@@ -84,6 +120,7 @@ export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): Coinbas
 
     ws.onclose = () => {
       console.log('[Coinbase WS] Disconnected')
+      stopWatchdog()
       opts.onClose?.()
       if (!intentionalClose) scheduleReconnect()
     }
@@ -96,6 +133,7 @@ export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): Coinbas
 
   const disconnect = (): void => {
     intentionalClose = true
+    stopWatchdog()
     if (reconnectTimer != null) {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
@@ -109,5 +147,7 @@ export const createCoinbaseWsManager = (opts: CoinbaseWsManagerOptions): Coinbas
   const isConnected = (): boolean =>
     ws != null && ws.readyState === WebSocket.OPEN
 
-  return { connect, disconnect, isConnected }
+  const lastMessageAt = (): number => lastMsgAt
+
+  return { connect, disconnect, isConnected, lastMessageAt }
 }
