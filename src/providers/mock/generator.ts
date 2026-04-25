@@ -18,12 +18,15 @@ const BASE_PRICES: Record<string, number> = {
   'XAU-USD': 2345.60, 'XAG-USD': 29.85, 'WTI': 78.42, 'NG': 2.74, 'HG': 4.28,
 }
 
+// Keep in sync with the shared timeframe enum in `src/ui/timeframe-memory.ts`.
+// Volatility scales sub-linearly with TF so the visual feel matches the real
+// providers — 1m bars wiggle less than 1h bars, but not 60× less.
 const TF_MS: Record<string, number> = {
-  '1m': 60e3, '5m': 3e5, '1h': 36e5, '4h': 144e5, '1d': 864e5,
+  '1m': 60e3, '5m': 3e5, '15m': 9e5, '1h': 36e5, '4h': 144e5, '1d': 864e5,
 }
 
 const TF_VOL: Record<string, number> = {
-  '1m': 0.001, '5m': 0.002, '1h': 0.005, '4h': 0.01, '1d': 0.02,
+  '1m': 0.001, '5m': 0.002, '15m': 0.003, '1h': 0.005, '4h': 0.01, '1d': 0.02,
 }
 
 // ─── LOW-LEVEL GENERATORS ────────────────────────────────────

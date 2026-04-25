@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { Detail } from '@/ui/screens/Detail'
 import { useMarketStore } from '@/store/market'
+import { TIMEFRAME_STORAGE_KEY } from '@/ui/timeframe-memory'
 import type { CandleSeries, MarketSnapshot, OHLCV } from '@/types'
 
 const snap = (id: string, over: Partial<MarketSnapshot> = {}): MarketSnapshot => ({
@@ -66,11 +67,17 @@ const mkCandles = (instrumentId: string): CandleSeries => {
 }
 
 beforeEach(() => {
-  useMarketStore.setState({ selectedInstrumentId: null, snapshots: {}, candles: {} })
-  // Detail persists the BB toggle to localStorage — clear between tests
-  // so toggles in one test don't leak into the next.
+  useMarketStore.setState({
+    selectedInstrumentId: null,
+    snapshots: {},
+    candles: {},
+    selectedTimeframe: '1h',
+  })
+  // Detail persists the BB toggle + timeframe to localStorage — clear
+  // between tests so state from one test doesn't leak into the next.
   try {
     window.localStorage.removeItem('nexus_detail_bb_overlay')
+    window.localStorage.removeItem(TIMEFRAME_STORAGE_KEY)
   } catch {
     /* storage disabled */
   }
@@ -163,5 +170,68 @@ describe('<Detail /> — Bollinger Bands toggle', () => {
     })
     render(<Detail />)
     expect(screen.queryByTestId('detail-bb-toggle')).not.toBeInTheDocument()
+  })
+})
+
+describe('<Detail /> — timeframe picker', () => {
+  const seedWithCandles = () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      candles: { [inst.id]: mkCandles(inst.id) },
+      // Stub refreshAll so clicks don't trigger network/state churn.
+      refreshAll: vi.fn().mockResolvedValue(undefined) as never,
+    })
+    return inst
+  }
+
+  it('renders all six timeframe pills in the toolbar', () => {
+    seedWithCandles()
+    render(<Detail />)
+    for (const tf of ['1m', '5m', '15m', '1h', '4h', '1d']) {
+      expect(screen.getByTestId(`detail-tf-${tf}`)).toBeInTheDocument()
+    }
+  })
+
+  it('highlights the active timeframe via aria-pressed', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-tf-1h').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('detail-tf-5m').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('clicking a non-active pill updates the store + flips aria-pressed', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-tf-5m'))
+    expect(useMarketStore.getState().selectedTimeframe).toBe('5m')
+    // After re-render the new pill is active.
+    expect(screen.getByTestId('detail-tf-5m').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('detail-tf-1h').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('persists the selected timeframe to localStorage', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-tf-15m'))
+    expect(window.localStorage.getItem(TIMEFRAME_STORAGE_KEY)).toBe(JSON.stringify('15m'))
+  })
+
+  it('clicking a non-active pill triggers refreshAll exactly once', () => {
+    seedWithCandles()
+    render(<Detail />)
+    const refreshAll = useMarketStore.getState().refreshAll as unknown as ReturnType<typeof vi.fn>
+    fireEvent.click(screen.getByTestId('detail-tf-4h'))
+    expect(refreshAll).toHaveBeenCalledTimes(1)
+  })
+
+  it('clicking the active pill is a no-op (no refresh, no storage write)', () => {
+    seedWithCandles()
+    render(<Detail />)
+    const refreshAll = useMarketStore.getState().refreshAll as unknown as ReturnType<typeof vi.fn>
+    fireEvent.click(screen.getByTestId('detail-tf-1h')) // already active
+    expect(refreshAll).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem(TIMEFRAME_STORAGE_KEY)).toBeNull()
   })
 })

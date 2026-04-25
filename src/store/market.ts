@@ -37,6 +37,12 @@ import { corporateToSignals, macroToSignals } from '@/signals/corporate-bridge'
 import { createMockCorporateProvider } from '@/corporate/mock'
 import { createMockMacroProvider } from '@/macro/mock'
 import { loadScreenState, saveScreenState } from '@/ui/screen-memory'
+import {
+  loadTimeframeState,
+  saveTimeframeState,
+  DEFAULT_TIMEFRAME,
+  type Timeframe,
+} from '@/ui/timeframe-memory'
 
 // ─── SCREEN TYPE ────────────────────────────────────────────
 
@@ -79,6 +85,9 @@ export interface MarketStore {
   // UI state
   screen: Screen
   selectedInstrumentId: string | null
+  /** Active chart timeframe — drives `refreshAll` and the picker UI on
+   *  Detail. Persisted to localStorage so reload restores it. */
+  selectedTimeframe: Timeframe
   refreshInterval: number | null
 
   // Infra
@@ -97,6 +106,9 @@ export interface MarketStore {
    * single click focuses, a double click drills into Detail.
    */
   focusInstrument: (id: string) => void
+  /** Set the active chart timeframe + persist + trigger an immediate
+   *  refresh so the new TF lands in the chart on the next tick. */
+  setTimeframe: (tf: Timeframe) => void
   connectProviders: () => Promise<void>
   refreshAll: () => Promise<void>
   startAutoRefresh: (intervalMs?: number) => void
@@ -125,6 +137,15 @@ const _initialScreen: Screen = _restoredScreen?.screen ?? 'dashboard'
 const _initialSelectedInstrumentId: string | null =
   _restoredScreen?.selectedInstrumentId ?? null
 
+// ─── INITIAL TIMEFRAME — restored from localStorage ─────────
+// Same survival story as `_initialScreen` above. Falls back to the
+// shared `DEFAULT_TIMEFRAME` ('1h') so first-load behaviour is
+// identical to the pre-multi-TF era — Binance/Coinbase keep using
+// the WS-tracked 1h candles unless the user explicitly picks something
+// shorter or longer.
+const _initialTimeframe: Timeframe =
+  loadTimeframeState() ?? DEFAULT_TIMEFRAME
+
 export const useMarketStore = create<MarketStore>((set, get) => ({
   // ── Initial state ───────────────────────────────────────
   instruments: INSTRUMENTS,
@@ -141,6 +162,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   patterns: {},
   screen: _initialScreen,
   selectedInstrumentId: _initialSelectedInstrumentId,
+  selectedTimeframe: _initialTimeframe,
   refreshInterval: null,
   registry: createRegistry(),
   lastRefresh: null,
@@ -170,6 +192,21 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   focusInstrument: (id) => {
     set({ selectedInstrumentId: id })
     saveScreenState(get().screen, id)
+  },
+
+  // ── Timeframe picker ────────────────────────────────────
+  // Persist on change AND kick off an immediate `refreshAll` so the
+  // chart updates within the same paint instead of waiting for the
+  // next 5s store tick. No-op when the picker is set to the current
+  // value to keep the click-the-active-pill case free.
+  setTimeframe: (tf) => {
+    if (get().selectedTimeframe === tf) return
+    set({ selectedTimeframe: tf })
+    saveTimeframeState(tf)
+    // Fire-and-forget — refreshAll catches its own errors via the
+    // per-instrument provider chain. We don't await because callers
+    // (a button click handler) shouldn't block on a network round-trip.
+    void get().refreshAll()
   },
 
   // ── Connect live providers ─────────────────────────────
@@ -219,7 +256,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
 
   // ── Core refresh cycle ──────────────────────────────────
   refreshAll: async () => {
-    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected, coinbaseConnected, krakenConnected } = get()
+    const { instruments, registry, alertRules, analytics: prevAnalytics, binanceConnected, coinbaseConnected, krakenConnected, selectedTimeframe } = get()
 
     // 1. Fetch snapshots + candles for all instruments.
     // Per-instrument provider chain (try in order, fall back on throw):
@@ -254,7 +291,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
           if (!provider) continue
           try {
             snapshots[inst.id] = await provider.getSnapshot(inst.id)
-            candles[inst.id] = await provider.getCandles(inst.id, '1h', 200)
+            candles[inst.id] = await provider.getCandles(inst.id, selectedTimeframe, 200)
             return
           } catch {
             // Try next provider in the chain

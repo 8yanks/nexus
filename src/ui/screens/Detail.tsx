@@ -13,6 +13,7 @@ import { colors, fonts, card, sectionHeader, statLabel, statValue, emptyState } 
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import type { DetectedPattern } from '@/analytics/patterns'
 import { computePerformance, computeKeyStats } from '@/analytics/performance'
+import { VALID_TIMEFRAMES, type Timeframe } from '@/ui/timeframe-memory'
 
 // localStorage key for the Bollinger Bands chart toggle. Persisted so a
 // user who turned bands on once doesn't have to re-toggle them on every
@@ -61,6 +62,8 @@ export const Detail = () => {
   const quality = useMarketStore((s) => s.quality)
   const signals = useMarketStore((s) => s.signals)
   const setScreen = useMarketStore((s) => s.setScreen)
+  const selectedTimeframe = useMarketStore((s) => s.selectedTimeframe)
+  const setTimeframe = useMarketStore((s) => s.setTimeframe)
 
   const inst = instruments.find((i) => i.id === instrumentId)
   const snap = instrumentId ? snapshots[instrumentId] : undefined
@@ -166,22 +169,69 @@ export const Detail = () => {
         <div style={{ ...card, padding: 0, overflow: 'hidden', position: 'relative' }}>
           {chartCandles.length > 2 ? (
             <>
-              {/* Chart toolbar — opt-in overlay toggles. Anchored top-right
-                  inside the card so it floats over the chart's top margin
-                  (above the price scale labels). Currently houses just the
-                  Bollinger Bands toggle; future overlays (Donchian, VWAP,
-                  pattern shading) will sit alongside as additional pills. */}
+              {/* Chart toolbar — overlay toggles + timeframe picker.
+                  Anchored top-right inside the card so it floats over the
+                  chart's top margin (above the price scale labels). Visual
+                  order is: TF picker (left) → overlay toggles (right). */}
               <div
                 style={{
                   position: 'absolute',
                   top: 6,
                   right: 60,
                   display: 'flex',
-                  gap: 4,
+                  gap: 6,
+                  alignItems: 'center',
                   zIndex: 2,
                 }}
                 data-testid="detail-chart-toolbar"
               >
+                {/* Timeframe picker — drives store.selectedTimeframe, which
+                    `refreshAll` reads on every tick. Click triggers an
+                    immediate refresh inside the store action so the chart
+                    updates within the same paint instead of waiting for the
+                    next 5s tick. */}
+                <div
+                  role="group"
+                  aria-label="Chart timeframe"
+                  data-testid="detail-tf-picker"
+                  style={{
+                    display: 'inline-flex',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    background: `${colors.bg}b0`,
+                  }}
+                >
+                  {VALID_TIMEFRAMES.map((tf: Timeframe, i) => {
+                    const active = tf === selectedTimeframe
+                    return (
+                      <button
+                        key={tf}
+                        type="button"
+                        onClick={() => setTimeframe(tf)}
+                        aria-pressed={active}
+                        title={`Show ${tf} candles`}
+                        data-testid={`detail-tf-${tf}`}
+                        style={{
+                          padding: '2px 6px',
+                          fontSize: 10,
+                          fontFamily: fonts.mono,
+                          // Internal divider between pills, not on the first one.
+                          borderLeft: i === 0 ? 'none' : `1px solid ${colors.border}`,
+                          borderTop: 'none',
+                          borderRight: 'none',
+                          borderBottom: 'none',
+                          background: active ? `${colors.accent}20` : 'transparent',
+                          color: active ? colors.accent : colors.textMuted,
+                          cursor: 'pointer',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        {tf}
+                      </button>
+                    )
+                  })}
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowBB((v) => !v)}
