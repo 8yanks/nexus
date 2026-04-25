@@ -1,5 +1,48 @@
 # Session notes
 
+## 2026-04-26 (cont.) — NFA banner + bundle budget + glossary
+
+User: continuing the autonomous loop "on a pas de limite de temps".
+Three more independent ships from the READINESS.md gap list.
+
+### Shipped — `f1c7ec3` NFA banner + budget check + GLOSSARY
+
+1. **NotFinancialAdviceBanner** — slim role=note strip, hand-rolled
+   triangle SVG (inlined to avoid pulling lucide-react into shared
+   chunks). Mounted on ChainMonitor / Trader / Sentinel with
+   context-string tailored to each screen's specific risk angle.
+   Pairs with the always-on PAPER TRADING TopBar badge from 952a615.
+
+2. **Bundle size budget** — `scripts/check-bundle-budget.mjs` walks
+   `dist/assets/*.js` and fails on any chunk over budget. Wired into
+   CI as a step after build. The first run actually caught a
+   regression I was about to ship — the NFA banner pulled
+   lucide-react into a 32 KB shared chunk. Inlining the SVG fixed
+   it. The catch was the whole point of adding the budget.
+
+3. **GLOSSARY.md** — 200+ lines explaining every technical term
+   in plain French: indicators (RSI/EMA/BB/DC), patterns, structure,
+   AI orchestrator pipeline, sentinel veto, backtest stats,
+   providers, UI bits. Closes the "glossaire (todo)" entry in
+   READINESS.md.
+
+### Status
+
+- Tests: **943 / 943** across **95 files** (+5 — NFA banner).
+- Type-check + build clean.
+- All 32 bundles within budget.
+- Branch: `ai-schemas-and-audit`.
+
+### READINESS.md updates
+
+Marked completed: NFA disclaimer, glossary, performance budgets.
+Stats refreshed (943/95).
+
+Commit:
+- `f1c7ec3` feat(legal+infra+docs): NFA banner + bundle budget + glossary
+
+---
+
 ## 2026-04-26 — Pre-launch sprint: README + CI + PAPER badge + patterns→signals + nav loop + recent-bar
 
 User: "tu peux continuer hein? on a pas de limite de temps aujourd'hui".

@@ -163,7 +163,8 @@
 
 ### 📜 Légal & conformité
 - [ ] **CGU / Privacy Policy** — obligatoires en EU (RGPD).
-- [x] ~~**Disclaimer "PAPER TRADING"**~~ ✅ Badge always-on dans le TopBar (chip jaune). Reste à ajouter le disclaimer "not financial advice" textuel sur les écrans qui montrent des décisions AI.
+- [x] ~~**Disclaimer "PAPER TRADING"**~~ ✅ Badge always-on dans le TopBar (chip jaune).
+- [x] ~~**Disclaimer "not financial advice"**~~ ✅ `NotFinancialAdviceBanner` mounted sur ChainMonitor / Trader / Sentinel avec context-string adapté à chaque écran.
 - [ ] **Cookie consent** — si on ajoute analytics.
 - [ ] **Clause exonératoire** — couvrir les pertes de l'utilisateur si Trader devient réel.
 
@@ -171,7 +172,7 @@
 - [x] ~~**README.md**~~ ✅ Refait — overview, asset coverage, getting-started, scripts, architecture ASCII, repo layout, disclaimer.
 - [x] ~~**Quickstart**~~ ✅ Inclus dans README (`npm install` → `npm run dev` + section optional .env keys).
 - [x] ~~**Architecture diagram**~~ ✅ ASCII dans README ("Architecture in 30 seconds").
-- [ ] **Glossaire** — Donchian, Bollinger, Sentinel, etc. — pour utilisateurs non-traders.
+- [x] ~~**Glossaire**~~ ✅ `GLOSSARY.md` — RSI, EMA, BB, DC, patterns, AI orchestrator, sentinel veto, backtest stats, providers, UI bits, lectures conseillées. En FR pour non-traders.
 
 ### 🧪 Tests manquants
 - [ ] **E2E tests** — actuellement zero. Playwright ou Cypress pour valider les flows complets (run backtest → view on chart → markers visible).
@@ -180,7 +181,8 @@
 - [ ] **Performance budgets** — fixer un max-bundle-size en CI (TradingViewChart à 181 KB pourrait grossir).
 
 ### 🎯 Performance & scaling
-- [ ] **Code-splitting plus agressif** — `index.js` à 248 KB est OK mais pourrait baisser en différant `chain` / `audit`.
+- [x] ~~**Performance budgets**~~ ✅ `npm run check:budget` (CI step) — fail si un chunk dépasse son budget. Premier run a déjà attrapé une régression (NFA banner pulling lucide-react).
+- [ ] **Code-splitting plus agressif** — `index.js` à 252 KB est OK mais pourrait baisser en différant `chain` / `audit`.
 - [ ] **Service worker** — pour cache offline + PWA install.
 - [ ] **Compression** — vérifier que le host sert en gzip/brotli (Cloudflare le fait par défaut).
 
@@ -216,8 +218,8 @@
 
 | Métrique | Valeur |
 |---|---|
-| Tests | **938 / 938 verts** |
-| Test files | **94** |
+| Tests | **943 / 943 verts** |
+| Test files | **95** |
 | Type-check | ✅ clean |
 | Build | ✅ clean (~1-3s) |
 | Bundle principal | 252 KB (gz 80 KB) |
