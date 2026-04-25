@@ -141,7 +141,7 @@
 - [ ] **Per-user data isolation** — les workspaces, alertes, audit logs sont en localStorage donc partagés entre tabs du même browser.
 
 ### 🚀 Déploiement
-- [ ] **Hébergement** — pas de target choisie (Vercel / Cloudflare Pages / self-hosted ?). Le `dist/` est statique, n'importe quel CDN suffit.
+- [ ] **Hébergement** — pas de target choisie. **Voir `HOSTING.md`** : comparaison Vercel / Cloudflare Pages / Netlify / VPS / GitHub Pages avec effort/coût/recommandation par stade (MVP / public / 100% contrôle).
 - [ ] **Domaine + HTTPS** — à acheter + configurer.
 - [x] ~~**CI**~~ ✅ `.github/workflows/ci.yml` — lint + type-check + test + build sur push/PR. Reste à câbler le **CD** (déploiement auto vers le host à choisir).
 - [ ] **Monitoring / logs** — pas de Sentry / DataDog / OpenTelemetry. Si ça crashe en prod, on ne le sait pas.
@@ -182,8 +182,9 @@
 
 ### 🎯 Performance & scaling
 - [x] ~~**Performance budgets**~~ ✅ `npm run check:budget` (CI step) — fail si un chunk dépasse son budget. Premier run a déjà attrapé une régression (NFA banner pulling lucide-react).
+- [x] ~~**PWA install**~~ ✅ `public/manifest.webmanifest` + meta tags. Browsers offer "Add to Home Screen" / "Install app". Pas encore de service-worker pour offline mais l'install fonctionne.
 - [ ] **Code-splitting plus agressif** — `index.js` à 252 KB est OK mais pourrait baisser en différant `chain` / `audit`.
-- [ ] **Service worker** — pour cache offline + PWA install.
+- [ ] **Service worker** — pour vrai cache offline (le manifest seul ne suffit pas pour offline).
 - [ ] **Compression** — vérifier que le host sert en gzip/brotli (Cloudflare le fait par défaut).
 
 ---
@@ -225,7 +226,8 @@
 | Bundle principal | 252 KB (gz 80 KB) |
 | Plus gros chunk | TradingViewChart 181 KB (gz 58 KB) |
 | Branche actuelle | `ai-schemas-and-audit` |
-| Commits cumulés sur 2 jours | **20+** features + docs, tout pushé, CI verte |
+| Commits cumulés sur 2 jours | **30+** features + docs + chores, tout pushé, lint vert (0 errors) |
+| Pre-launch docs | `READINESS.md` (cette page) · `HOSTING.md` · `GLOSSARY.md` · `README.md` · `NOTES.md` |
 
 ---
 

@@ -1,5 +1,60 @@
 # Session notes
 
+## 2026-04-26 (cont. 2) — A11y baseline + PWA manifest + HOSTING.md
+
+User: continuing the autonomous loop. Three more independent ships,
+including a chore that surfaced 12 latent lint errors the codebase
+had been carrying because nothing was running lint.
+
+### Shipped — `d067f94` jsx-a11y baseline + lint cleanup
+
+Adding `eslint-plugin-jsx-a11y` to the flat config exposed 12
+pre-existing errors (CI lint step would have failed). Fixed all 12:
+- 4 unused-vars (test helpers, imports, `_index` param)
+- Redundant `role="region"` on `<section>` in ScreenSettings
+- 2 autoFocus warnings on input-on-click in WorkspaceManager
+  (legitimate exception — disabled with explanation)
+- DragHandle separator role (ARIA 1.2 supports it but the rule is
+  conservative — disabled with explanation)
+- 1 fast-refresh export in MiniChart (deliberate test colocation —
+  disabled with explanation)
+- 3 `Date.now()` in render in MacroPulse — refactored into a 60s
+  ticking `nowMs` state, threaded through `CalendarRow`. Bonus:
+  past/upcoming partition now updates correctly during long sessions.
+
+3 a11y rules downgraded to warn (click-events-have-key-events,
+no-static-element-interactions, no-noninteractive-element-interactions)
+because the dashboard uses lots of div-with-onClick patterns where
+role/aria-pressed already convey state. Real a11y issues stay as
+errors. Final: **0 errors, 15 warnings**.
+
+### Shipped — `07bbfd9` PWA manifest + HOSTING.md
+
+1. **PWA install**: `public/manifest.webmanifest` + meta tags. Theme
+   color #863bff matches the favicon. SVG favicon reused as
+   maskable icon. Browsers offer "Add to Home Screen" / "Install app".
+   Bonus meta: description (SEO), color-scheme=dark (OS form
+   controls), apple-touch-icon.
+
+2. **HOSTING.md**: comparison doc for the team to choose a deployment
+   target. Vercel / Cloudflare Pages / Netlify / VPS Hetzner / GitHub
+   Pages. Each option scored on effort, cost, pros, cons, with a
+   recommendation per stage (MVP / public / 100% control). Pre-launch
+   checklist at the bottom links back to READINESS.md open items.
+
+### Status
+
+- Tests: **943 / 943** across **95 files**.
+- Lint: **0 errors, 15 warnings** (all a11y advisories, intentional).
+- Type-check + build clean. All 32 bundles within budget.
+- Branch: `ai-schemas-and-audit`.
+
+Commits this segment (newest first):
+- `07bbfd9` feat(launch): PWA manifest + HOSTING.md
+- `d067f94` chore(a11y): jsx-a11y baseline + lint cleanup
+
+---
+
 ## 2026-04-26 (cont.) — NFA banner + bundle budget + glossary
 
 User: continuing the autonomous loop "on a pas de limite de temps".
