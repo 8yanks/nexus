@@ -1,5 +1,57 @@
 # Session notes
 
+## 2026-04-25 (cont. 5) — Timeframe keyboard shortcuts on Detail
+
+Power-user QoL after the picker UI shipped. Keypresses now drive the
+TF picker without reaching for the toolbar pills. Mirrors the 'r'
+run-chain shortcut pattern — same gating predicate (no modifiers,
+not in a typing field), same DOM-light unit-testable shape.
+
+### Shipped — `090dda3` Hotkeys + discoverable hint
+
+Mapping (single keypress, no modifiers, not in a typing target):
+
+```
+1 → 1m    5 → 5m    q → 15m   (no two-digit keys)
+h → 1h    4 → 4h    d → 1d
+```
+
+- `src/ui/keybinds.ts`: `timeframeShortcutFor(e)` returns the matching
+  `Timeframe` or `null`. Reuses the existing `isTypingTarget` gate so
+  one less private helper to maintain.
+- `src/ui/screens/Detail.tsx`: window-level keydown listener calls
+  `setTimeframe(...)` + `preventDefault()` on match. Cleanup on
+  unmount tested explicitly so a remount doesn't double-fire.
+- Pill `title`s now show the hotkey ("Show 5m candles  (press 5)")
+  so the keybinds are discoverable without external docs.
+
+### Status
+
+- Tests: **894/894** across 93 files (+13 from 881 — 7 keybind
+  predicate, 6 Detail integration).
+- Type-check + build clean.
+- Detail chunk unchanged (~13.66 KB).
+- Branch: `ai-schemas-and-audit`.
+
+### Open follow-ups
+
+- **Kline WS subscription per TF** — picker still relies on the 60s
+  REST TTL for sub-1h TFs. Bar-close updates would need a WS teardown
+  + re-subscribe on every TF click. Probably not worth the complexity.
+
+Commits this session (newest first):
+- `090dda3` feat(detail): keyboard shortcuts for timeframe switching
+- `dddd3e0` feat(backtest): persist last-tuned config to localStorage
+- `ac770f2` feat(detail): surface backtest trade markers on the live chart
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont. 4) — Persist last-tuned backtest config
 
 Small follow-up from the backtest-markers session. Same memory pattern
