@@ -78,6 +78,31 @@ describe('<TradingViewChart />', () => {
   })
 })
 
+describe('<TradingViewChart /> — live-tick indicator', () => {
+  it('renders the tick indicator container on mount', () => {
+    render(<TradingViewChart candles={[candle()]} decimals={2} />)
+    expect(screen.getByTestId('tv-chart-tick-indicator')).toBeInTheDocument()
+  })
+
+  it('shows a meaningful label after the first data push', () => {
+    // After mount the data effect runs immediately. With a non-empty
+    // candle array we expect either "live" (just-stamped) or a "Xs"
+    // delta on subsequent ticks — never the placeholder "waiting…".
+    render(<TradingViewChart candles={[candle()]} decimals={2} />)
+    const indicator = screen.getByTestId('tv-chart-tick-indicator')
+    expect(indicator).toBeInTheDocument()
+    expect(indicator.textContent ?? '').toMatch(/live|\ds|\dm|\dh/i)
+    expect(indicator).not.toHaveTextContent(/waiting/i)
+  })
+
+  it('falls back to "waiting…" when no candles are provided', () => {
+    // Empty candle array → sorted.length === 0 → setLastTickAt never
+    // fires → indicator stays in the placeholder state.
+    render(<TradingViewChart candles={[]} decimals={2} />)
+    expect(screen.getByTestId('tv-chart-tick-indicator')).toHaveTextContent(/waiting/i)
+  })
+})
+
 describe('<TradingViewChart /> — EMA overlays', () => {
   it('renders the EMA legend with default 20 + 50 periods', () => {
     render(<TradingViewChart candles={[candle()]} decimals={2} />)

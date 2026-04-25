@@ -144,6 +144,19 @@ export const TradingViewChart = ({
     lower: ISeriesApi<'Line'>
   } | null>(null)
   const [hover, setHover] = useState<HoverState | null>(null)
+  // Last successful setData wall-clock — drives the "updated Xs ago"
+  // pulse in the top-right corner. Lets users tell at a glance whether
+  // candle data is actually flowing into the chart (or whether the
+  // pipeline silently stalled).
+  const [lastTickAt, setLastTickAt] = useState<number | null>(null)
+  // Ticking "now" reference so the pulse delta refreshes between data
+  // ticks. We bump it once per second — cheap, avoids re-rendering the
+  // whole chart for what is purely a label update.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
 
   const isAuto = height === 'auto'
   // Memo-equivalent: JSON.stringify makes the periods array a stable
@@ -454,6 +467,13 @@ export const TradingViewChart = ({
       if (wasAtRealTime) {
         chartRef.current?.timeScale().scrollToRealTime()
       }
+
+      // Stamp the live-tick indicator so the user can see data is
+      // actually flowing. Done after all setData calls succeed so a
+      // mid-flight throw doesn't claim a successful tick.
+      if (sorted.length > 0) {
+        setLastTickAt(Date.now())
+      }
     } catch {
       // Defensive: chart might already be torn down by a parallel effect.
     }
@@ -573,9 +593,78 @@ export const TradingViewChart = ({
     ? { width: '100%', height: '100%' }
     : { width: '100%', height: height as number }
 
+  // Live-tick indicator — green when data flowed in the last 10s,
+  // yellow up to 60s, red beyond (or grey while we wait for the very
+  // first tick). The wall-clock delta is computed against `now` which
+  // refreshes once per second, so the label stays honest between data
+  // ticks too.
+  const tickAgeMs = lastTickAt == null ? null : Math.max(0, now - lastTickAt)
+  const tickColor =
+    tickAgeMs == null ? colors.textDim
+      : tickAgeMs < 10_000 ? colors.green
+        : tickAgeMs < 60_000 ? colors.yellow
+          : colors.red
+  const tickLabel =
+    tickAgeMs == null ? 'waiting…'
+      : tickAgeMs < 1_000 ? 'live'
+        : tickAgeMs < 60_000 ? `${Math.floor(tickAgeMs / 1000)}s`
+          : tickAgeMs < 3_600_000 ? `${Math.floor(tickAgeMs / 60_000)}m`
+            : `${Math.floor(tickAgeMs / 3_600_000)}h`
+
   return (
     <div style={wrapperStyle}>
       <div ref={containerRef} style={innerStyle} data-testid="tv-chart-container" />
+
+      {/* Live-tick pulse — top-right. Confirms candle data is flowing
+          into the chart so the user doesn't have to wonder whether a
+          stalled WebSocket is silently freezing the view. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 6,
+          right: 8,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontFamily: fonts.mono,
+          fontSize: 9.5,
+          color: colors.textMuted,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          pointerEvents: 'none',
+          background: `${colors.bg}b0`,
+          padding: '2px 6px',
+          borderRadius: 3,
+          userSelect: 'none',
+        }}
+        data-testid="tv-chart-tick-indicator"
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: tickColor,
+            // Subtle pulse only while the tick is fresh — keeps the
+            // user's peripheral vision aware of activity without
+            // distracting from the chart itself.
+            animation:
+              tickAgeMs != null && tickAgeMs < 10_000
+                ? 'tv-chart-tick-pulse 1.4s ease-out infinite'
+                : 'none',
+            flexShrink: 0,
+          }}
+        />
+        <span>{tickLabel}</span>
+      </div>
+
+      <style>{`
+        @keyframes tv-chart-tick-pulse {
+          0%   { opacity: 1;   transform: scale(1); }
+          70%  { opacity: 0.4; transform: scale(1.4); }
+          100% { opacity: 1;   transform: scale(1); }
+        }
+      `}</style>
 
       {/* EMA legend — bottom-left, only when overlays are active. Small
           colour-dots + period label so users know what the lines mean
