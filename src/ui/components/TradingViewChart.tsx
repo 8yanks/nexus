@@ -381,6 +381,25 @@ export const TradingViewChart = ({
       color: c.close >= c.open ? `${colors.green}40` : `${colors.red}40`,
     }))
 
+    // Capture the user's scroll position BEFORE we push new data. The
+    // lightweight-charts default behaviour is to preserve the visible
+    // range across setData, which means new candles arrive off-screen
+    // to the right when the user is pinned at the latest bar. We snap
+    // back to real-time after setData if (and only if) the user was
+    // already at the right edge — manual back-scroll stays untouched.
+    //
+    // scrollPosition() returns 0 when the latest bar is fully visible
+    // and a negative number when the user has scrolled into the past.
+    // We use a generous 1-bar tolerance to absorb sub-pixel jitter.
+    let wasAtRealTime = false
+    try {
+      const pos = chartRef.current?.timeScale().scrollPosition()
+      wasAtRealTime = typeof pos === 'number' && pos >= -1
+    } catch {
+      // Time scale not ready — assume yes so the first paint snaps.
+      wasAtRealTime = true
+    }
+
     try {
       candleSeries.setData(candleData)
       volSeries.setData(volData)
@@ -426,6 +445,14 @@ export const TradingViewChart = ({
         bb.upper.setData(upperData)
         bb.middle.setData(middleData)
         bb.lower.setData(lowerData)
+      }
+
+      // Snap the visible range back to the latest bar if the user was
+      // already at real-time before this update. Doing it here (after
+      // every series got its setData call) keeps the snap in sync with
+      // the new data extents.
+      if (wasAtRealTime) {
+        chartRef.current?.timeScale().scrollToRealTime()
       }
     } catch {
       // Defensive: chart might already be torn down by a parallel effect.
