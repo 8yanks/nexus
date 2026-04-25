@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# A push to a PR's branch should cancel the previous run for that PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint / Type-check / Test / Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          # Match the Node version Vite 8 + lightweight-charts target.
+          # 22 is current LTS as of 2026.
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        # `npm run build` already runs `tsc -b` first, but we want a
+        # standalone signal so a type error doesn't get blamed on the
+        # build step.
+        run: npm run type-check
+
+      - name: Test
+        # `npm test` defaults to watch mode (vitest), so use --run for CI.
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          # Short retention — these are debug-only, the real build is
+          # whatever ships from a tagged release later.
+          retention-days: 7

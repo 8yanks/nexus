@@ -259,6 +259,37 @@ export const TopBar = () => {
 
       {/* ─── RIGHT: chips + clock ─── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifySelf: 'end' }}>
+        {/* Always-visible legal hint: every order routed by this app
+            goes through the PaperTrader, never a real broker. The
+            badge has no click action — it's a passive disclaimer that
+            sits in the chrome so screenshots / shoulder-surfers can
+            never miss it. */}
+        <span
+          aria-label="This app is paper-trading only. No real orders are sent to any broker."
+          title={
+            'PAPER TRADING\n' +
+            'No real orders are placed against any broker. Every "execute"\n' +
+            'in this app routes to the in-process PaperTrader.'
+          }
+          data-testid="topbar-paper-trading-badge"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 10px',
+            borderRadius: radius.badge,
+            background: `${colors.yellow}1a`,
+            border: `1px solid ${colors.yellow}66`,
+            fontFamily: fonts.mono,
+            fontSize: 10,
+            fontWeight: 700,
+            color: colors.yellow,
+            letterSpacing: '0.08em',
+            cursor: 'help',
+            userSelect: 'none',
+          }}
+        >
+          PAPER TRADING
+        </span>
         <button
           type="button"
           onClick={() => setScreen('options')}

@@ -125,6 +125,34 @@ describe('<TopBar /> — search', () => {
 })
 
 describe('<TopBar /> — right cluster', () => {
+  it('renders the always-on PAPER TRADING badge', () => {
+    render(<TopBar />)
+    const badge = screen.getByTestId('topbar-paper-trading-badge')
+    expect(badge).toBeInTheDocument()
+    expect(badge.textContent).toMatch(/PAPER TRADING/)
+  })
+
+  it('PAPER TRADING badge is non-interactive (no click handler, no role=button)', () => {
+    render(<TopBar />)
+    const badge = screen.getByTestId('topbar-paper-trading-badge')
+    // Should be a span, not a button — passive disclaimer.
+    expect(badge.tagName).toBe('SPAN')
+    expect(badge.getAttribute('role')).not.toBe('button')
+  })
+
+  it('PAPER TRADING badge stays visible regardless of provider state', () => {
+    // Live providers connected, screen on Trader — the most-likely
+    // "I forgot this is paper" context. Badge must still be there.
+    useMarketStore.setState({
+      binanceConnected: true,
+      coinbaseConnected: true,
+      krakenConnected: true,
+      screen: 'trader',
+    })
+    render(<TopBar />)
+    expect(screen.getByTestId('topbar-paper-trading-badge')).toBeInTheDocument()
+  })
+
   it('ANALYST MODE chip routes to Options', () => {
     render(<TopBar />)
     fireEvent.click(screen.getByRole('button', { name: /Analyst mode/i }))
