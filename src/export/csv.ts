@@ -1,4 +1,5 @@
 import type { MarketSnapshot, Instrument } from '@/types'
+import type { BacktestResult, BacktestTrade } from '@/backtest/types'
 
 const escapeCSV = (val: string): string => {
   if (val.includes(',') || val.includes('"') || val.includes('\n')) {
@@ -53,4 +54,56 @@ export const downloadCSV = (filename: string, csvContent: string): void => {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ─── BACKTEST TRADES → CSV ──────────────────────────────────
+//
+// One row per trade. Columns mirror the BacktestTrade interface plus
+// the parent config's `instrumentId` so a downstream tool can join
+// across multiple backtests. Empty `trades` produces a header-only
+// file rather than throwing — the user still gets a valid spreadsheet.
+
+const tradeRow = (instrumentId: string, t: BacktestTrade): string =>
+  row([
+    instrumentId,
+    t.id,
+    t.direction,
+    t.entrySignal,
+    t.entryIndex,
+    t.entryTimestamp,
+    t.entryPrice,
+    t.exitIndex,
+    t.exitTimestamp,
+    t.exitPrice,
+    t.exitReason,
+    t.bars,
+    t.pnl,
+    t.pnlPct,
+    t.commission,
+    t.maxFavorable,
+    t.maxAdverse,
+  ])
+
+export const tradesToCSV = (result: BacktestResult): string => {
+  const header = row([
+    'instrument_id',
+    'trade_id',
+    'direction',
+    'entry_signal',
+    'entry_index',
+    'entry_timestamp',
+    'entry_price',
+    'exit_index',
+    'exit_timestamp',
+    'exit_price',
+    'exit_reason',
+    'bars',
+    'pnl',
+    'pnl_pct',
+    'commission',
+    'max_favorable_excursion',
+    'max_adverse_excursion',
+  ])
+  const rows = result.trades.map((t) => tradeRow(result.config.instrumentId, t))
+  return [header, ...rows].join('\n')
 }

@@ -142,18 +142,28 @@ describe('<Backtest /> — view on chart navigation', () => {
     vi.useRealTimers()
   })
 
-  const seedResult = (instrumentId: string) => {
+  const seedResult = (instrumentId: string, tradeCount = 0) => {
     const fakeResult = {
       config: { ...DEFAULT_CONFIG, instrumentId },
-      trades: [],
+      trades: Array.from({ length: tradeCount }, (_, i) => ({
+        id: i,
+        direction: 'long' as const,
+        entryIndex: i, entryPrice: 100,
+        entryTimestamp: '', entrySignal: 'RSI_OVERSOLD',
+        exitIndex: i + 5, exitPrice: 110,
+        exitTimestamp: '', exitReason: 'take_profit' as const,
+        pnl: 100, pnlPct: 0.1, commission: 0.2, bars: 5,
+        maxFavorable: 0.12, maxAdverse: 0.01,
+      })),
       events: [],
       equity: [],
       stats: {
-        totalTrades: 0, winningTrades: 0, losingTrades: 0, winRate: 0,
-        grossProfit: 0, grossLoss: 0, netProfit: 0, profitFactor: Infinity,
+        totalTrades: tradeCount, winningTrades: tradeCount, losingTrades: 0, winRate: tradeCount > 0 ? 1 : 0,
+        grossProfit: 100 * tradeCount, grossLoss: 0, netProfit: 100 * tradeCount,
+        profitFactor: Infinity,
         maxDrawdown: 0, maxDrawdownAmount: 0, sharpeRatio: 0,
-        avgWin: 0, avgLoss: 0, avgBars: 0, expectancy: 0,
-        totalCommission: 0, finalEquity: 10_000, totalReturn: 0,
+        avgWin: 100, avgLoss: 0, avgBars: 5, expectancy: 100,
+        totalCommission: 0.2 * tradeCount, finalEquity: 10_000 + 100 * tradeCount, totalReturn: 0,
       },
       startTimestamp: '', endTimestamp: '', candleCount: 60,
     }
@@ -187,5 +197,35 @@ describe('<Backtest /> — view on chart navigation', () => {
     act(() => { vi.runAllTimers() })
     fireEvent.click(screen.getByTestId('backtest-view-on-chart'))
     expect(window.localStorage.getItem('nexus_detail_bt_overlay')).toBe('1')
+  })
+
+  it('exposes a CSV export button only when the run produced trades', () => {
+    // Empty-trades result first — the table renders but the button hides.
+    const emptyResult = {
+      config: { ...DEFAULT_CONFIG },
+      trades: [],
+      events: [], equity: [],
+      stats: {
+        totalTrades: 0, winningTrades: 0, losingTrades: 0, winRate: 0,
+        grossProfit: 0, grossLoss: 0, netProfit: 0, profitFactor: Infinity,
+        maxDrawdown: 0, maxDrawdownAmount: 0, sharpeRatio: 0,
+        avgWin: 0, avgLoss: 0, avgBars: 0, expectancy: 0,
+        totalCommission: 0, finalEquity: 10_000, totalReturn: 0,
+      },
+      startTimestamp: '', endTimestamp: '', candleCount: 60,
+    }
+    vi.spyOn(engineModule, 'runBacktest').mockReturnValue(emptyResult)
+    render(<Backtest />)
+    fireEvent.click(screen.getByRole('button', { name: /Run Backtest/i }))
+    act(() => { vi.runAllTimers() })
+    expect(screen.queryByTestId('backtest-export-trades-csv')).not.toBeInTheDocument()
+  })
+
+  it('CSV button appears once the result has at least one trade', () => {
+    seedResult(DEFAULT_CONFIG.instrumentId, 2)
+    render(<Backtest />)
+    fireEvent.click(screen.getByRole('button', { name: /Run Backtest/i }))
+    act(() => { vi.runAllTimers() })
+    expect(screen.getByTestId('backtest-export-trades-csv')).toBeInTheDocument()
   })
 })

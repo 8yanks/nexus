@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Play, RotateCcw, ExternalLink } from 'lucide-react'
+import { Play, RotateCcw, ExternalLink, Download } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
 import { colors, fonts, radius, card, statLabel, statValue, emptyState, inputStyle as themeInputStyle } from '@/ui/theme'
@@ -14,6 +14,7 @@ import {
   saveBacktestConfig,
   clearBacktestConfig,
 } from '@/backtest/config-memory'
+import { tradesToCSV, downloadCSV } from '@/export/csv'
 import type { SignalType } from '@/types'
 
 // ─── ALL ENTRY SIGNAL OPTIONS ───────────────────────────────
@@ -382,11 +383,43 @@ const TradeTable = ({ result }: { result: BacktestResult }) => {
     color: colors.text,
   }
 
+  const handleExportCsv = () => {
+    const csv = tradesToCSV(result)
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    downloadCSV(`nexus-backtest-${result.config.instrumentId}-${ts}.csv`, csv)
+  }
+
   return (
     <div style={card}>
-      <h3 style={{ margin: '0 0 12px', fontSize: 14, color: colors.text }}>
-        Trades ({result.trades.length})
-      </h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 14, color: colors.text }}>
+          Trades ({result.trades.length})
+        </h3>
+        {result.trades.length > 0 && (
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            title="Download trades as CSV"
+            data-testid="backtest-export-trades-csv"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              fontSize: 11,
+              fontFamily: fonts.mono,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 3,
+              background: 'transparent',
+              color: colors.textSecondary,
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            <Download size={11} /> CSV
+          </button>
+        )}
+      </div>
       <div style={{ maxHeight: 300, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
