@@ -1,5 +1,67 @@
 # Session notes
 
+## 2026-04-25 (cont. 4) — Persist last-tuned backtest config
+
+Small follow-up from the backtest-markers session. Same memory pattern
+as `screen-memory.ts` and `timeframe-memory.ts` so a theme/density
+reload doesn't snap the strategy back to defaults.
+
+### Shipped — `dddd3e0` Backtest config localStorage persistence
+
+- `src/backtest/config-memory.ts` (NEW) — `loadBacktestConfig`,
+  `saveBacktestConfig`, `clearBacktestConfig`, `initialBacktestConfig`.
+  Storage key `nexus.backtest-config.v1`. Strict `isBacktestConfig`
+  validator on load: required-field presence + numeric finiteness +
+  string-array `entrySignals`. Silent null fallback so a corrupted
+  entry never feeds `undefined` into the engine.
+- `Backtest.tsx`:
+  - `useState(initialBacktestConfig)` — restores at mount, defaults
+    cleanly when nothing is persisted.
+  - `useEffect(() => saveBacktestConfig(config), [config])` — single
+    write per state change, no per-frame churn.
+  - Reset now also calls `clearBacktestConfig()` so a reload after
+    Reset lands on DEFAULT_CONFIG rather than restoring the cleared
+    shape.
+
+### Drive-by fix
+
+The earlier `ac770f2` commit used hand-written test fixtures for
+`BacktestConfig` + `BacktestTrade` with field names from an older
+schema (`riskPerTrade`, `exitRules`, `slippage`, lowercase enum
+values). Tests still passed at runtime because the store action and
+Detail read path don't validate the shape, but the fixtures were
+misleading and would have rotted. Replaced with
+`{ ...DEFAULT_CONFIG, instrumentId }` + proper enum casing.
+
+### Status
+
+- Tests: **881/881** across 93 files (+14 from 867 — 13 config-memory,
+  1 Backtest wiring).
+- Type-check + build clean.
+- Backtest chunk: 20.65 KB (+0.7 KB).
+- Branch: `ai-schemas-and-audit`.
+
+### Open follow-ups
+
+- **Kline WS subscription per TF** — picker still relies on the 60s
+  REST TTL for sub-1h TFs. Bar-close updates would need a WS teardown
+  + re-subscribe on every TF click. Probably not worth the complexity.
+- **Backtest markers across instruments** — currently only the active
+  instrument's run shows on Detail. Could let the user pick "show ALL
+  recent backtests" but that crowds the chart fast. Punt.
+
+Commits this session (newest first):
+- `dddd3e0` feat(backtest): persist last-tuned config to localStorage
+- `ac770f2` feat(detail): surface backtest trade markers on the live chart
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont. 3) — Backtest markers on Detail chart
 
 Closes the second open follow-up from the Donchian session. Lifts
