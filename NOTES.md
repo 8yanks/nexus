@@ -1,5 +1,58 @@
 # Session notes
 
+## 2026-04-25 (post-deadline cont.) — DC midline + cleanup + READINESS.md
+
+User restarted the loop with "continue jusqu'à la limite, fais tout
+ce que tu as prévu, et prépare une checklist visuellement plaisante
+pour moi et mon associé". Three small ships + a doc.
+
+### Shipped — `01f82ae` Donchian midline cross signals + Backtest picker
+
+- New signal types `DC_MID_CROSS_UP` / `DC_MID_CROSS_DOWN` (default
+  strength 0.55 — softer than the breakout, used as early trend hints
+  before a breakout confirms).
+- `detectDonchianMidCross` mirrors the EMA cross pattern: needs prev
+  + curr analytics, fires once on the bar where price transitions
+  across the Donchian midline. Approximates "previous price" with
+  `prevAnalytics.ema20` since we don't carry a `prevPrice` arg.
+- All four DC signal types now exposed in the Backtest config picker
+  (`SIGNAL_OPTIONS`). They were detectable but not pickable for
+  backtests.
+- 5 new tests on the cross detector.
+
+### Shipped — `a7f1ea1` Cleanup deprecated PositionManager.open_()
+
+The alias was marked `@deprecated` and only one test consumed it.
+Test now uses `listOpen()`, alias removed.
+
+### Shipped — `a2454a3` READINESS.md — pre-launch checklist
+
+New top-level doc (FR) for Yanis + associate. Covers:
+- One-line verdict with emoji status per aspect
+- Shipped + working features (data, charts, indicators, signals,
+  backtest, AI, sentinel, trader, UI, infra)
+- Partial features with next-steps
+- What's missing for mise en service (security, multi-user,
+  deployment, real data sources, legal, docs, tests, perf)
+- Suggested 4-sprint roadmap
+
+`NOTES.md` remains the line-by-line source of truth; `READINESS.md`
+is the decision-making view for the team.
+
+### Status
+
+- Tests: **920/920** across 93 files (+5 from 915 — DC midline cross detector).
+- Type-check + build clean.
+- Branch: `ai-schemas-and-audit`.
+
+Commits this session segment (newest first):
+- `a2454a3` docs: READINESS.md
+- `a7f1ea1` chore(trader): remove deprecated open_()
+- `01f82ae` feat(signals): DC midline cross + Backtest picker
+- `7225b04` feat(signals): Donchian breakout
+
+---
+
 ## 2026-04-25 (post-deadline) — Donchian breakout signals
 
 User said "you can restart" past the 19h deadline. Picked the most
