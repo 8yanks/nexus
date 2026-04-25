@@ -14,6 +14,10 @@ const mkAnalytics = (overrides: Partial<AnalyticsResult> = {}): AnalyticsResult 
   vwap: 100,
   bollinger: { upper: 105, middle: 100, lower: 95, bandwidth: 0.1 },
   donchian: { upper: 106, middle: 100, lower: 94 },
+  // Default Donchian-breakout channel sits well outside typical
+  // mid-range prices, so the breakout signal stays silent unless a
+  // test explicitly overrides this field. Same shape as `donchian`.
+  donchianBreakout: { upper: 110, middle: 100, lower: 90 },
   zScore: 0,
   relativeVolume: 1,
   _source: 'test',
@@ -66,6 +70,54 @@ describe('Bollinger signals', () => {
     const a = mkAnalytics({ bollinger: bb })
     const signals = detectSignals('BTC-USD-SPOT', 94, a, null, null)
     expect(signals.some((s) => s.type === 'BB_BREAKOUT_DOWN')).toBe(true)
+  })
+})
+
+// ─── DONCHIAN BREAKOUT SIGNALS ──────────────────────────────
+
+describe('Donchian breakout signals', () => {
+  it('detects DC_BREAKOUT_UP when price closes above the prior 20-bar high', () => {
+    const a = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const signals = detectSignals('BTC-USD-SPOT', 105, a, null, null)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_UP')).toBe(true)
+  })
+
+  it('detects DC_BREAKOUT_DOWN when price closes below the prior 20-bar low', () => {
+    const a = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const signals = detectSignals('BTC-USD-SPOT', 85, a, null, null)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_DOWN')).toBe(true)
+  })
+
+  it('no DC signal when price stays inside the prior range', () => {
+    const a = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const signals = detectSignals('BTC-USD-SPOT', 95, a, null, null)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_UP')).toBe(false)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_DOWN')).toBe(false)
+  })
+
+  it('no DC signal when donchianBreakout is null (insufficient history)', () => {
+    const a = mkAnalytics({ donchianBreakout: null })
+    const signals = detectSignals('BTC-USD-SPOT', 200, a, null, null)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_UP')).toBe(false)
+    expect(signals.some((s) => s.type === 'DC_BREAKOUT_DOWN')).toBe(false)
+  })
+
+  it('signal carries the bullish/bearish direction from SIGNAL_CONFIGS', () => {
+    const aUp = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const aDown = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const up = detectSignals('BTC-USD-SPOT', 105, aUp, null, null)
+      .find((s) => s.type === 'DC_BREAKOUT_UP')!
+    const down = detectSignals('BTC-USD-SPOT', 80, aDown, null, null)
+      .find((s) => s.type === 'DC_BREAKOUT_DOWN')!
+    expect(up.direction).toBe('bullish')
+    expect(down.direction).toBe('bearish')
+  })
+
+  it('uses the current price field as the signal price', () => {
+    const a = mkAnalytics({ donchianBreakout: { upper: 100, middle: 95, lower: 90 } })
+    const sig = detectSignals('BTC-USD-SPOT', 105.42, a, null, null)
+      .find((s) => s.type === 'DC_BREAKOUT_UP')!
+    expect(sig.price).toBe(105.42)
   })
 })
 

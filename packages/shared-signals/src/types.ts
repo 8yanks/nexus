@@ -38,6 +38,18 @@ export const SIGNAL_CONFIGS: Record<SignalType, SignalConfig> = {
     defaultStrength: 0.8,
     description: 'Price broke below lower Bollinger Band',
   },
+  DC_BREAKOUT_UP: {
+    type: 'DC_BREAKOUT_UP',
+    direction: 'bullish',
+    defaultStrength: 0.85,
+    description: 'Price broke above the prior 20-bar high (Donchian)',
+  },
+  DC_BREAKOUT_DOWN: {
+    type: 'DC_BREAKOUT_DOWN',
+    direction: 'bearish',
+    defaultStrength: 0.85,
+    description: 'Price broke below the prior 20-bar low (Donchian)',
+  },
   HIGH_VOLUME: {
     type: 'HIGH_VOLUME',
     direction: 'neutral',
@@ -129,4 +141,9 @@ export const SIGNAL_THRESHOLDS = {
   RSI_OVERBOUGHT: 70,
   BB_SQUEEZE_WIDTH: 0.02,        // 2% bandwidth
   HIGH_VOLUME_RATIO: 2.5,        // 2.5x average
+  // Donchian breakout uses the prior N-bar high/low excluding the
+  // current candle. 20 bars is the canonical "Turtle" period — long
+  // enough to filter intraday noise, short enough to fire on real
+  // regime changes.
+  DC_BREAKOUT_PERIOD: 20,
 } as const

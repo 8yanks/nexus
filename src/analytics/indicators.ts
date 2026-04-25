@@ -24,6 +24,16 @@ export interface AnalyticsResult {
   vwap: number | null
   bollinger: BollingerBands | null
   donchian: DonchianChannel | null
+  /**
+   * Donchian channel computed off the **prior** N bars, excluding the
+   * current candle. Used by the breakout detector — comparing the
+   * current price against this answers "did we just punch above the
+   * recent N-bar range?", which is the canonical Donchian breakout
+   * question. The plain `donchian` field above includes the current
+   * bar (so the chart overlay traces a continuous envelope around the
+   * latest action) — different field for a different purpose.
+   */
+  donchianBreakout: DonchianChannel | null
   zScore: number | null
   relativeVolume: number | null
   _source: string
@@ -196,6 +206,26 @@ export const calcDonchian = (
 }
 
 /**
+ * Donchian channel for breakout detection — N-bar high/low computed
+ * over the bars STRICTLY BEFORE the current candle. Returning the
+ * plain `calcDonchian` value would include the current bar, so a
+ * fresh new high would always have `current.high == channel.upper`
+ * and `price > upper` could never fire.
+ *
+ * Requires at least `period + 1` candles (one for the current bar
+ * plus the N-bar window behind it). Returns `null` otherwise.
+ */
+export const calcDonchianBreakout = (
+  candles: OHLCV[],
+  period = 20,
+): DonchianChannel | null => {
+  if (candles.length < period + 1) return null
+  // Drop the latest bar, then take the N most-recent of the rest.
+  const prior = candles.slice(0, -1).slice(-period)
+  return calcDonchian(prior, period)
+}
+
+/**
  * Rolling Donchian Channels — one `DonchianChannel | null` entry per
  * input position, with `null` for positions before the seed window
  * (`period - 1`). Used by the chart overlay to plot the upper / middle
@@ -270,6 +300,7 @@ export const computeAnalytics = (series: CandleSeries): AnalyticsResult | null =
     vwap: calcVWAP(series.candles),
     bollinger: calcBollinger(closes),
     donchian: calcDonchian(series.candles),
+    donchianBreakout: calcDonchianBreakout(series.candles),
     zScore: calcZScore(closes),
     relativeVolume: calcRelativeVolume(volumes),
     _source: 'analytics_engine',

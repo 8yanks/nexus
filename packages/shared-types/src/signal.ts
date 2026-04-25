@@ -7,6 +7,8 @@ export type SignalType =
   | 'BB_SQUEEZE'
   | 'BB_BREAKOUT_UP'
   | 'BB_BREAKOUT_DOWN'
+  | 'DC_BREAKOUT_UP'
+  | 'DC_BREAKOUT_DOWN'
   | 'HIGH_VOLUME'
   | 'EMA_CROSS_BULL'
   | 'EMA_CROSS_BEAR'

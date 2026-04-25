@@ -8,6 +8,7 @@ import {
   calcBollinger,
   calcBollingerSeries,
   calcDonchian,
+  calcDonchianBreakout,
   calcDonchianSeries,
   calcZScore,
   calcRelativeVolume,
@@ -285,6 +286,44 @@ describe('calcDonchian', () => {
     expect(dc.upper).toBe(Math.max(...candles.slice(-20).map((c) => c.high)))
     expect(dc.lower).toBe(Math.min(...candles.slice(-20).map((c) => c.low)))
     expect(dc.middle).toBeCloseTo((dc.upper + dc.lower) / 2)
+  })
+})
+
+describe('calcDonchianBreakout', () => {
+  it('returns null when there are not enough bars (period + 1 minimum)', () => {
+    // Need 21 candles for the default period=20 (20 prior + 1 current).
+    expect(calcDonchianBreakout(range(20, () => mkCandle(100)))).toBeNull()
+    expect(calcDonchianBreakout(range(21, () => mkCandle(100)))).not.toBeNull()
+  })
+
+  it('excludes the current candle from the window', () => {
+    // 20 flat bars at 100, then a fresh new high at 200. The breakout
+    // channel must reflect the OLD range (100), NOT include the new
+    // bar — otherwise `price > upper` could never fire.
+    const candles = [
+      ...range(20, () => mkCandle(100, 100, 100)),
+      mkCandle(200, 200, 200),
+    ]
+    const dc = calcDonchianBreakout(candles)!
+    expect(dc.upper).toBe(100)
+    expect(dc.lower).toBe(100)
+  })
+
+  it('matches calcDonchian on candles.slice(0, -1)', () => {
+    const candles = range(30, (i) => mkCandle(100, 100 + i, 90 + i))
+    const breakout = calcDonchianBreakout(candles, 20)!
+    const prior = calcDonchian(candles.slice(0, -1), 20)!
+    expect(breakout.upper).toBe(prior.upper)
+    expect(breakout.lower).toBe(prior.lower)
+    expect(breakout.middle).toBe(prior.middle)
+  })
+
+  it('respects a custom period', () => {
+    const candles = range(50, (i) => mkCandle(100, 100 + i, 90 + i))
+    const dc = calcDonchianBreakout(candles, 10)!
+    // Window is bars 39..48 (last 10 before the current at 49).
+    const expectedUpper = Math.max(...candles.slice(39, 49).map((c) => c.high))
+    expect(dc.upper).toBe(expectedUpper)
   })
 })
 

@@ -72,6 +72,32 @@ const detectBollinger = (
   return signals
 }
 
+// Donchian breakout — current price vs the prior N-bar high/low,
+// computed in `analytics.donchianBreakout` to exclude the current
+// candle (otherwise a fresh new high would always be `>=` the upper
+// and the signal could never fire). Stateful firing matches the
+// Bollinger pattern: while price stays above the prior range, the
+// signal continues to assert each refresh. The journal/dedup
+// downstream is responsible for not duplicating across same-bar
+// refreshes; here we just report the state.
+const detectDonchianBreakout = (
+  instrumentId: string,
+  analytics: AnalyticsResult,
+  price: number,
+): SignalEvent[] => {
+  const signals: SignalEvent[] = []
+  if (analytics.donchianBreakout == null) return signals
+
+  const { upper, lower } = analytics.donchianBreakout
+  if (price > upper) {
+    signals.push(makeSignal(instrumentId, 'DC_BREAKOUT_UP', price))
+  }
+  if (price < lower) {
+    signals.push(makeSignal(instrumentId, 'DC_BREAKOUT_DOWN', price))
+  }
+  return signals
+}
+
 const detectVolume = (
   instrumentId: string,
   analytics: AnalyticsResult,
@@ -139,6 +165,7 @@ export const detectSignals = (
   return [
     ...detectRSI(instrumentId, analytics, price),
     ...detectBollinger(instrumentId, analytics, price),
+    ...detectDonchianBreakout(instrumentId, analytics, price),
     ...detectVolume(instrumentId, analytics, price),
     ...detectEMACross(instrumentId, analytics, prevAnalytics, price),
     ...detectStructure(instrumentId, structure, price),
