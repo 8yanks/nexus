@@ -1,5 +1,61 @@
 # Session notes
 
+## 2026-04-25 (cont. 3) — Backtest markers on Detail chart
+
+Closes the second open follow-up from the Donchian session. Lifts
+backtest results out of `Backtest.tsx` local component state into the
+market store so the Detail screen can overlay trade entry/exit
+markers on the live candle chart for the same instrument.
+
+### Shipped — `ac770f2` Backtest results store slice + Detail BT toggle
+
+- `MarketStore.backtestResults: Record<string, BacktestResult>` keyed
+  by instrumentId. In-memory only — backtest results are MB-scale and
+  cheap to re-run, no point burning localStorage quota.
+- `setBacktestResult(result)` — adds/replaces by `result.config.instrumentId`.
+- `clearBacktestResult(id?)` — drops one, or wipes the entire map
+  when called with no arg.
+- `Backtest.tsx` pushes the result into the store after every run.
+  Reset clears only the active instrument so prior runs on OTHER
+  instruments stay accessible from Detail.
+- `Detail.tsx` exposes a third toolbar pill `BT N` (where N is the
+  trade count) next to BB/DC. Pill is HIDDEN entirely when no result
+  exists for the current instrument. When on, passes
+  `tradeMarkers={result.trades}` to `TradingViewChart` — the marker
+  plugin from the trade-chart shipping in `38aab95` already handles
+  the green-up / red-down arrows + PnL-coloured exit squares.
+
+### Status
+
+- Tests: **867/867** across 92 files (+13 from 854 — 7 store, 5 Detail
+  toggle, 1 Backtest→store wiring with engine mock).
+- Type-check + build clean.
+- Detail chunk: 13.66 KB (+0.7 KB).
+- Backtest chunk: 19.92 KB (+0.1 KB).
+- Branch: `ai-schemas-and-audit`.
+
+### Open follow-ups
+
+- **Kline WS subscription per TF** — picker still relies on the 60s
+  REST TTL for sub-1h TFs. Bar-close updates would need a WS teardown
+  + re-subscribe on every TF click. Probably not worth the complexity.
+- **Persist last-run backtest config** to localStorage so reload
+  restores the strategy the user was tuning. Small lift, low priority.
+- **Backtest markers across instruments selector** — currently only
+  the active instrument's run shows. Could let the user pick "show
+  ALL my recent backtests" but that crowds the chart fast. Punt.
+
+Commits this session (newest first):
+- `ac770f2` feat(detail): surface backtest trade markers on the live chart
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont. 2) — Donchian Channels overlay
 
 Carry-forward closed: Donchian Channels was the only "same shape as
