@@ -112,3 +112,80 @@ describe('<Backtest /> — store integration', () => {
     })
   })
 })
+
+// ─── "View on chart" button — closes the loop with Detail ────────
+describe('<Backtest /> — view on chart navigation', () => {
+  const mkCandles = (instrumentId: string): CandleSeries => ({
+    instrumentId,
+    timeframe: '1h',
+    candles: Array.from({ length: 60 }, (_, i) => ({
+      open: 100 + i, high: 105 + i, low: 95 + i, close: 102 + i,
+      volume: 1000,
+      timestamp: new Date(Date.UTC(2026, 3, 19, i)).toISOString(),
+      _source: 'mock', _status: 'LIVE' as const,
+    })),
+    _source: 'mock', _status: 'LIVE',
+    _provenance: { source: 'mock', fetchMethod: 'mock', latencyMs: null, timestamp: '', receivedAt: '' },
+    generatedAt: '',
+  })
+
+  beforeEach(() => {
+    useMarketStore.setState({
+      candles: { [DEFAULT_CONFIG.instrumentId]: mkCandles(DEFAULT_CONFIG.instrumentId) },
+      backtestResults: {},
+    })
+    window.localStorage.removeItem('nexus_detail_bt_overlay')
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const seedResult = (instrumentId: string) => {
+    const fakeResult = {
+      config: { ...DEFAULT_CONFIG, instrumentId },
+      trades: [],
+      events: [],
+      equity: [],
+      stats: {
+        totalTrades: 0, winningTrades: 0, losingTrades: 0, winRate: 0,
+        grossProfit: 0, grossLoss: 0, netProfit: 0, profitFactor: Infinity,
+        maxDrawdown: 0, maxDrawdownAmount: 0, sharpeRatio: 0,
+        avgWin: 0, avgLoss: 0, avgBars: 0, expectancy: 0,
+        totalCommission: 0, finalEquity: 10_000, totalReturn: 0,
+      },
+      startTimestamp: '', endTimestamp: '', candleCount: 60,
+    }
+    vi.spyOn(engineModule, 'runBacktest').mockReturnValue(fakeResult)
+  }
+
+  it('shows the "view on chart" button only after a result exists', () => {
+    seedResult(DEFAULT_CONFIG.instrumentId)
+    render(<Backtest />)
+    // No result yet → no button.
+    expect(screen.queryByTestId('backtest-view-on-chart')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Run Backtest/i }))
+    act(() => { vi.runAllTimers() })
+    expect(screen.getByTestId('backtest-view-on-chart')).toBeInTheDocument()
+  })
+
+  it('clicking "view on chart" navigates to Detail for the backtested instrument', () => {
+    seedResult(DEFAULT_CONFIG.instrumentId)
+    render(<Backtest />)
+    fireEvent.click(screen.getByRole('button', { name: /Run Backtest/i }))
+    act(() => { vi.runAllTimers() })
+    fireEvent.click(screen.getByTestId('backtest-view-on-chart'))
+    expect(useMarketStore.getState().screen).toBe('detail')
+    expect(useMarketStore.getState().selectedInstrumentId).toBe(DEFAULT_CONFIG.instrumentId)
+  })
+
+  it('clicking "view on chart" pre-flips the Detail BT toggle so markers show by default', () => {
+    seedResult(DEFAULT_CONFIG.instrumentId)
+    render(<Backtest />)
+    fireEvent.click(screen.getByRole('button', { name: /Run Backtest/i }))
+    act(() => { vi.runAllTimers() })
+    fireEvent.click(screen.getByTestId('backtest-view-on-chart'))
+    expect(window.localStorage.getItem('nexus_detail_bt_overlay')).toBe('1')
+  })
+})

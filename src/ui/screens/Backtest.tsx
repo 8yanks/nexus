@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Play, RotateCcw } from 'lucide-react'
+import { Play, RotateCcw, ExternalLink } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
 import { colors, fonts, radius, card, statLabel, statValue, emptyState, inputStyle as themeInputStyle } from '@/ui/theme'
@@ -215,14 +215,56 @@ const ConfigPanel = ({
 }
 
 // ─── RESULTS PANEL ──────────────────────────────────────────
+// Storage key the Detail screen reads to decide whether the BT pill
+// starts ON. Forced to '1' from the "View on chart" handler so the
+// markers come up active as soon as Detail mounts — no extra click.
+const DETAIL_BT_TOGGLE_KEY = 'nexus_detail_bt_overlay'
 
 const ResultsPanel = ({ result }: { result: BacktestResult }) => {
-  const { stats } = result
+  const { stats, config } = result
   const returnColor = stats.totalReturn >= 0 ? colors.green : colors.red
+  const selectInstrument = useMarketStore((s) => s.selectInstrument)
+
+  const handleViewOnChart = () => {
+    // Pre-flip the BT toggle in localStorage so when Detail mounts it
+    // reads `1` and the markers come up active. Doing this BEFORE
+    // navigation avoids the race where Detail mounts and reads the
+    // stale value before Backtest can write.
+    try {
+      window.localStorage.setItem(DETAIL_BT_TOGGLE_KEY, '1')
+    } catch {
+      /* storage disabled — Detail will fall back to off, user can click pill */
+    }
+    selectInstrument(config.instrumentId)
+  }
 
   return (
     <div style={card}>
-      <h3 style={{ margin: '0 0 12px', fontSize: 14, color: colors.text }}>Results</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 14, color: colors.text }}>Results</h3>
+        <button
+          type="button"
+          onClick={handleViewOnChart}
+          title={`Open ${config.instrumentId} on Detail with trade markers`}
+          data-testid="backtest-view-on-chart"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '3px 8px',
+            fontSize: 11,
+            fontFamily: fonts.mono,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 3,
+            background: 'transparent',
+            color: colors.accent,
+            cursor: 'pointer',
+            letterSpacing: '0.04em',
+          }}
+        >
+          view on chart <ExternalLink size={11} />
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
         <Stat label="Net Profit" value={`$${fmt(stats.netProfit)}`} color={returnColor} />
         <Stat label="Total Return" value={fmtPct(stats.totalReturn)} color={returnColor} />
