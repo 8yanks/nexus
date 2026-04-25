@@ -1,5 +1,48 @@
 # Session notes
 
+## 2026-04-25 (cont. 6) — "View on chart" closes the Backtest→Detail loop
+
+Companion to the BT-markers-on-Detail shipping in `ac770f2`. The
+markers were wired but the navigation was manual: leave Backtest, find
+the instrument, click into Detail, hunt for the BT pill, click it.
+This commit collapses that to a single click.
+
+### Shipped — `745aaac` ResultsPanel "view on chart →" button
+
+- New button in the ResultsPanel header, only rendered when a result
+  exists (mirrors the BT pill pattern).
+- Click handler:
+  1. Pre-flips `nexus_detail_bt_overlay` → `'1'` in localStorage
+     BEFORE navigation. Avoids the race where Detail mounts and reads
+     the stale value before Backtest can write.
+  2. `selectInstrument(config.instrumentId)` — single zustand call
+     that both sets `screen='detail'` and the selected instrument.
+
+Result: click the button → Detail mounts on the right instrument
+with the BT toggle already on and trades drawn.
+
+### Status
+
+- Tests: **897/897** across 93 files (+3 — button-absent-before-run,
+  navigates-on-click, pre-flips-storage).
+- Type-check + build clean.
+- Backtest chunk: 21.32 KB (+0.7 KB for the button + handler).
+- Branch: `ai-schemas-and-audit`.
+
+Commits this session (newest first):
+- `745aaac` feat(backtest): "view on chart" button
+- `090dda3` feat(detail): keyboard shortcuts for timeframe switching
+- `dddd3e0` feat(backtest): persist last-tuned config to localStorage
+- `ac770f2` feat(detail): surface backtest trade markers on the live chart
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont. 5) — Timeframe keyboard shortcuts on Detail
 
 Power-user QoL after the picker UI shipped. Keypresses now drive the
