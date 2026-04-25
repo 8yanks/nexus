@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { runBacktest } from '@/backtest/engine'
@@ -9,6 +9,11 @@ import { TradingViewChart } from '@/ui/components/TradingViewChart'
 import { fmt, fmtPct } from '@/utils/format'
 import type { BacktestConfig, BacktestResult } from '@/backtest/types'
 import { DEFAULT_CONFIG } from '@/backtest/types'
+import {
+  initialBacktestConfig,
+  saveBacktestConfig,
+  clearBacktestConfig,
+} from '@/backtest/config-memory'
 import type { SignalType } from '@/types'
 
 // ─── ALL ENTRY SIGNAL OPTIONS ───────────────────────────────
@@ -399,9 +404,19 @@ export const Backtest = () => {
   // results panel — this keeps the existing render path untouched.
   const setBacktestResult = useMarketStore((s) => s.setBacktestResult)
   const clearBacktestResult = useMarketStore((s) => s.clearBacktestResult)
-  const [config, setConfig] = useState<BacktestConfig>({ ...DEFAULT_CONFIG })
+  // Restore the user's last-tuned strategy on mount so a reload
+  // doesn't snap them back to DEFAULT_CONFIG. `initialBacktestConfig`
+  // returns DEFAULT_CONFIG when nothing is persisted, so first-load
+  // behaviour is unchanged.
+  const [config, setConfig] = useState<BacktestConfig>(initialBacktestConfig)
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [running, setRunning] = useState(false)
+
+  // Persist config on every change. Cheap (single localStorage call,
+  // ~200B JSON) and scoped to actual edits — no per-frame churn.
+  useEffect(() => {
+    saveBacktestConfig(config)
+  }, [config])
 
   const handleRun = () => {
     const series = candleMap[config.instrumentId]
@@ -420,8 +435,11 @@ export const Backtest = () => {
   const handleReset = () => {
     // Clear only the result for the currently-configured instrument —
     // a Reset shouldn't wipe results for OTHER instruments the user
-    // backtested earlier in the same session.
+    // backtested earlier in the same session. We also drop the
+    // persisted config so a reload after Reset lands on DEFAULT_CONFIG
+    // rather than restoring the cleared shape.
     clearBacktestResult(config.instrumentId)
+    clearBacktestConfig()
     setConfig({ ...DEFAULT_CONFIG })
     setResult(null)
   }

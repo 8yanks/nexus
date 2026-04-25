@@ -4,7 +4,7 @@ import { Detail } from '@/ui/screens/Detail'
 import { useMarketStore } from '@/store/market'
 import { TIMEFRAME_STORAGE_KEY } from '@/ui/timeframe-memory'
 import type { CandleSeries, MarketSnapshot, OHLCV } from '@/types'
-import type { BacktestResult } from '@/backtest/types'
+import { DEFAULT_CONFIG, type BacktestResult } from '@/backtest/types'
 
 const snap = (id: string, over: Partial<MarketSnapshot> = {}): MarketSnapshot => ({
   instrumentId: id,
@@ -89,26 +89,18 @@ beforeEach(() => {
 })
 
 const mkBacktestResult = (instrumentId: string, tradeCount = 2): BacktestResult => ({
-  config: {
-    instrumentId,
-    initialCapital: 10_000,
-    riskPerTrade: 0.02,
-    entrySignals: ['rsi_oversold'],
-    exitRules: { takeProfitR: 2, stopLossR: 1, maxBars: 50 },
-    slippage: 0,
-    commission: 0.001,
-  },
+  config: { ...DEFAULT_CONFIG, instrumentId },
   trades: Array.from({ length: tradeCount }, (_, i) => ({
     id: i,
-    direction: 'long',
+    direction: 'long' as const,
     entryIndex: i,
     entryPrice: 100,
     entryTimestamp: new Date(Date.UTC(2026, 3, 19, i)).toISOString(),
-    entrySignal: 'rsi_oversold',
+    entrySignal: 'RSI_OVERSOLD',
     exitIndex: i + 5,
     exitPrice: 110,
     exitTimestamp: new Date(Date.UTC(2026, 3, 19, i + 5)).toISOString(),
-    exitReason: 'take_profit',
+    exitReason: 'take_profit' as const,
     pnl: 100, pnlPct: 0.1, commission: 0.2, bars: 5,
     maxFavorable: 0.12, maxAdverse: 0.01,
   })),

@@ -3,12 +3,18 @@ import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { Backtest } from '@/ui/screens/Backtest'
 import { useMarketStore } from '@/store/market'
 import { DEFAULT_CONFIG } from '@/backtest/types'
+import { BACKTEST_CONFIG_STORAGE_KEY } from '@/backtest/config-memory'
 import * as engineModule from '@/backtest/engine'
 import type { CandleSeries, OHLCV } from '@/types'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  try {
+    window.localStorage.removeItem(BACKTEST_CONFIG_STORAGE_KEY)
+  } catch {
+    /* storage disabled */
+  }
 })
 
 describe('<Backtest />', () => {
@@ -73,7 +79,7 @@ describe('<Backtest /> — store integration', () => {
     // Stub the engine so the test stays fast + deterministic.
     const fakeResult = {
       config: { ...DEFAULT_CONFIG },
-      trades: [{ id: 0, direction: 'long' as const, entryIndex: 0, entryPrice: 100, entryTimestamp: '', entrySignal: 'rsi_oversold' as const, exitIndex: 5, exitPrice: 110, exitTimestamp: '', exitReason: 'take_profit' as const, pnl: 100, pnlPct: 0.1, commission: 0.2, bars: 5, maxFavorable: 0.12, maxAdverse: 0.01 }],
+      trades: [{ id: 0, direction: 'long' as const, entryIndex: 0, entryPrice: 100, entryTimestamp: '', entrySignal: 'RSI_OVERSOLD', exitIndex: 5, exitPrice: 110, exitTimestamp: '', exitReason: 'take_profit' as const, pnl: 100, pnlPct: 0.1, commission: 0.2, bars: 5, maxFavorable: 0.12, maxAdverse: 0.01 }],
       events: [],
       equity: [],
       stats: { totalTrades: 1, winningTrades: 1, losingTrades: 0, winRate: 1, grossProfit: 100, grossLoss: 0, netProfit: 100, profitFactor: Infinity, maxDrawdown: 0, maxDrawdownAmount: 0, sharpeRatio: 1, avgWin: 100, avgLoss: 0, avgBars: 5, expectancy: 100, totalCommission: 0.2, finalEquity: 10_100, totalReturn: 0.01 },
@@ -91,5 +97,18 @@ describe('<Backtest /> — store integration', () => {
 
     const stored = useMarketStore.getState().backtestResults[DEFAULT_CONFIG.instrumentId]
     expect(stored).toBe(fakeResult)
+  })
+
+  it('persists the config to localStorage on every config change', () => {
+    render(<Backtest />)
+    // Initial mount writes the loaded-or-default config (the
+    // useEffect fires on first render). Verify it landed in storage.
+    const raw = window.localStorage.getItem(BACKTEST_CONFIG_STORAGE_KEY)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!)
+    expect(parsed).toMatchObject({
+      instrumentId: DEFAULT_CONFIG.instrumentId,
+      stopLoss: DEFAULT_CONFIG.stopLoss,
+    })
   })
 })

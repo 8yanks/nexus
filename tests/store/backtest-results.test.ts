@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useMarketStore } from '@/store/market'
-import type { BacktestResult } from '@/backtest/types'
+import { DEFAULT_CONFIG, type BacktestResult } from '@/backtest/types'
 
 // ─── STORE — backtestResults / setBacktestResult / clearBacktestResult ─
 // Validates the backtest-results slice that Detail.tsx reads to surface
@@ -11,26 +11,18 @@ import type { BacktestResult } from '@/backtest/types'
 // past localStorage quota fast.
 
 const makeResult = (instrumentId: string, tradeCount = 3): BacktestResult => ({
-  config: {
-    instrumentId,
-    initialCapital: 10_000,
-    riskPerTrade: 0.02,
-    entrySignals: ['rsi_oversold'],
-    exitRules: { takeProfitR: 2, stopLossR: 1, maxBars: 50 },
-    slippage: 0,
-    commission: 0.001,
-  },
+  config: { ...DEFAULT_CONFIG, instrumentId },
   trades: Array.from({ length: tradeCount }, (_, i) => ({
     id: i,
-    direction: 'long',
+    direction: 'long' as const,
     entryIndex: i * 10,
     entryPrice: 100,
     entryTimestamp: new Date(Date.UTC(2026, 3, 19, i)).toISOString(),
-    entrySignal: 'rsi_oversold',
+    entrySignal: 'RSI_OVERSOLD',
     exitIndex: i * 10 + 5,
     exitPrice: 110,
     exitTimestamp: new Date(Date.UTC(2026, 3, 19, i, 5)).toISOString(),
-    exitReason: 'take_profit',
+    exitReason: 'take_profit' as const,
     pnl: 100,
     pnlPct: 0.1,
     commission: 0.2,
