@@ -1,5 +1,49 @@
 # Session notes
 
+## 2026-04-25 (post-deadline) — Donchian breakout signals
+
+User said "you can restart" past the 19h deadline. Picked the most
+concrete carry-forward: turning the rolling Donchian channel (now
+visualisable as a chart overlay) into an actionable signal source.
+
+### Shipped — `7225b04` DC_BREAKOUT_UP / DC_BREAKOUT_DOWN
+
+Same shape as the BB breakout signals, with one subtle difference: the
+detection channel uses the prior N bars (excluding the current bar).
+If we used the same `calcDonchian` that powers the chart overlay
+(which includes the current bar so the line traces around recent
+action), then a fresh new high would always have
+`current.high == channel.upper` and `price > upper` could never fire.
+
+Plumbing:
+- `SignalType` union (canonical at `packages/shared-types/src/signal.ts`,
+  mirrored in `src/types/signal.ts`) gains the two new entries.
+- `SIGNAL_CONFIGS` entries — bullish / bearish, default strength 0.85
+  (slightly stronger than BB breakout because Donchian fires less
+  often on noise).
+- `SIGNAL_THRESHOLDS.DC_BREAKOUT_PERIOD = 20` — canonical "Turtle"
+  period.
+- `calcDonchianBreakout(candles, period=20)` in
+  `analytics/indicators.ts` — N-bar high/low over the bars STRICTLY
+  BEFORE the current. Requires `period+1` bars total.
+- `AnalyticsResult.donchianBreakout: DonchianChannel | null` —
+  populated alongside the existing `donchian` field. Two fields,
+  different purposes (overlay vs detect).
+- `detectDonchianBreakout` follows the BB pattern: stateful firing
+  while price stays outside the prior range; dedup is the journal's
+  job.
+
+### Status
+
+- Tests: **915/915** across 93 files (+10 from 905 — 4 calc, 6 detector).
+- Type-check + build clean.
+- Branch: `ai-schemas-and-audit`.
+
+Commit:
+- `7225b04` feat(signals): Donchian breakout
+
+---
+
 ## 2026-04-25 — Session close at 19h deadline
 
 Loop closed at the user's 19h deadline. Eight features shipped over
