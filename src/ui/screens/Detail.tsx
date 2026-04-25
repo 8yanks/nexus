@@ -14,6 +14,7 @@ import { ScreenHeader } from '@/ui/components/ScreenHeader'
 import type { DetectedPattern } from '@/analytics/patterns'
 import { computePerformance, computeKeyStats } from '@/analytics/performance'
 import { VALID_TIMEFRAMES, type Timeframe } from '@/ui/timeframe-memory'
+import { timeframeShortcutFor } from '@/ui/keybinds'
 
 // localStorage key for the Bollinger Bands chart toggle. Persisted so a
 // user who turned bands on once doesn't have to re-toggle them on every
@@ -105,6 +106,23 @@ export const Detail = () => {
   // the selected instrument.
   const [showBT, setShowBT] = useState<boolean>(() => loadOverlayToggle(BT_TOGGLE_KEY))
   useEffect(() => saveOverlayToggle(BT_TOGGLE_KEY, showBT), [showBT])
+
+  // ── Keyboard shortcuts: 1 / 5 / q / h / 4 / d → timeframe ────
+  // Mirrors the 'r' run-chain pattern. Registered globally on
+  // window so the listener works even when focus is on the chart
+  // canvas. Gating (no modifiers, not in a typing target) lives in
+  // `timeframeShortcutFor` — same predicate the unit tests cover.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tf = timeframeShortcutFor(e)
+      if (tf) {
+        e.preventDefault()
+        setTimeframe(tf)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setTimeframe])
 
   if (!inst || !snap) {
     return (
@@ -228,13 +246,17 @@ export const Detail = () => {
                 >
                   {VALID_TIMEFRAMES.map((tf: Timeframe, i) => {
                     const active = tf === selectedTimeframe
+                    // Single-char hotkey for each TF — mirror the
+                    // mapping in `timeframeShortcutFor`. Surfacing it
+                    // in the title makes the keybind discoverable.
+                    const hotkey = tf === '15m' ? 'q' : tf[0]
                     return (
                       <button
                         key={tf}
                         type="button"
                         onClick={() => setTimeframe(tf)}
                         aria-pressed={active}
-                        title={`Show ${tf} candles`}
+                        title={`Show ${tf} candles  (press ${hotkey})`}
                         data-testid={`detail-tf-${tf}`}
                         style={{
                           padding: '2px 6px',

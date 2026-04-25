@@ -389,4 +389,51 @@ describe('<Detail /> — timeframe picker', () => {
     expect(refreshAll).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(TIMEFRAME_STORAGE_KEY)).toBeNull()
   })
+
+  // ── Keyboard shortcuts ───────────────────────────────────
+  it('pressing "1" switches the active timeframe to 1m', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.keyDown(window, { key: '1' })
+    expect(useMarketStore.getState().selectedTimeframe).toBe('1m')
+  })
+
+  it('pressing "h" switches the active timeframe to 1h', () => {
+    const inst = seedWithCandles()
+    useMarketStore.setState({ selectedTimeframe: '5m', selectedInstrumentId: inst.id })
+    render(<Detail />)
+    fireEvent.keyDown(window, { key: 'h' })
+    expect(useMarketStore.getState().selectedTimeframe).toBe('1h')
+  })
+
+  it('pressing "q" switches to 15m (the only TF without a single-digit key)', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.keyDown(window, { key: 'q' })
+    expect(useMarketStore.getState().selectedTimeframe).toBe('15m')
+  })
+
+  it('pressing an unknown key does not change the timeframe', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(useMarketStore.getState().selectedTimeframe).toBe('1h')
+  })
+
+  it('pressing "1" with ctrl held does not change the timeframe', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.keyDown(window, { key: '1', ctrlKey: true })
+    expect(useMarketStore.getState().selectedTimeframe).toBe('1h')
+  })
+
+  it('removes the keydown listener on unmount (no leak)', () => {
+    seedWithCandles()
+    const { unmount } = render(<Detail />)
+    unmount()
+    fireEvent.keyDown(window, { key: '5' })
+    // After unmount, no Detail listener is left to react. The store
+    // stays untouched (still on the seeded '1h' default).
+    expect(useMarketStore.getState().selectedTimeframe).toBe('1h')
+  })
 })

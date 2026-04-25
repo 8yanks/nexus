@@ -39,3 +39,41 @@ export const isRunChainShortcut = (e: KeyEventLike): boolean => {
   if (isTypingTarget(e.target)) return false
   return true
 }
+
+import type { Timeframe } from '@/ui/timeframe-memory'
+
+/**
+ * Map a single key press to a timeframe, or null if the key isn't
+ * one of our shortcuts. Used by the Detail screen to let the user
+ * switch TF without reaching for the toolbar pills.
+ *
+ * Mapping:
+ *   1 → 1m,  5 → 5m,  q → 15m (no two-digit keys),
+ *   h → 1h,  4 → 4h,  d → 1d
+ *
+ * Same gating as the chain shortcut: no modifiers, not in a typing
+ * field. The caller decides whether the screen scope applies.
+ */
+export const timeframeShortcutFor = (e: KeyEventLike): Timeframe | null => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return null
+  if (isTypingTarget(e.target)) return null
+  switch (e.key) {
+    case '1':
+      return '1m'
+    case '5':
+      return '5m'
+    case 'q':
+    case 'Q':
+      return '15m'
+    case 'h':
+    case 'H':
+      return '1h'
+    case '4':
+      return '4h'
+    case 'd':
+    case 'D':
+      return '1d'
+    default:
+      return null
+  }
+}
