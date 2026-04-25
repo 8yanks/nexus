@@ -9,6 +9,8 @@ export type SignalType =
   | 'BB_BREAKOUT_DOWN'
   | 'DC_BREAKOUT_UP'
   | 'DC_BREAKOUT_DOWN'
+  | 'DC_MID_CROSS_UP'
+  | 'DC_MID_CROSS_DOWN'
   | 'HIGH_VOLUME'
   | 'EMA_CROSS_BULL'
   | 'EMA_CROSS_BEAR'

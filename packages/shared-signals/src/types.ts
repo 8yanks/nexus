@@ -50,6 +50,18 @@ export const SIGNAL_CONFIGS: Record<SignalType, SignalConfig> = {
     defaultStrength: 0.85,
     description: 'Price broke below the prior 20-bar low (Donchian)',
   },
+  DC_MID_CROSS_UP: {
+    type: 'DC_MID_CROSS_UP',
+    direction: 'bullish',
+    defaultStrength: 0.55,
+    description: 'Price crossed above the Donchian midline — early trend hint',
+  },
+  DC_MID_CROSS_DOWN: {
+    type: 'DC_MID_CROSS_DOWN',
+    direction: 'bearish',
+    defaultStrength: 0.55,
+    description: 'Price crossed below the Donchian midline — early trend hint',
+  },
   HIGH_VOLUME: {
     type: 'HIGH_VOLUME',
     direction: 'neutral',

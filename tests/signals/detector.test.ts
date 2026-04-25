@@ -121,6 +121,69 @@ describe('Donchian breakout signals', () => {
   })
 })
 
+// ─── DONCHIAN MIDLINE CROSS SIGNALS ─────────────────────────
+
+describe('Donchian midline cross signals', () => {
+  it('detects DC_MID_CROSS_UP when price crosses above the midline', () => {
+    // Prev: ema20=95 sat below the prior mid=100 (so wasAbove=false).
+    // Now:  price=101 sits above curr.mid=100 (so nowAbove=true).
+    const prev = mkAnalytics({
+      ema20: 95,
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const curr = mkAnalytics({
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const signals = detectSignals('BTC-USD-SPOT', 101, curr, null, prev)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_UP')).toBe(true)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_DOWN')).toBe(false)
+  })
+
+  it('detects DC_MID_CROSS_DOWN when price crosses below the midline', () => {
+    const prev = mkAnalytics({
+      ema20: 105, // was above prior mid=100
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const curr = mkAnalytics({
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const signals = detectSignals('BTC-USD-SPOT', 99, curr, null, prev)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_DOWN')).toBe(true)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_UP')).toBe(false)
+  })
+
+  it('no cross signal when price stays on the same side of the midline', () => {
+    const prev = mkAnalytics({
+      ema20: 105, // was above
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const curr = mkAnalytics({
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const signals = detectSignals('BTC-USD-SPOT', 103, curr, null, prev) // still above
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_UP')).toBe(false)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_DOWN')).toBe(false)
+  })
+
+  it('no signal when prevAnalytics is null (cold start)', () => {
+    const curr = mkAnalytics({
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const signals = detectSignals('BTC-USD-SPOT', 101, curr, null, null)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_UP')).toBe(false)
+  })
+
+  it('no signal when current donchian is null', () => {
+    const prev = mkAnalytics({
+      ema20: 95,
+      donchian: { upper: 110, middle: 100, lower: 90 },
+    })
+    const curr = mkAnalytics({ donchian: null })
+    const signals = detectSignals('BTC-USD-SPOT', 101, curr, null, prev)
+    expect(signals.some((s) => s.type === 'DC_MID_CROSS_UP')).toBe(false)
+  })
+})
+
 // ─── VOLUME SIGNALS ─────────────────────────────────────────
 
 describe('Volume signals', () => {

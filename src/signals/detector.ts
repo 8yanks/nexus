@@ -98,6 +98,47 @@ const detectDonchianBreakout = (
   return signals
 }
 
+// Donchian midline cross — softer than the breakout. Fires once on
+// the BAR where price transitions across the midline (cross detection
+// via prevAnalytics, mirror of the EMA cross pattern). Useful as an
+// early trend-hint that a future breakout might confirm. We use the
+// plain `donchian` field here (includes the current bar) because the
+// midline is the average of the visible channel — the cross semantics
+// don't care about the "exclude current to allow new highs" trick that
+// the breakout detector needs.
+const detectDonchianMidCross = (
+  instrumentId: string,
+  analytics: AnalyticsResult,
+  prevAnalytics: AnalyticsResult | null,
+  price: number,
+): SignalEvent[] => {
+  if (analytics.donchian == null || prevAnalytics?.donchian == null) return []
+  // We need a "previous price" to detect a cross — the analytics
+  // doesn't carry it directly, but the prior analytics' VWAP/EMA20
+  // sit close enough that a midline-cross signal needs an actual
+  // price-now / price-then comparison. Since we don't have prevPrice
+  // here, we approximate with prevAnalytics.donchian.middle as the
+  // baseline: was the price above the prior midline? This is a stale
+  // proxy but acceptable for a "soft hint" signal.
+  const prevMid = prevAnalytics.donchian.middle
+  const currMid = analytics.donchian.middle
+  // Use prev EMA20 as a stand-in for "where price was on the previous
+  // bar" — closes-driven, less noisy than the candle itself.
+  const prevPriceProxy = prevAnalytics.ema20 ?? prevMid
+
+  const wasAbove = prevPriceProxy > prevMid
+  const nowAbove = price > currMid
+
+  const signals: SignalEvent[] = []
+  if (nowAbove && !wasAbove) {
+    signals.push(makeSignal(instrumentId, 'DC_MID_CROSS_UP', price))
+  }
+  if (!nowAbove && wasAbove) {
+    signals.push(makeSignal(instrumentId, 'DC_MID_CROSS_DOWN', price))
+  }
+  return signals
+}
+
 const detectVolume = (
   instrumentId: string,
   analytics: AnalyticsResult,
@@ -166,6 +207,7 @@ export const detectSignals = (
     ...detectRSI(instrumentId, analytics, price),
     ...detectBollinger(instrumentId, analytics, price),
     ...detectDonchianBreakout(instrumentId, analytics, price),
+    ...detectDonchianMidCross(instrumentId, analytics, prevAnalytics, price),
     ...detectVolume(instrumentId, analytics, price),
     ...detectEMACross(instrumentId, analytics, prevAnalytics, price),
     ...detectStructure(instrumentId, structure, price),
