@@ -34,6 +34,12 @@ const SIGNAL_OPTIONS: { value: SignalType; label: string }[] = [
   { value: 'EMA_CROSS_BEAR', label: 'EMA Cross Bear' },
   { value: 'STRUCT_BULL', label: 'Struct Bull' },
   { value: 'STRUCT_BEAR', label: 'Struct Bear' },
+  { value: 'PATTERN_DOUBLE_BOTTOM', label: 'Pattern: Double Bottom' },
+  { value: 'PATTERN_DOUBLE_TOP', label: 'Pattern: Double Top' },
+  { value: 'PATTERN_INV_HEAD_SHOULDERS', label: 'Pattern: Inv H&S' },
+  { value: 'PATTERN_HEAD_SHOULDERS', label: 'Pattern: H&S' },
+  { value: 'PATTERN_ASCENDING_TRIANGLE', label: 'Pattern: Asc Triangle' },
+  { value: 'PATTERN_DESCENDING_TRIANGLE', label: 'Pattern: Desc Triangle' },
 ]
 
 // ─── STAT DISPLAY ───────────────────────────────────────────

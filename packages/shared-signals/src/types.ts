@@ -62,6 +62,48 @@ export const SIGNAL_CONFIGS: Record<SignalType, SignalConfig> = {
     defaultStrength: 0.55,
     description: 'Price crossed below the Donchian midline — early trend hint',
   },
+
+  // ── Chart pattern recognition ────────────────────────────
+  // Strength is overridden per-event from the pattern's confidence
+  // score so a high-conviction pattern reads as a stronger signal
+  // than a marginal one. The defaults below are the starting point
+  // when a pattern has the minimum threshold confidence.
+  PATTERN_DOUBLE_TOP: {
+    type: 'PATTERN_DOUBLE_TOP',
+    direction: 'bearish',
+    defaultStrength: 0.7,
+    description: 'Double-top pattern detected — bearish reversal',
+  },
+  PATTERN_DOUBLE_BOTTOM: {
+    type: 'PATTERN_DOUBLE_BOTTOM',
+    direction: 'bullish',
+    defaultStrength: 0.7,
+    description: 'Double-bottom pattern detected — bullish reversal',
+  },
+  PATTERN_HEAD_SHOULDERS: {
+    type: 'PATTERN_HEAD_SHOULDERS',
+    direction: 'bearish',
+    defaultStrength: 0.75,
+    description: 'Head-and-shoulders pattern detected — bearish reversal',
+  },
+  PATTERN_INV_HEAD_SHOULDERS: {
+    type: 'PATTERN_INV_HEAD_SHOULDERS',
+    direction: 'bullish',
+    defaultStrength: 0.75,
+    description: 'Inverse head-and-shoulders pattern detected — bullish reversal',
+  },
+  PATTERN_ASCENDING_TRIANGLE: {
+    type: 'PATTERN_ASCENDING_TRIANGLE',
+    direction: 'bullish',
+    defaultStrength: 0.65,
+    description: 'Ascending triangle pattern detected — bullish continuation',
+  },
+  PATTERN_DESCENDING_TRIANGLE: {
+    type: 'PATTERN_DESCENDING_TRIANGLE',
+    direction: 'bearish',
+    defaultStrength: 0.65,
+    description: 'Descending triangle pattern detected — bearish continuation',
+  },
   HIGH_VOLUME: {
     type: 'HIGH_VOLUME',
     direction: 'neutral',
@@ -158,4 +200,9 @@ export const SIGNAL_THRESHOLDS = {
   // enough to filter intraday noise, short enough to fire on real
   // regime changes.
   DC_BREAKOUT_PERIOD: 20,
+  // Minimum pattern confidence (0–1) required to fire a signal.
+  // The detector itself uses 0.3 as the keep-or-drop floor; this is
+  // the higher gate for actually surfacing the pattern as an
+  // actionable signal.
+  PATTERN_MIN_CONFIDENCE: 0.6,
 } as const

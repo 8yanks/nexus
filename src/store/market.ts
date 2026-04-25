@@ -35,6 +35,7 @@ import { saveSnapshots, pruneOldSnapshots } from '@/storage/snapshots'
 import { saveAllCandles } from '@/storage/candles'
 import { saveSignals, pruneOldSignals } from '@/storage/signals'
 import { corporateToSignals, macroToSignals } from '@/signals/corporate-bridge'
+import { patternsToSignals } from '@/signals/patterns-bridge'
 import { createMockCorporateProvider } from '@/corporate/mock'
 import { createMockMacroProvider } from '@/macro/mock'
 import { loadScreenState, saveScreenState } from '@/ui/screen-memory'
@@ -397,9 +398,10 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
       // Non-critical — continue without corporate/macro signals
     }
 
-    addSignals(newSignals)
-
-    // 4. Pattern recognition
+    // 4. Pattern recognition — runs BEFORE addSignals so detected
+    // patterns can flow into the same signal batch via the bridge.
+    // Otherwise pattern signals would land one refresh tick late and
+    // miss the same-cycle alert evaluation below.
     const patternsMap: Record<string, DetectedPattern[]> = {}
     for (const inst of instruments) {
       const series = candles[inst.id]
@@ -409,6 +411,17 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
         patternsMap[inst.id] = []
       }
     }
+
+    // Convert patterns ≥ PATTERN_MIN_CONFIDENCE into SignalEvents.
+    for (const inst of instruments) {
+      const ps = patternsMap[inst.id]
+      const snap = snapshots[inst.id]
+      if (ps && ps.length > 0 && snap) {
+        newSignals.push(...patternsToSignals(inst.id, ps, snap.price))
+      }
+    }
+
+    addSignals(newSignals)
 
     // 5. Correlation matrix
     const correlationIds = instruments.map((i) => i.id)
