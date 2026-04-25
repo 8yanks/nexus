@@ -8,6 +8,7 @@ import {
   calcBollinger,
   calcBollingerSeries,
   calcDonchian,
+  calcDonchianSeries,
   calcZScore,
   calcRelativeVolume,
 } from '@/analytics/indicators'
@@ -284,6 +285,78 @@ describe('calcDonchian', () => {
     expect(dc.upper).toBe(Math.max(...candles.slice(-20).map((c) => c.high)))
     expect(dc.lower).toBe(Math.min(...candles.slice(-20).map((c) => c.low)))
     expect(dc.middle).toBeCloseTo((dc.upper + dc.lower) / 2)
+  })
+})
+
+describe('calcDonchianSeries', () => {
+  it('returns an array of the same length as the input', () => {
+    const candles = range(40, (i) => mkCandle(100 + i, 110 + i, 90 + i))
+    expect(calcDonchianSeries(candles, 20)).toHaveLength(40)
+  })
+
+  it('returns all nulls when data is shorter than period', () => {
+    const candles = range(5, (i) => mkCandle(100 + i))
+    const out = calcDonchianSeries(candles, 20)
+    expect(out.length).toBe(5)
+    expect(out.every((v) => v === null)).toBe(true)
+  })
+
+  it('fills null before the seed window and a channel object after', () => {
+    const candles = range(25, (i) => mkCandle(100 + i, 110 + i, 90 + i))
+    const out = calcDonchianSeries(candles, 20)
+    for (let i = 0; i < 19; i++) expect(out[i]).toBeNull()
+    expect(out[19]).not.toBeNull()
+    expect(out[24]).not.toBeNull()
+  })
+
+  it('final value matches calcDonchian on the same window', () => {
+    const candles = range(50, (i) => mkCandle(100, 100 + Math.sin(i / 3) * 5, 100 - Math.sin(i / 3) * 5))
+    const snap = calcDonchian(candles, 20)!
+    const series = calcDonchianSeries(candles, 20)
+    const last = series[series.length - 1]!
+    expect(last.upper).toBeCloseTo(snap.upper, 8)
+    expect(last.lower).toBeCloseTo(snap.lower, 8)
+    expect(last.middle).toBeCloseTo(snap.middle, 8)
+  })
+
+  it('collapses upper/middle/lower onto a single line when high == low across the window', () => {
+    const candles = range(40, () => mkCandle(100, 100, 100))
+    const out = calcDonchianSeries(candles, 20)
+    for (let i = 19; i < 40; i++) {
+      const dc = out[i]!
+      expect(dc.upper).toBe(100)
+      expect(dc.lower).toBe(100)
+      expect(dc.middle).toBe(100)
+    }
+  })
+
+  it('upper >= middle >= lower at every filled position', () => {
+    const candles = range(40, (i) => mkCandle(100, 100 + Math.sin(i / 2) * 5, 100 - Math.sin(i / 2) * 5))
+    const out = calcDonchianSeries(candles, 20)
+    for (let i = 19; i < 40; i++) {
+      const dc = out[i]!
+      expect(dc.upper).toBeGreaterThanOrEqual(dc.middle)
+      expect(dc.middle).toBeGreaterThanOrEqual(dc.lower)
+    }
+  })
+
+  it('rejects non-positive period', () => {
+    const candles = range(25, (i) => mkCandle(100 + i))
+    expect(calcDonchianSeries(candles, 0)).toEqual(new Array(25).fill(null))
+    expect(calcDonchianSeries(candles, -1)).toEqual(new Array(25).fill(null))
+  })
+
+  it('window slides correctly: a recent spike raises only positions that include it', () => {
+    // Flat 100 highs / 90 lows for 30 bars, then a spike at index 30 with high=200.
+    const candles = range(40, (i) => i === 30 ? mkCandle(100, 200, 90) : mkCandle(100, 100, 90))
+    const out = calcDonchianSeries(candles, 20)
+    // Position 29 — window is bars 10..29, spike NOT included → upper still 100.
+    expect(out[29]!.upper).toBe(100)
+    // Position 30 — window is bars 11..30, spike included → upper = 200.
+    expect(out[30]!.upper).toBe(200)
+    // Position 49 (last) — n/a here; data is 40 bars. Position 39 is the last
+    // filled. Window 20..39 still includes the spike at 30 → upper = 200.
+    expect(out[39]!.upper).toBe(200)
   })
 })
 

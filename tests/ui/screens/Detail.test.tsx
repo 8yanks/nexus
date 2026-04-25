@@ -73,10 +73,12 @@ beforeEach(() => {
     candles: {},
     selectedTimeframe: '1h',
   })
-  // Detail persists the BB toggle + timeframe to localStorage — clear
-  // between tests so state from one test doesn't leak into the next.
+  // Detail persists the BB / DC toggles + timeframe to localStorage —
+  // clear between tests so state from one test doesn't leak into the
+  // next.
   try {
     window.localStorage.removeItem('nexus_detail_bb_overlay')
+    window.localStorage.removeItem('nexus_detail_dc_overlay')
     window.localStorage.removeItem(TIMEFRAME_STORAGE_KEY)
   } catch {
     /* storage disabled */
@@ -170,6 +172,63 @@ describe('<Detail /> — Bollinger Bands toggle', () => {
     })
     render(<Detail />)
     expect(screen.queryByTestId('detail-bb-toggle')).not.toBeInTheDocument()
+  })
+})
+
+describe('<Detail /> — Donchian Channels toggle', () => {
+  const seedWithCandles = () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      candles: { [inst.id]: mkCandles(inst.id) },
+    })
+    return inst
+  }
+
+  it('exposes a DC toggle button alongside the BB toggle', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-dc-toggle')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-bb-toggle')).toBeInTheDocument()
+  })
+
+  it('DC toggle starts unpressed by default', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-dc-toggle').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('clicking the DC toggle flips aria-pressed', () => {
+    seedWithCandles()
+    render(<Detail />)
+    const btn = screen.getByTestId('detail-dc-toggle')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('persists the DC toggle to localStorage independently of BB', () => {
+    seedWithCandles()
+    const { unmount } = render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-dc-toggle'))
+    expect(window.localStorage.getItem('nexus_detail_dc_overlay')).toBe('1')
+    // BB stays off — the two toggles must not bleed into each other.
+    expect(window.localStorage.getItem('nexus_detail_bb_overlay')).not.toBe('1')
+    unmount()
+    render(<Detail />)
+    expect(screen.getByTestId('detail-dc-toggle').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('detail-bb-toggle').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('both toggles can be on at the same time', () => {
+    seedWithCandles()
+    render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-bb-toggle'))
+    fireEvent.click(screen.getByTestId('detail-dc-toggle'))
+    expect(screen.getByTestId('detail-bb-toggle').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('detail-dc-toggle').getAttribute('aria-pressed')).toBe('true')
   })
 })
 

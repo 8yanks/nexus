@@ -20,19 +20,23 @@ import { VALID_TIMEFRAMES, type Timeframe } from '@/ui/timeframe-memory'
 // instrument change. Same `nexus_*` namespace as the other UI prefs
 // (sidebar collapse, focus pane height).
 const BB_TOGGLE_KEY = 'nexus_detail_bb_overlay'
+// Same pattern for the Donchian Channels toggle — independent storage
+// slot so the two overlays can be enabled/disabled without dragging
+// each other along.
+const DC_TOGGLE_KEY = 'nexus_detail_dc_overlay'
 
-const loadBBToggle = (): boolean => {
+const loadOverlayToggle = (key: string): boolean => {
   if (typeof window === 'undefined') return false
   try {
-    return window.localStorage.getItem(BB_TOGGLE_KEY) === '1'
+    return window.localStorage.getItem(key) === '1'
   } catch {
     return false
   }
 }
-const saveBBToggle = (v: boolean) => {
+const saveOverlayToggle = (key: string, v: boolean) => {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(BB_TOGGLE_KEY, v ? '1' : '0')
+    window.localStorage.setItem(key, v ? '1' : '0')
   } catch {
     /* swallow — storage may be disabled */
   }
@@ -79,8 +83,12 @@ export const Detail = () => {
 
   // Bollinger Bands chart overlay — opt-in toggle, persisted to
   // localStorage so the preference sticks across instrument changes.
-  const [showBB, setShowBB] = useState<boolean>(loadBBToggle)
-  useEffect(() => saveBBToggle(showBB), [showBB])
+  const [showBB, setShowBB] = useState<boolean>(() => loadOverlayToggle(BB_TOGGLE_KEY))
+  useEffect(() => saveOverlayToggle(BB_TOGGLE_KEY, showBB), [showBB])
+  // Donchian Channels overlay — same shape as BB; both toggle pills
+  // sit side-by-side in the chart toolbar.
+  const [showDC, setShowDC] = useState<boolean>(() => loadOverlayToggle(DC_TOGGLE_KEY))
+  useEffect(() => saveOverlayToggle(DC_TOGGLE_KEY, showDC), [showDC])
 
   if (!inst || !snap) {
     return (
@@ -252,6 +260,26 @@ export const Detail = () => {
                 >
                   BB
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDC((v) => !v)}
+                  aria-pressed={showDC}
+                  title={showDC ? 'Hide Donchian Channels (20)' : 'Show Donchian Channels (20)'}
+                  data-testid="detail-dc-toggle"
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: 10,
+                    fontFamily: fonts.mono,
+                    border: `1px solid ${showDC ? colors.cyan : colors.border}`,
+                    borderRadius: 3,
+                    background: showDC ? `${colors.cyan}20` : `${colors.bg}b0`,
+                    color: showDC ? colors.cyan : colors.textMuted,
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  DC
+                </button>
               </div>
               <TradingViewChart
                 candles={chartCandles}
@@ -259,6 +287,7 @@ export const Detail = () => {
                 height={240}
                 markers={instSignals}
                 bollinger={showBB ? { period: 20, stdDev: 2 } : null}
+                donchian={showDC ? { period: 20 } : null}
               />
             </>
           ) : (

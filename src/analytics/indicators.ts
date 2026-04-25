@@ -195,6 +195,44 @@ export const calcDonchian = (
   return { upper, lower, middle: (upper + lower) / 2 }
 }
 
+/**
+ * Rolling Donchian Channels — one `DonchianChannel | null` entry per
+ * input position, with `null` for positions before the seed window
+ * (`period - 1`). Used by the chart overlay to plot the upper / middle
+ * / lower as continuous lines, mirroring the Bollinger overlay.
+ *
+ * Implementation is the naive "rescan the window on every step" — fine
+ * for our scale (≤200 bars, period ≤50). For huge windows a monotonic
+ * deque sliding-window max/min would drop this to O(n) but the simple
+ * version is easier to reason about and still cheap enough that the
+ * extra code isn't worth it here.
+ *
+ * Edge cases:
+ *   - period <= 0 → all-null series (matches calcBollingerSeries shape).
+ *   - candles.length < period → all-null series.
+ *   - all candles flat (high == low across the window) → upper == lower
+ *     == middle, which the chart will plot as a single collapsed line.
+ */
+export const calcDonchianSeries = (
+  candles: OHLCV[],
+  period = 20,
+): Array<DonchianChannel | null> => {
+  const out: Array<DonchianChannel | null> = new Array(candles.length).fill(null)
+  if (period <= 0 || candles.length < period) return out
+
+  for (let i = period - 1; i < candles.length; i++) {
+    let hi = -Infinity
+    let lo = Infinity
+    for (let j = i - period + 1; j <= i; j++) {
+      const c = candles[j]
+      if (c.high > hi) hi = c.high
+      if (c.low < lo) lo = c.low
+    }
+    out[i] = { upper: hi, lower: lo, middle: (hi + lo) / 2 }
+  }
+  return out
+}
+
 export const calcZScore = (
   values: number[],
   period = 20,

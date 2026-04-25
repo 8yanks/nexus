@@ -21,7 +21,7 @@ import {
 } from 'lightweight-charts'
 import type { OHLCV, SignalEvent } from '@/types'
 import type { BacktestTrade } from '@/backtest/types'
-import { calcEMASeries, calcBollingerSeries } from '@/analytics/indicators'
+import { calcEMASeries, calcBollingerSeries, calcDonchianSeries } from '@/analytics/indicators'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── TRADINGVIEW LIGHTWEIGHT CHART ──────────────────────────
@@ -76,6 +76,15 @@ interface Props {
    */
   bollinger?: { period: number; stdDev: number } | null
   /**
+   * Optional Donchian Channels overlay config. `null` (default) hides
+   * the overlay; pass an object to show all three channels (upper /
+   * middle / lower) as LineSeries on the candle price scale. Upper is
+   * the rolling N-bar high, lower the N-bar low, middle their average.
+   * Typical config: `{ period: 20 }`. Same visual treatment as BB
+   * (dashed envelopes, solid mid) but coloured cyan to stay distinct.
+   */
+  donchian?: { period: number } | null
+  /**
    * Backtest trades to render as entry + exit markers on the candles.
    * Long entry → green arrow-up below the bar; short entry → red
    * arrow-down above the bar. Exits render as squares colour-coded by
@@ -122,6 +131,7 @@ export const TradingViewChart = ({
   emaPeriods = [20, 50],
   markers = [],
   bollinger = null,
+  donchian = null,
   tradeMarkers = [],
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -139,6 +149,13 @@ export const TradingViewChart = ({
   // Bollinger bands — three line series (upper, middle, lower) created
   // together or not at all based on the `bollinger` prop's presence.
   const bbSeriesRef = useRef<{
+    upper: ISeriesApi<'Line'>
+    middle: ISeriesApi<'Line'>
+    lower: ISeriesApi<'Line'>
+  } | null>(null)
+  // Donchian channels — same three-line bundle as BB. Kept in its own
+  // ref so the two overlays can be toggled independently.
+  const dcSeriesRef = useRef<{
     upper: ISeriesApi<'Line'>
     middle: ISeriesApi<'Line'>
     lower: ISeriesApi<'Line'>
@@ -166,6 +183,9 @@ export const TradingViewChart = ({
   // `null` config is encoded as the empty string so enable/disable flips
   // are picked up too.
   const bbKey = bollinger ? `${bollinger.period}:${bollinger.stdDev}` : ''
+  // Same trick for Donchian — only one config field but the empty
+  // string still encodes "off" so toggle flips remount cleanly.
+  const dcKey = donchian ? `${donchian.period}` : ''
 
   // Mount/unmount: create the chart once. Data + resize are handled
   // in dedicated effects so we don't tear down the chart on every
@@ -289,12 +309,49 @@ export const TradingViewChart = ({
       bbBundle = { upper, middle, lower }
     }
 
+    // Donchian Channels overlay — mirrors the BB bundle layout but
+    // coloured cyan so the two envelopes stay visually distinct when
+    // both are toggled on. Upper/lower are dashed (envelope), middle
+    // is solid (the midline).
+    let dcBundle: {
+      upper: ISeriesApi<'Line'>
+      middle: ISeriesApi<'Line'>
+      lower: ISeriesApi<'Line'>
+    } | null = null
+    if (donchian && Number.isInteger(donchian.period) && donchian.period > 0) {
+      const channelOpts = {
+        color: colors.cyan,
+        lineWidth: 1 as const,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        priceFormat: { type: 'price' as const, precision: decimals, minMove: 1 / 10 ** decimals },
+      }
+      const upper = chart.addSeries(LineSeries, {
+        ...channelOpts,
+        lineStyle: LineStyle.Dashed,
+        title: `DC${donchian.period} upper`,
+      })
+      const middle = chart.addSeries(LineSeries, {
+        ...channelOpts,
+        lineStyle: LineStyle.Solid,
+        title: `DC${donchian.period} mid`,
+      })
+      const lower = chart.addSeries(LineSeries, {
+        ...channelOpts,
+        lineStyle: LineStyle.Dashed,
+        title: `DC${donchian.period} lower`,
+      })
+      dcBundle = { upper, middle, lower }
+    }
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volSeriesRef.current = volSeries
     emaSeriesRef.current = emaMap
     markersPluginRef.current = markersPlugin
     bbSeriesRef.current = bbBundle
+    dcSeriesRef.current = dcBundle
 
     // Crosshair → tooltip overlay. We compute change vs prior close
     // here so the hover state mirrors what a TradingView pop-up shows.
@@ -351,14 +408,16 @@ export const TradingViewChart = ({
       emaSeriesRef.current.clear()
       markersPluginRef.current = null
       bbSeriesRef.current = null
+      dcSeriesRef.current = null
     }
-    // height/decimals/emaKey/bbKey shouldn't recreate the chart constantly
-    // — most chart options can be re-applied without remounting. But for
-    // now those props are effectively static per-screen, so a remount on
-    // change is fine. emaKey / bbKey changing does warrant a remount
-    // (new line series to add/remove).
+    // height/decimals/emaKey/bbKey/dcKey shouldn't recreate the chart
+    // constantly — most chart options can be re-applied without
+    // remounting. But for now those props are effectively static
+    // per-screen, so a remount on change is fine. emaKey / bbKey /
+    // dcKey changing does warrant a remount (new line series to
+    // add/remove).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height, decimals, emaKey, bbKey])
+  }, [height, decimals, emaKey, bbKey, dcKey])
 
   // Push data on every candles change. setData is fast and idempotent;
   // it replaces the series rather than appending, which is what we want
@@ -460,6 +519,35 @@ export const TradingViewChart = ({
         bb.lower.setData(lowerData)
       }
 
+      // Donchian Channels overlay — same Whitespace pattern as BB.
+      // Donchian is computed off the deduped OHLC slice (it needs
+      // high/low, not just close) so we re-derive the candle window
+      // from the sorted entries rather than the raw `candles` prop.
+      const dc = dcSeriesRef.current
+      if (dc && donchian) {
+        const candleWindow: OHLCV[] = sorted.map(([, c]) => c)
+        const series = calcDonchianSeries(candleWindow, donchian.period)
+        const upperData: Array<LineData | WhitespaceData> = []
+        const middleData: Array<LineData | WhitespaceData> = []
+        const lowerData: Array<LineData | WhitespaceData> = []
+        for (let i = 0; i < sorted.length; i++) {
+          const t = sorted[i][0] as UTCTimestamp
+          const d = series[i]
+          if (d == null) {
+            upperData.push({ time: t })
+            middleData.push({ time: t })
+            lowerData.push({ time: t })
+          } else {
+            upperData.push({ time: t, value: d.upper })
+            middleData.push({ time: t, value: d.middle })
+            lowerData.push({ time: t, value: d.lower })
+          }
+        }
+        dc.upper.setData(upperData)
+        dc.middle.setData(middleData)
+        dc.lower.setData(lowerData)
+      }
+
       // Snap the visible range back to the latest bar if the user was
       // already at real-time before this update. Doing it here (after
       // every series got its setData call) keeps the snap in sync with
@@ -477,12 +565,13 @@ export const TradingViewChart = ({
     } catch {
       // Defensive: chart might already be torn down by a parallel effect.
     }
-    // bollinger is read inside the effect but its config also triggers a
-    // chart remount via bbKey — after that remount this effect re-runs
-    // because candles is a stable reference at that point. bbKey change
-    // alone is enough to pick up period/stdDev tweaks; we list it so
-    // exhaustive-deps stays honest without over-rendering.
-  }, [candles, bbKey])
+    // bollinger / donchian are read inside the effect but their configs
+    // also trigger a chart remount via bbKey / dcKey — after that
+    // remount this effect re-runs because candles is a stable reference
+    // at that point. The *Key strings alone are enough to pick up
+    // period/stdDev tweaks; we list them so exhaustive-deps stays
+    // honest without over-rendering.
+  }, [candles, bbKey, dcKey])
 
   // Markers — signal arrows + backtest trade entries/exits merged into
   // the single plugin. Signal bullish → green arrow-up below the bar,
