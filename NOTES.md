@@ -1,5 +1,58 @@
 # Session notes
 
+## 2026-04-25 (cont. 2) — Donchian Channels overlay
+
+Carry-forward closed: Donchian Channels was the only "same shape as
+Bollinger" item left on the chart-overlays list. Implementation is a
+true mirror of `56b9519` (BB shipping commit), so the codepaths look
+nearly identical end-to-end and the two toggles can be enabled
+independently or together without bleeding into each other.
+
+### Shipped — `2caf96c` Donchian Channels (DC) overlay
+
+- `calcDonchianSeries(candles, period=20)` in `analytics/indicators.ts`.
+  Returns `Array<{upper, middle, lower} | null>` — null for positions
+  before the seed window so the lines start cleanly at bar `period-1`.
+  Naive O(n × period) (≤200 × 20 here, no need for monotonic deque).
+  Edge cases: non-positive period → all-null, flat highs == lows →
+  three lines collapsed to a single point.
+- `TradingViewChart` accepts `donchian?: { period } | null` (default
+  `null` — off by default). When non-null, three LineSeries (cyan,
+  dashed envelope + solid mid) join BB on the candle price scale.
+  Same `dcKey` mount-effect dep + Whitespace gap pattern as BB.
+- `Detail.tsx` exposes a `DC` pill in the chart toolbar next to `BB`.
+  Storage key `nexus_detail_dc_overlay` (independent slot from BB).
+  Refactored the BB load/save helpers into shared
+  `loadOverlayToggle(key) / saveOverlayToggle(key, v)` so adding the
+  next overlay (VWAP, pattern shading) is a one-line `useState`.
+
+### Status
+
+- Tests: **854/854** across 91 files (+13 from 841 — 8 series, 5 toggle).
+- Type-check + build clean.
+- Detail chunk: 12.96 KB (+0.4 KB).
+- TradingViewChart chunk: 181.00 KB (+0.9 KB).
+- Branch: `ai-schemas-and-audit`.
+
+### Open follow-ups
+
+- **Surface backtest markers on Detail** — needs backtest results in
+  the store first.
+- **Kline WS subscription per TF** — picker currently relies on the
+  60s REST TTL for sub-1h TFs. Bar-close updates would require
+  tearing down + re-establishing the WS on every TF click. Probably
+  not worth the complexity vs. the 60s read.
+
+Commits this session (newest first):
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont.) — Multi-timeframe candle picker
 
 Carried forward from the same-day real-time fixes. The earlier session
