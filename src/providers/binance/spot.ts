@@ -27,10 +27,25 @@ const WS_BASE = 'wss://stream.binance.com:9443'
 
 interface SpotState {
   snapshots: Map<string, MarketSnapshot>        // instrumentId → snapshot
-  candles: Map<string, OHLCV[]>                 // instrumentId → candle array
+  candles: Map<string, OHLCV[]>                 // instrumentId → candle array (1h, WS-tracked)
+  /**
+   * Per-(instrumentId, timeframe) REST cache for non-1h timeframes.
+   * Key format: `${instrumentId}|${timeframe}`. Each entry is a TTL'd
+   * REST snapshot — the WS only subscribes to 1h klines, so any other
+   * timeframe is a polled REST read with a per-TF refresh window.
+   */
+  candlesByTf: Map<string, OHLCV[]>
+  candlesByTfStamp: Map<string, number>         // key → ms-since-epoch of last fetch
   wsManager: WsManager | null
   lastPing: number
 }
+
+// Refresh non-WS timeframes at most once per minute. The store's
+// 5s refreshAll cadence would otherwise hammer the REST endpoint
+// (8 instruments × 12 polls/min = 96 req/min, well under Binance's
+// 1200/min weight cap, but wasteful when the server-side bar hasn't
+// even closed yet for 5m+ TFs).
+const REST_TF_TTL_MS = 60_000
 
 // ─── REST HELPERS ───────────────────────────────────────────
 
@@ -58,6 +73,8 @@ export const createBinanceSpotProvider = (): BaseProvider => {
   const state: SpotState = {
     snapshots: new Map(),
     candles: new Map(),
+    candlesByTf: new Map(),
+    candlesByTfStamp: new Map(),
     wsManager: null,
     lastPing: 0,
   }
@@ -195,9 +212,48 @@ export const createBinanceSpotProvider = (): BaseProvider => {
     timeframe: string,
     limit: number,
   ): Promise<CandleSeries> => {
-    const cached = state.candles.get(instrumentId) ?? []
-    const sliced = cached.slice(-limit)
-    return buildCandleSeries(instrumentId, timeframe, sliced, 'binance_spot', 0)
+    // Live WS-tracked path — '1h' is the only TF the kline stream
+    // subscribes to at connect time, so it's the only one updated
+    // tick-by-tick. Returning the WS-fed cache here is what makes the
+    // chart "feel live" without a REST round-trip.
+    if (timeframe === '1h') {
+      const cached = state.candles.get(instrumentId) ?? []
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_spot', 0)
+    }
+
+    // Non-1h path — REST-only, with a per-(id, tf) TTL cache so the
+    // store's 5s refresh cadence doesn't hammer the klines endpoint.
+    const key = `${instrumentId}|${timeframe}`
+    const cached = state.candlesByTf.get(key)
+    const stamp = state.candlesByTfStamp.get(key) ?? 0
+    const fresh = cached != null && Date.now() - stamp < REST_TF_TTL_MS
+    if (fresh && cached) {
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_spot', 0)
+    }
+
+    const sym = toBinanceSymbol(instrumentId)
+    if (!sym) {
+      // No mapping — fall back to whatever stale entry exists, else throw.
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_spot', 0)
+      }
+      throw new Error(`No Binance Spot mapping for ${instrumentId}`)
+    }
+
+    try {
+      const raw = await fetchKlines(sym, timeframe, limit)
+      const candles = raw.map((k) => normalizeBinanceKline(k, 'binance_spot'))
+      state.candlesByTf.set(key, candles)
+      state.candlesByTfStamp.set(key, Date.now())
+      return buildCandleSeries(instrumentId, timeframe, candles, 'binance_spot', 0)
+    } catch (err) {
+      // Serve stale on REST failure rather than letting the chain fall
+      // through to mock — real-but-stale beats simulated-but-fresh.
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_spot', 0)
+      }
+      throw err
+    }
   }
 
   const healthCheck = async (): Promise<HealthCheckResult> => {

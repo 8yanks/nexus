@@ -24,11 +24,30 @@ const REST_BASE = 'https://api.exchange.coinbase.com'
 const WS_URL = 'wss://ws-feed.exchange.coinbase.com'
 const CANDLE_GRANULARITY_1H = 3600
 
+// Coinbase Exchange `/products/{id}/candles` only accepts a fixed set
+// of granularity values: 60s, 300s, 900s, 3600s, 21600s, 86400s. That's
+// 1m / 5m / 15m / 1h / 6h / 1d — note the absence of a native 4h. When
+// the user picks 4h we let the provider chain fall through to the next
+// source (Binance/Kraken) rather than synthesise it client-side.
+const TF_TO_GRANULARITY: Record<string, number> = {
+  '1m': 60,
+  '5m': 300,
+  '15m': 900,
+  '1h': 3600,
+  '1d': 86400,
+}
+
+// Same TTL story as the Binance providers — see binance/spot.ts.
+const REST_TF_TTL_MS = 60_000
+
 // ─── INTERNAL STATE ─────────────────────────────────────────
 
 interface SpotState {
   snapshots: Map<string, MarketSnapshot>
-  candles: Map<string, OHLCV[]>
+  candles: Map<string, OHLCV[]>          // 1h, REST-seeded (no kline WS on Coinbase)
+  /** Per-(id, tf) REST cache for non-1h timeframes — see binance/spot.ts. */
+  candlesByTf: Map<string, OHLCV[]>
+  candlesByTfStamp: Map<string, number>
   open24h: Map<string, number>          // product_id → 24h open (for WS change calc)
   wsManager: CoinbaseWsManager | null
 }
@@ -58,6 +77,15 @@ const fetchCandles = async (
   return res.json() as Promise<CoinbaseRestCandle[]>
 }
 
+/** Coinbase returns candles in DESCENDING time order — flip + remap. */
+const fetchAndNormalizeCandles = async (
+  productId: string,
+  granularity: number,
+): Promise<OHLCV[]> => {
+  const raw = await fetchCandles(productId, granularity)
+  return raw.slice().reverse().map(normalizeCoinbaseCandle)
+}
+
 // Coinbase candles arrive as [time(s), low, high, open, close, volume]
 // in DESCENDING time order — flip + remap to OHLCV.
 const normalizeCoinbaseCandle = (raw: CoinbaseRestCandle): OHLCV => ({
@@ -77,6 +105,8 @@ export const createCoinbaseSpotProvider = (): BaseProvider => {
   const state: SpotState = {
     snapshots: new Map(),
     candles: new Map(),
+    candlesByTf: new Map(),
+    candlesByTfStamp: new Map(),
     open24h: new Map(),
     wsManager: null,
   }
@@ -146,12 +176,9 @@ export const createCoinbaseSpotProvider = (): BaseProvider => {
           )
 
           // Candles — Coinbase returns up to 300 in DESCENDING time order.
-          // Reverse so the newest is last (matches Binance + downstream code).
-          const raw = await fetchCandles(productId, CANDLE_GRANULARITY_1H)
-          const candles = raw
-            .slice()
-            .reverse()
-            .map(normalizeCoinbaseCandle)
+          // The shared helper handles flip + remap so the per-TF code path
+          // and the connect-time warm-up stay in sync.
+          const candles = await fetchAndNormalizeCandles(productId, CANDLE_GRANULARITY_1H)
           state.candles.set(id, candles)
         } catch (err) {
           console.error(`[Coinbase] Failed to init ${id}:`, err)
@@ -191,9 +218,44 @@ export const createCoinbaseSpotProvider = (): BaseProvider => {
     timeframe: string,
     limit: number,
   ): Promise<CandleSeries> => {
-    const cached = state.candles.get(instrumentId) ?? []
-    const sliced = cached.slice(-limit)
-    return buildCandleSeries(instrumentId, timeframe, sliced, 'coinbase', 0)
+    // 1h is the connect-time-seeded path. Coinbase has no kline WS,
+    // so even 1h is technically REST-derived, but we keep it in its
+    // own slot so the connect-time warm-up is still useful and the
+    // per-(id, tf) cache below stays focused on user-driven TFs.
+    if (timeframe === '1h') {
+      const cached = state.candles.get(instrumentId) ?? []
+      const sliced = cached.slice(-limit)
+      return buildCandleSeries(instrumentId, timeframe, sliced, 'coinbase', 0)
+    }
+
+    const granularity = TF_TO_GRANULARITY[timeframe]
+    if (granularity == null) {
+      // Unsupported TF (e.g. 4h) — let the chain fall through to the
+      // next provider in store/refreshAll instead of returning bad data.
+      throw new Error(`Coinbase does not support timeframe: ${timeframe}`)
+    }
+
+    const productId = toCoinbaseProductId(instrumentId)
+    if (!productId) throw new Error(`No Coinbase mapping for ${instrumentId}`)
+
+    const key = `${instrumentId}|${timeframe}`
+    const cached = state.candlesByTf.get(key)
+    const stamp = state.candlesByTfStamp.get(key) ?? 0
+    if (cached && Date.now() - stamp < REST_TF_TTL_MS) {
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'coinbase', 0)
+    }
+
+    try {
+      const candles = await fetchAndNormalizeCandles(productId, granularity)
+      state.candlesByTf.set(key, candles)
+      state.candlesByTfStamp.set(key, Date.now())
+      return buildCandleSeries(instrumentId, timeframe, candles.slice(-limit), 'coinbase', 0)
+    } catch (err) {
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'coinbase', 0)
+      }
+      throw err
+    }
   }
 
   const healthCheck = async (): Promise<HealthCheckResult> => {

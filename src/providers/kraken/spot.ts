@@ -24,11 +24,31 @@ import { buildCandleSeries } from '@/normalization/candle'
 const REST_BASE = 'https://api.kraken.com/0/public'
 const OHLC_INTERVAL_MIN = 60   // 60-minute candles = 1h, matches other providers
 
+// Kraken uses minute-based interval values for OHLC: 1, 5, 15, 30, 60,
+// 240, 1440, 10080, 21600. We expose the subset that matches the
+// shared timeframe enum.
+const TF_TO_KRAKEN_INTERVAL: Record<string, number> = {
+  '1m': 1,
+  '5m': 5,
+  '15m': 15,
+  '1h': 60,
+  '4h': 240,
+  '1d': 1440,
+}
+
+// Same TTL story as the other providers — Kraken's 1 req/sec soft limit
+// is the strictest of the bunch, so capping non-1h fetches at 1/min per
+// (id, tf) is the safe default.
+const REST_TF_TTL_MS = 60_000
+
 // ─── INTERNAL STATE ─────────────────────────────────────────
 
 interface SpotState {
   snapshots: Map<string, MarketSnapshot>
-  candles: Map<string, OHLCV[]>
+  candles: Map<string, OHLCV[]>          // 1h, refreshed via getSnapshot()
+  /** Per-(id, tf) REST cache for non-1h timeframes — see binance/spot.ts. */
+  candlesByTf: Map<string, OHLCV[]>
+  candlesByTfStamp: Map<string, number>
 }
 
 // ─── REST HELPERS ───────────────────────────────────────────
@@ -79,6 +99,8 @@ export const createKrakenSpotProvider = (): BaseProvider => {
   const state: SpotState = {
     snapshots: new Map(),
     candles: new Map(),
+    candlesByTf: new Map(),
+    candlesByTfStamp: new Map(),
   }
 
   const instrumentIds = getKrakenInstrumentIds()
@@ -179,9 +201,39 @@ export const createKrakenSpotProvider = (): BaseProvider => {
     timeframe: string,
     limit: number,
   ): Promise<CandleSeries> => {
-    const cached = state.candles.get(instrumentId) ?? []
-    const sliced = cached.slice(-limit)
-    return buildCandleSeries(instrumentId, timeframe, sliced, 'kraken', 0)
+    // 1h is the path the warm-up + per-tick getSnapshot already refresh.
+    if (timeframe === '1h') {
+      const cached = state.candles.get(instrumentId) ?? []
+      const sliced = cached.slice(-limit)
+      return buildCandleSeries(instrumentId, timeframe, sliced, 'kraken', 0)
+    }
+
+    const intervalMin = TF_TO_KRAKEN_INTERVAL[timeframe]
+    if (intervalMin == null) throw new Error(`Kraken: unsupported timeframe ${timeframe}`)
+
+    const pair = toKrakenPair(instrumentId)
+    if (!pair) throw new Error(`No Kraken mapping for ${instrumentId}`)
+
+    const key = `${instrumentId}|${timeframe}`
+    const cached = state.candlesByTf.get(key)
+    const stamp = state.candlesByTfStamp.get(key) ?? 0
+    if (cached && Date.now() - stamp < REST_TF_TTL_MS) {
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'kraken', 0)
+    }
+
+    try {
+      const ohlcRes = await fetchOHLC(pair, intervalMin)
+      const rows = firstPairValue(ohlcRes.result) as KrakenOHLCRow[] | null
+      const candles = (rows ?? []).map(normalizeKrakenCandle)
+      state.candlesByTf.set(key, candles)
+      state.candlesByTfStamp.set(key, Date.now())
+      return buildCandleSeries(instrumentId, timeframe, candles.slice(-limit), 'kraken', 0)
+    } catch (err) {
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'kraken', 0)
+      }
+      throw err
+    }
   }
 
   const healthCheck = async (): Promise<HealthCheckResult> => {

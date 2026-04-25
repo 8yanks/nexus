@@ -31,13 +31,21 @@ const WS_BASE = 'wss://fstream.binance.com'
 
 interface FuturesState {
   snapshots: Map<string, MarketSnapshot>
-  candles: Map<string, OHLCV[]>
+  candles: Map<string, OHLCV[]>                 // 1h, WS-tracked
+  /** Per-(id, tf) REST cache for non-1h timeframes — see binance/spot.ts. */
+  candlesByTf: Map<string, OHLCV[]>
+  candlesByTfStamp: Map<string, number>
   funding: Map<string, { rate: number; nextTime: number }>
   oi: Map<string, number>
   book: Map<string, { bid: number; ask: number }>
   wsManager: WsManager | null
   lastPing: number
 }
+
+// Same TTL as spot — the REST cap is shared across the binance.com
+// endpoints, so a 60s window per (id, tf) keeps both providers within
+// budget even when the store ticks every 5s.
+const REST_TF_TTL_MS = 60_000
 
 // ─── REST HELPERS ───────────────────────────────────────────
 
@@ -83,6 +91,8 @@ export const createBinanceFuturesProvider = (): BaseProvider => {
   const state: FuturesState = {
     snapshots: new Map(),
     candles: new Map(),
+    candlesByTf: new Map(),
+    candlesByTfStamp: new Map(),
     funding: new Map(),
     oi: new Map(),
     book: new Map(),
@@ -299,8 +309,39 @@ export const createBinanceFuturesProvider = (): BaseProvider => {
     timeframe: string,
     limit: number,
   ): Promise<CandleSeries> => {
-    const cached = state.candles.get(instrumentId) ?? []
-    return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_futures', 0)
+    // 1h is the WS-tracked path — see binance/spot.ts for the rationale.
+    if (timeframe === '1h') {
+      const cached = state.candles.get(instrumentId) ?? []
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_futures', 0)
+    }
+
+    const key = `${instrumentId}|${timeframe}`
+    const cached = state.candlesByTf.get(key)
+    const stamp = state.candlesByTfStamp.get(key) ?? 0
+    if (cached && Date.now() - stamp < REST_TF_TTL_MS) {
+      return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_futures', 0)
+    }
+
+    const sym = toBinanceSymbol(instrumentId)
+    if (!sym) {
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_futures', 0)
+      }
+      throw new Error(`No Binance Futures mapping for ${instrumentId}`)
+    }
+
+    try {
+      const raw = await fetchKlines(sym, timeframe, limit)
+      const candles = raw.map((k) => normalizeBinanceKline(k, 'binance_futures'))
+      state.candlesByTf.set(key, candles)
+      state.candlesByTfStamp.set(key, Date.now())
+      return buildCandleSeries(instrumentId, timeframe, candles, 'binance_futures', 0)
+    } catch (err) {
+      if (cached) {
+        return buildCandleSeries(instrumentId, timeframe, cached.slice(-limit), 'binance_futures', 0)
+      }
+      throw err
+    }
   }
 
   const healthCheck = async (): Promise<HealthCheckResult> => {
