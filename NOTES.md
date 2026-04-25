@@ -1,5 +1,94 @@
 # Session notes
 
+## 2026-04-25 (cont.) — Multi-timeframe candle picker
+
+Carried forward from the same-day real-time fixes. The earlier session
+identified the hard-coded `'1h'` in `refreshAll` as the single biggest
+reason the chart "feels slow even when everything is wired correctly"
+— the data IS flowing, but at 1h granularity bars only close every
+3600s so to the eye nothing moves. Picking 1m or 5m unlocks visible
+candle motion within seconds.
+
+### Shipped — `0c8951e` Picker UI + store field + persistence
+
+- `src/ui/timeframe-memory.ts` (NEW) — mirror of `screen-memory.ts`
+  with `nexus.timeframe.v1` storage key. `VALID_TIMEFRAMES =
+  ['1m','5m','15m','1h','4h','1d']`. Silent fallback to `'1h'` on
+  malformed JSON / unknown enum / wrong type.
+- `MarketStore.selectedTimeframe: Timeframe` + `setTimeframe(tf)` action.
+  - Restored from storage at module load.
+  - Action is a no-op when picker = active TF (no extra refresh, no
+    extra storage write on idle clicks).
+  - On real change: persist + `void get().refreshAll()` so the chart
+    updates within the same paint instead of waiting for the next 5s
+    store tick.
+- `refreshAll` now reads `selectedTimeframe` instead of `'1h'`.
+- 6-pill picker in the Detail chart toolbar, visual order: TF picker
+  → BB toggle. `data-testid="detail-tf-{tf}"` per pill +
+  `detail-tf-picker` for the group.
+- Mock generator gets a `'15m'` entry in `TF_MS` / `TF_VOL`.
+
+### Shipped — `e063fa1` Provider per-(id, tf) REST cache
+
+The picker is useless if `getCandles` keeps returning the WS-fed 1h
+cache regardless of the requested TF. This commit adds the read-path
+plumbing across all four real providers.
+
+Pattern (identical in binance/spot, binance/futures, coinbase, kraken):
+- `tf === '1h'` → return existing WS-fed cache (zero REST hit, fully
+  live).
+- Otherwise → check `candlesByTf[id|tf]`. If fresh (< 60s), return.
+  Else fetch via REST, normalize, store.
+- REST failure with stale entry → serve stale (real-but-old beats
+  falling through to mock-but-fresh).
+- REST failure with no entry → throw, let `store/refreshAll` chain
+  try the next provider.
+
+TTL is 60s for all providers — Kraken's 1 req/sec soft limit is the
+strictest, so 1 fetch/min per (id, tf) keeps everyone within budget
+even when the store ticks every 5s.
+
+TF coverage:
+- **Binance** (spot + futures): `1m / 5m / 15m / 1h / 4h / 1d` — all
+  native, same string interval.
+- **Coinbase**: `1m / 5m / 15m / 1h / 1d` (no 4h — let chain fallback
+  to Binance/Kraken).
+- **Kraken**: `1m / 5m / 15m / 1h / 4h / 1d` — minute-based interval
+  translation (`1, 5, 15, 60, 240, 1440`).
+- **Mock**: every TF including 15m via the extended `TF_MS` / `TF_VOL`
+  maps.
+
+### Status
+
+- Tests: **841/841** across 91 files (+28 from 813 — 8 timeframe-memory,
+  6 store, 7 Detail picker, 7 binance-spot multi-TF).
+- Type-check + build clean.
+- Detail chunk: 12.56 KB (+1 KB for the picker).
+- TradingViewChart chunk unchanged at 180.11 KB.
+- Branch: `ai-schemas-and-audit`.
+
+### Open follow-ups
+
+Same list, minus the now-closed multi-TF item:
+- **Donchian channels** — same shape as Bollinger.
+- **Surface backtest markers on Detail** — needs backtest results in
+  the store first.
+- **Kline WS subscription per TF** — current implementation only WS-
+  subscribes to 1h. For sub-1h TFs the chart updates on the 60s REST
+  TTL, not bar-close. Could wire a "follow the active TF" subscription
+  but it would require tearing down + re-establishing the WS on every
+  picker click. Probably not worth the complexity vs. the 60s TTL
+  read.
+
+Commits this session (newest first):
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 — Real-time pipeline fixes (scroll snap + tick pulse + WS watchdog)
 
 User: "pourquoi les courbes de marchés ne s'actualisent pas d'ailleurs?"
