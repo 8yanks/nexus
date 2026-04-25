@@ -1,5 +1,80 @@
 # Session notes
 
+## 2026-04-26 — Pre-launch sprint: README + CI + PAPER badge + patterns→signals + nav loop + recent-bar
+
+User: "tu peux continuer hein? on a pas de limite de temps aujourd'hui".
+Six independent ships from the READINESS.md gaps, each closing a
+high-value blocker without needing API keys or backend work.
+
+### Shipped — `952a615` Real README + GitHub Actions CI + PAPER TRADING badge
+
+1. **README.md** — replaced default Vite template (a links page to
+   the Vite plugin docs) with a real overview: what it does, asset
+   coverage table, getting-started + optional .env keys, scripts
+   table, ASCII architecture diagram, repo layout, status, disclaimer.
+2. **`.github/workflows/ci.yml`** — lint → type-check → test → build
+   on push/PR. Concurrency cancellation, Node 22, uploads dist/ as
+   debug artifact (7-day retention).
+3. **PAPER TRADING badge** — always-on yellow chip in TopBar, before
+   ANALYST MODE. Non-interactive span with help cursor, hover tooltip
+   explains the meaning. Sits in the chrome so screenshots /
+   shoulder-surfers can never miss the fact that nothing places real
+   orders.
+
+### Shipped — `4e3f6ce` Patterns → SignalEvent stream
+
+Closed the "patterns are detected but only displayed" gap. The 6
+PatternType variants (HS, inv HS, double top, double bottom,
+ascending/descending triangle) now emit proper SignalEvents that
+flow through the journal/alert/AI orchestrator pipeline.
+
+- 6 new `SignalType` entries (PATTERN_*) + 6 SIGNAL_CONFIGS.
+- New threshold `PATTERN_MIN_CONFIDENCE = 0.6` (higher floor than
+  the detector's 0.3 keep-or-drop, so noisy detections don't surface
+  as actionable).
+- `src/signals/patterns-bridge.ts` (NEW) — `patternsToSignals(id, ps,
+  price)` filters by min confidence, maps PatternType → SignalType,
+  embeds neckline in the description, threads current price.
+- `refreshAll` now runs pattern detection BEFORE addSignals so
+  pattern signals land in the same batch as technical signals.
+- Backtest config picker exposes the 6 new pattern signal types as
+  selectable entries.
+
+### Shipped — `56d3be1` Detail ↔ Backtest navigation loop closed
+
+Mirror of `745aaac`'s "view on chart →" but the other direction.
+
+1. **Detail → Backtest button** in the ScreenHeader actions slot.
+   Click loads the persisted Backtest config, swaps in the current
+   Detail instrument, writes back to localStorage, then navigates.
+   Backtest mounts fresh (lazy ScreenRouter) and reads the new
+   instrumentId — user's tuned stops/take-profit/signals carry over.
+2. **Recent backtests chip strip** in Backtest results column. One
+   chip per stored result, color-coded by return %, click flips the
+   displayed result without re-running. Hidden when 0-1 stored
+   results (no value).
+
+### Status
+
+- Tests: **938 / 938** across **94 files** (+18 from 920 — 3 PAPER
+  badge, 10 patterns-bridge, 1 Detail→Backtest, 4 recent-bar).
+- Type-check + build clean.
+- CI workflow ready to run on first PR.
+- Branch: `ai-schemas-and-audit`.
+
+### READINESS.md updates
+
+Marked completed: README, quickstart, architecture diagram, CI,
+PAPER TRADING disclaimer, patterns→signals coverage, cross-instruments
+backtest view. Stats refreshed (938/94/252KB).
+
+Commits this session segment (newest first):
+- `56d3be1` feat(navigation): Detail ↔ Backtest loop
+- `4e3f6ce` feat(signals): patterns → SignalEvent stream
+- `952a615` feat(launch): README + CI + PAPER TRADING badge
+
+---
+
 ## 2026-04-25 (post-deadline cont.) — DC midline + cleanup + READINESS.md
 
 User restarted the loop with "continue jusqu'à la limite, fais tout

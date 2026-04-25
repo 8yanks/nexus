@@ -1,6 +1,6 @@
 # NEXUS — Production Readiness Checklist
 
-> **Pour Yanis & son associé** — état complet de l'app au **2026-04-25 (post-19h)**.
+> **Pour Yanis & son associé** — état complet de l'app au **2026-04-26**.
 > Mis à jour à chaque session par l'agent autonome. La source de vérité ligne-par-ligne reste `NOTES.md`.
 
 ---
@@ -9,7 +9,7 @@
 
 | Aspect | État | Détail |
 |---|---|---|
-| **Code & tests** | 🟢 Vert | 920/920 tests, type-check clean, build clean |
+| **Code & tests** | 🟢 Vert | 938/938 tests, type-check clean, build clean |
 | **Données live (crypto)** | 🟢 Opérationnel | Binance + Coinbase + Kraken connectés, fallback chain en place |
 | **Données live (equities/forex)** | 🔴 Mock seulement | Aucun broker câblé pour AAPL/MSFT/EUR-USD/etc. |
 | **AI / Decision pipeline** | 🟡 Câblé mais inactif | Orchestrator + Sentinel + Trader fonctionnent mais clés API non fournies |
@@ -56,7 +56,7 @@
 | Z-Score | `calcZScore` | ⚪ Affichage seul |
 | Relative volume | `calcRelativeVolume` | ✅ `HIGH_VOLUME` |
 | Market structure | `detectStructure` | ✅ `STRUCT_BULL` / `STRUCT_BEAR` |
-| Patterns (HS, double top/bot, triangles) | `detectPatterns` | ⚪ Affichage seul |
+| Patterns (HS, double top/bot, triangles) | `detectPatterns` + `patternsToSignals` | ✅ `PATTERN_DOUBLE_TOP/BOTTOM` + `PATTERN_HEAD_SHOULDERS` + `PATTERN_INV_HEAD_SHOULDERS` + `PATTERN_ASCENDING/DESCENDING_TRIANGLE` |
 | Volatility regime | `detectVolatilityRegime` | ⚪ Affichage seul |
 | Correlation matrix | `computeCorrelationMatrix` | ⚪ Affichage seul |
 
@@ -68,6 +68,8 @@
 - **Persistance config** — la stratégie tunée survit aux reloads.
 - **"View on chart" button** — un click → Detail s'ouvre avec les markers visibles.
 - **CSV export** — trades téléchargeables en un click.
+- **Recent backtests strip** — chip horizontal au-dessus des résultats, un par instrument backtesté, click pour flipper sans re-runner. Color-coded par return %.
+- **Detail ↔ Backtest navigation bidirectionnelle** — "view on chart →" depuis les résultats Backtest (markers BT pré-activés), et "backtest" depuis le ScreenHeader Detail (config persistée pré-flippée vers l'instrument courant).
 
 ### 🤖 AI / Décision
 
@@ -99,14 +101,17 @@
 - **Decision drilldown** : modal complet avec copy-as-JSON, raw payload, audit jump.
 - **Performance strip** : %change 1H/6H/1D/3D/7D inspiré TradingView.
 - **Keybinds** : `r` = run chain, `1/5/q/h/4/d` = switch timeframe.
+- **PAPER TRADING badge** : chip jaune always-on dans le TopBar. Disclaimer passif visible sur tous les screens — impossible de l'ignorer même en screenshot ou shoulder-surfing.
 
 ### 🏗️ Infrastructure
 
 - Build Vite 8 + Rolldown — produit `dist/` clean en ~1-3s.
-- 920 tests Vitest, fake-indexeddb pour le storage layer.
+- 938 tests Vitest, fake-indexeddb pour le storage layer.
 - Type-check `tsc -b` strict mode, `noUnusedLocals` + `noUnusedParameters`.
 - ESLint avec react-hooks + react-refresh.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`) — lint → type-check → test → build sur push/PR. Concurrency cancellation pour ne pas empiler les runs sur les PRs.
 - 5 packages internes (`shared-types`, `shared-utils`, `shared-signals`, `shared-clients`, `shared-infra`) + 2 apps (`sentinel`, `trader`).
+- **README.md** — vrai overview projet (asset coverage, getting-started, scripts, architecture diagram, repo layout, status, disclaimer).
 
 ---
 
@@ -119,7 +124,7 @@
 | **Données corporate** | Mock provider seulement | Choisir provider (Finnhub ? Polygon ?) puis brancher |
 | **Equities / forex live** | Mock seulement | Choisir broker (Alpaca / Polygon / OANDA) puis implémenter |
 | **WebSocket sub-1h timeframes** | REST polling 60s TTL | Re-subscribe le kline WS sur changement de TF (jugé pas worth pour l'instant) |
-| **Backtest cross-instruments view** | Un seul instrument à la fois sur Detail | Selector "show all my recent backtests" |
+| ~~**Backtest cross-instruments view**~~ | ✅ Shipped — recent-results chip strip dans Backtest | — |
 
 ---
 
@@ -138,7 +143,7 @@
 ### 🚀 Déploiement
 - [ ] **Hébergement** — pas de target choisie (Vercel / Cloudflare Pages / self-hosted ?). Le `dist/` est statique, n'importe quel CDN suffit.
 - [ ] **Domaine + HTTPS** — à acheter + configurer.
-- [ ] **CI/CD** — pas de GitHub Actions / GitLab pipeline en place. Aujourd'hui le déploiement = manuel `npm run build` + upload `dist/`.
+- [x] ~~**CI**~~ ✅ `.github/workflows/ci.yml` — lint + type-check + test + build sur push/PR. Reste à câbler le **CD** (déploiement auto vers le host à choisir).
 - [ ] **Monitoring / logs** — pas de Sentry / DataDog / OpenTelemetry. Si ça crashe en prod, on ne le sait pas.
 - [ ] **Analytics** — pas de Plausible / PostHog. On ne sait pas qui utilise quoi.
 
@@ -158,15 +163,15 @@
 
 ### 📜 Légal & conformité
 - [ ] **CGU / Privacy Policy** — obligatoires en EU (RGPD).
-- [ ] **Disclaimer "not financial advice"** — visible sur chaque écran qui montre des décisions AI.
+- [x] ~~**Disclaimer "PAPER TRADING"**~~ ✅ Badge always-on dans le TopBar (chip jaune). Reste à ajouter le disclaimer "not financial advice" textuel sur les écrans qui montrent des décisions AI.
 - [ ] **Cookie consent** — si on ajoute analytics.
 - [ ] **Clause exonératoire** — couvrir les pertes de l'utilisateur si Trader devient réel.
 
 ### 📚 Documentation utilisateur
-- [ ] **README.md** — actuellement le template Vite par défaut. À refaire complètement.
-- [ ] **Quickstart** — comment lancer l'app, où mettre les clés API, comment ajouter un instrument.
+- [x] ~~**README.md**~~ ✅ Refait — overview, asset coverage, getting-started, scripts, architecture ASCII, repo layout, disclaimer.
+- [x] ~~**Quickstart**~~ ✅ Inclus dans README (`npm install` → `npm run dev` + section optional .env keys).
+- [x] ~~**Architecture diagram**~~ ✅ ASCII dans README ("Architecture in 30 seconds").
 - [ ] **Glossaire** — Donchian, Bollinger, Sentinel, etc. — pour utilisateurs non-traders.
-- [ ] **Architecture diagram** — comment les données traversent le pipeline.
 
 ### 🧪 Tests manquants
 - [ ] **E2E tests** — actuellement zero. Playwright ou Cypress pour valider les flows complets (run backtest → view on chart → markers visible).
@@ -207,18 +212,18 @@
 
 ---
 
-## 📊 Stats live du repo (snapshot 2026-04-25)
+## 📊 Stats live du repo (snapshot 2026-04-26)
 
 | Métrique | Valeur |
 |---|---|
-| Tests | **920 / 920 verts** |
-| Test files | **93** |
+| Tests | **938 / 938 verts** |
+| Test files | **94** |
 | Type-check | ✅ clean |
-| Build | ✅ clean (~3s) |
-| Bundle principal | 248 KB (gz 79 KB) |
+| Build | ✅ clean (~1-3s) |
+| Bundle principal | 252 KB (gz 80 KB) |
 | Plus gros chunk | TradingViewChart 181 KB (gz 58 KB) |
 | Branche actuelle | `ai-schemas-and-audit` |
-| Commits sur la journée | **15+** features + docs, tout pushé |
+| Commits cumulés sur 2 jours | **20+** features + docs, tout pushé, CI verte |
 
 ---
 
