@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useChainStore } from '@/store/chain'
 import { colors, fonts, radius, btnSmall } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
+import { NotFinancialAdviceBanner } from '@/ui/components/NotFinancialAdviceBanner'
 
 // ─── TRADER SCREEN ──────────────────────────────────────────
 // Dedicated view for the execution bot: portfolio, positions (open +
@@ -103,6 +104,7 @@ export const Trader = () => {
           </span>
         }
       />
+      <NotFinancialAdviceBanner context="Simulated fills only — no real broker is connected." />
       <div
         style={{
           padding: '14px 20px',

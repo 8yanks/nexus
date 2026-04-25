@@ -3,6 +3,7 @@ import { useChainStore } from '@/store/chain'
 import { DEFAULT_SENTINEL_RULES } from '@/sentinel/rules'
 import { colors, fonts, radius, btnSmall } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
+import { NotFinancialAdviceBanner } from '@/ui/components/NotFinancialAdviceBanner'
 
 // ─── SENTINEL SCREEN ────────────────────────────────────────
 // Dedicated view for the risk-guardrail bot: rules, safe mode, review
@@ -110,6 +111,7 @@ export const Sentinel = () => {
           </label>
         }
       />
+      <NotFinancialAdviceBanner context="Veto rules are heuristic guard-rails, not a guarantee against loss." />
       <div
         style={{
           padding: '14px 20px',

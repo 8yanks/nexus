@@ -48,6 +48,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Bundle size budget
+        # Catches accidental regressions where a heavy import sneaks
+        # into the entry chunk. Budgets are intentionally generous —
+        # this is meant to catch 10-15% bloats, not micro-optimize.
+        run: npm run check:budget
+
       - name: Upload dist artifact
         uses: actions/upload-artifact@v5
         with:

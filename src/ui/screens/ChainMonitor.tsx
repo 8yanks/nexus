@@ -13,6 +13,7 @@ import {
 } from '@/ui/audit-filter'
 import { colors, fonts, radius, btnSecondary, btnSmall } from '@/ui/theme'
 import { ScreenHeader } from '@/ui/components/ScreenHeader'
+import { NotFinancialAdviceBanner } from '@/ui/components/NotFinancialAdviceBanner'
 import {
   decisionsToCSV,
   vetosToCSV,
@@ -233,6 +234,7 @@ export const ChainMonitor = () => {
         }
         settingsTitle="Settings — Chain Monitor"
       />
+      <NotFinancialAdviceBanner context="AI decisions may be miscalibrated. Audit each one before acting." />
       <div
         style={{
           padding: '14px 20px',
