@@ -24,6 +24,11 @@ const BB_TOGGLE_KEY = 'nexus_detail_bb_overlay'
 // slot so the two overlays can be enabled/disabled without dragging
 // each other along.
 const DC_TOGGLE_KEY = 'nexus_detail_dc_overlay'
+// Backtest trade markers toggle — only meaningful when the store
+// holds a backtest result for the selected instrument. The pill
+// renders conditionally; when there's no result the toggle is hidden
+// entirely (showing it disabled would just be visual noise).
+const BT_TOGGLE_KEY = 'nexus_detail_bt_overlay'
 
 const loadOverlayToggle = (key: string): boolean => {
   if (typeof window === 'undefined') return false
@@ -68,6 +73,11 @@ export const Detail = () => {
   const setScreen = useMarketStore((s) => s.setScreen)
   const selectedTimeframe = useMarketStore((s) => s.selectedTimeframe)
   const setTimeframe = useMarketStore((s) => s.setTimeframe)
+  // Backtest results map — read the slice (stable reference) and
+  // resolve the per-instrument entry below so we don't trigger zustand
+  // re-renders on unrelated instrument runs.
+  const backtestResultsMap = useMarketStore((s) => s.backtestResults)
+  const backtestResult = instrumentId ? backtestResultsMap[instrumentId] : undefined
 
   const inst = instruments.find((i) => i.id === instrumentId)
   const snap = instrumentId ? snapshots[instrumentId] : undefined
@@ -89,6 +99,12 @@ export const Detail = () => {
   // sit side-by-side in the chart toolbar.
   const [showDC, setShowDC] = useState<boolean>(() => loadOverlayToggle(DC_TOGGLE_KEY))
   useEffect(() => saveOverlayToggle(DC_TOGGLE_KEY, showDC), [showDC])
+  // Backtest trade markers — opt-in toggle, persisted so a user who
+  // cares about strategy validation keeps the markers across sessions.
+  // The pill below only renders when `backtestResult` is non-null for
+  // the selected instrument.
+  const [showBT, setShowBT] = useState<boolean>(() => loadOverlayToggle(BT_TOGGLE_KEY))
+  useEffect(() => saveOverlayToggle(BT_TOGGLE_KEY, showBT), [showBT])
 
   if (!inst || !snap) {
     return (
@@ -280,6 +296,34 @@ export const Detail = () => {
                 >
                   DC
                 </button>
+                {/* Backtest markers — only meaningful when a result
+                    exists in the store for this instrument. Hidden
+                    entirely otherwise to avoid a "what does this do?"
+                    pill that does nothing. */}
+                {backtestResult && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBT((v) => !v)}
+                    aria-pressed={showBT}
+                    title={showBT
+                      ? `Hide backtest markers (${backtestResult.trades.length} trades)`
+                      : `Show backtest markers (${backtestResult.trades.length} trades)`}
+                    data-testid="detail-bt-toggle"
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: 10,
+                      fontFamily: fonts.mono,
+                      border: `1px solid ${showBT ? colors.green : colors.border}`,
+                      borderRadius: 3,
+                      background: showBT ? `${colors.green}20` : `${colors.bg}b0`,
+                      color: showBT ? colors.green : colors.textMuted,
+                      cursor: 'pointer',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    BT {backtestResult.trades.length}
+                  </button>
+                )}
               </div>
               <TradingViewChart
                 candles={chartCandles}
@@ -288,6 +332,7 @@ export const Detail = () => {
                 markers={instSignals}
                 bollinger={showBB ? { period: 20, stdDev: 2 } : null}
                 donchian={showDC ? { period: 20 } : null}
+                tradeMarkers={showBT && backtestResult ? backtestResult.trades : []}
               />
             </>
           ) : (

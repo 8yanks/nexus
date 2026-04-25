@@ -13,6 +13,7 @@ import type { VolatilityResult } from '@/analytics/volatility'
 import type { ReadinessResult } from '@/quality/readiness'
 import type { CorrelationMatrix } from '@/analytics/correlation'
 import type { DetectedPattern } from '@/analytics/patterns'
+import type { BacktestResult } from '@/backtest/types'
 
 import { INSTRUMENTS } from '@/providers/registry'
 import { createRegistry } from '@/providers/registry'
@@ -81,6 +82,15 @@ export interface MarketStore {
   readiness: ReadinessResult | null
   correlation: CorrelationMatrix | null
   patterns: Record<string, DetectedPattern[]>
+  /**
+   * Per-instrument backtest results. Populated by the Backtest screen
+   * after a run completes; consumed by the Detail screen's chart so
+   * trade entry/exit markers can be overlaid on the live candles for
+   * the same instrument. Keyed by `instrumentId` — only the most
+   * recent run per instrument is kept (a fresh run on the same
+   * instrument overwrites the previous result).
+   */
+  backtestResults: Record<string, BacktestResult>
 
   // UI state
   screen: Screen
@@ -109,6 +119,13 @@ export interface MarketStore {
   /** Set the active chart timeframe + persist + trigger an immediate
    *  refresh so the new TF lands in the chart on the next tick. */
   setTimeframe: (tf: Timeframe) => void
+  /** Save the most recent backtest result for an instrument so the
+   *  Detail screen can surface its trade markers on the live chart.
+   *  Replaces any prior result for the same instrument. */
+  setBacktestResult: (result: BacktestResult) => void
+  /** Drop the saved backtest result for one instrument. Pass no arg
+   *  to clear all of them (used by Backtest's Reset button). */
+  clearBacktestResult: (instrumentId?: string) => void
   connectProviders: () => Promise<void>
   refreshAll: () => Promise<void>
   startAutoRefresh: (intervalMs?: number) => void
@@ -160,6 +177,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   readiness: null,
   correlation: null,
   patterns: {},
+  backtestResults: {},
   screen: _initialScreen,
   selectedInstrumentId: _initialSelectedInstrumentId,
   selectedTimeframe: _initialTimeframe,
@@ -208,6 +226,28 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
     // (a button click handler) shouldn't block on a network round-trip.
     void get().refreshAll()
   },
+
+  // ── Backtest results ────────────────────────────────────
+  // Lifted from Backtest.tsx local state so the Detail screen can
+  // surface the trade markers on the live chart for the same
+  // instrument. Storage is in-memory only — backtests are cheap to
+  // re-run and persisting MB-scale results to localStorage would push
+  // up against quota fast.
+  setBacktestResult: (result) =>
+    set((s) => ({
+      backtestResults: {
+        ...s.backtestResults,
+        [result.config.instrumentId]: result,
+      },
+    })),
+
+  clearBacktestResult: (instrumentId) =>
+    set((s) => {
+      if (instrumentId == null) return { backtestResults: {} }
+      const next = { ...s.backtestResults }
+      delete next[instrumentId]
+      return { backtestResults: next }
+    }),
 
   // ── Connect live providers ─────────────────────────────
   // Each exchange connects independently — a Coinbase outage doesn't

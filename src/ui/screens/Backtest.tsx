@@ -393,6 +393,12 @@ const TradeTable = ({ result }: { result: BacktestResult }) => {
 
 export const Backtest = () => {
   const candleMap = useMarketStore((s) => s.candles)
+  // Push results into the store after every successful run so the
+  // Detail screen can overlay the trade markers on the live chart for
+  // the same instrument. Local state mirrors the store result for the
+  // results panel — this keeps the existing render path untouched.
+  const setBacktestResult = useMarketStore((s) => s.setBacktestResult)
+  const clearBacktestResult = useMarketStore((s) => s.clearBacktestResult)
   const [config, setConfig] = useState<BacktestConfig>({ ...DEFAULT_CONFIG })
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [running, setRunning] = useState(false)
@@ -406,11 +412,16 @@ export const Backtest = () => {
     setTimeout(() => {
       const res = runBacktest(series, config)
       setResult(res)
+      setBacktestResult(res)
       setRunning(false)
     }, 0)
   }
 
   const handleReset = () => {
+    // Clear only the result for the currently-configured instrument —
+    // a Reset shouldn't wipe results for OTHER instruments the user
+    // backtested earlier in the same session.
+    clearBacktestResult(config.instrumentId)
     setConfig({ ...DEFAULT_CONFIG })
     setResult(null)
   }

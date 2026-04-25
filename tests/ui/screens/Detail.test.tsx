@@ -4,6 +4,7 @@ import { Detail } from '@/ui/screens/Detail'
 import { useMarketStore } from '@/store/market'
 import { TIMEFRAME_STORAGE_KEY } from '@/ui/timeframe-memory'
 import type { CandleSeries, MarketSnapshot, OHLCV } from '@/types'
+import type { BacktestResult } from '@/backtest/types'
 
 const snap = (id: string, over: Partial<MarketSnapshot> = {}): MarketSnapshot => ({
   instrumentId: id,
@@ -72,17 +73,57 @@ beforeEach(() => {
     snapshots: {},
     candles: {},
     selectedTimeframe: '1h',
+    backtestResults: {},
   })
-  // Detail persists the BB / DC toggles + timeframe to localStorage —
-  // clear between tests so state from one test doesn't leak into the
-  // next.
+  // Detail persists the BB / DC / BT toggles + timeframe to
+  // localStorage — clear between tests so state from one test doesn't
+  // leak into the next.
   try {
     window.localStorage.removeItem('nexus_detail_bb_overlay')
     window.localStorage.removeItem('nexus_detail_dc_overlay')
+    window.localStorage.removeItem('nexus_detail_bt_overlay')
     window.localStorage.removeItem(TIMEFRAME_STORAGE_KEY)
   } catch {
     /* storage disabled */
   }
+})
+
+const mkBacktestResult = (instrumentId: string, tradeCount = 2): BacktestResult => ({
+  config: {
+    instrumentId,
+    initialCapital: 10_000,
+    riskPerTrade: 0.02,
+    entrySignals: ['rsi_oversold'],
+    exitRules: { takeProfitR: 2, stopLossR: 1, maxBars: 50 },
+    slippage: 0,
+    commission: 0.001,
+  },
+  trades: Array.from({ length: tradeCount }, (_, i) => ({
+    id: i,
+    direction: 'long',
+    entryIndex: i,
+    entryPrice: 100,
+    entryTimestamp: new Date(Date.UTC(2026, 3, 19, i)).toISOString(),
+    entrySignal: 'rsi_oversold',
+    exitIndex: i + 5,
+    exitPrice: 110,
+    exitTimestamp: new Date(Date.UTC(2026, 3, 19, i + 5)).toISOString(),
+    exitReason: 'take_profit',
+    pnl: 100, pnlPct: 0.1, commission: 0.2, bars: 5,
+    maxFavorable: 0.12, maxAdverse: 0.01,
+  })),
+  events: [], equity: [],
+  stats: {
+    totalTrades: tradeCount, winningTrades: tradeCount, losingTrades: 0, winRate: 1,
+    grossProfit: 100 * tradeCount, grossLoss: 0, netProfit: 100 * tradeCount,
+    profitFactor: Infinity, maxDrawdown: 0, maxDrawdownAmount: 0, sharpeRatio: 1,
+    avgWin: 100, avgLoss: 0, avgBars: 5, expectancy: 100,
+    totalCommission: 0.2 * tradeCount, finalEquity: 10_000 + 100 * tradeCount,
+    totalReturn: (100 * tradeCount) / 10_000,
+  },
+  startTimestamp: '2026-04-19T00:00:00Z',
+  endTimestamp: '2026-04-19T23:00:00Z',
+  candleCount: 200,
 })
 afterEach(() => cleanup())
 
@@ -229,6 +270,69 @@ describe('<Detail /> — Donchian Channels toggle', () => {
     fireEvent.click(screen.getByTestId('detail-dc-toggle'))
     expect(screen.getByTestId('detail-bb-toggle').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('detail-dc-toggle').getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('<Detail /> — backtest markers toggle', () => {
+  const seedWithCandles = () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      candles: { [inst.id]: mkCandles(inst.id) },
+    })
+    return inst
+  }
+
+  it('hides the BT toggle entirely when no backtest result exists for the instrument', () => {
+    seedWithCandles()
+    render(<Detail />)
+    expect(screen.queryByTestId('detail-bt-toggle')).not.toBeInTheDocument()
+  })
+
+  it('shows the BT toggle with trade count when a result is in the store', () => {
+    const inst = seedWithCandles()
+    useMarketStore.setState({
+      backtestResults: { [inst.id]: mkBacktestResult(inst.id, 4) },
+    })
+    render(<Detail />)
+    const btn = screen.getByTestId('detail-bt-toggle')
+    expect(btn).toBeInTheDocument()
+    expect(btn.textContent).toMatch(/BT 4/)
+  })
+
+  it('BT toggle starts unpressed', () => {
+    const inst = seedWithCandles()
+    useMarketStore.setState({
+      backtestResults: { [inst.id]: mkBacktestResult(inst.id) },
+    })
+    render(<Detail />)
+    expect(screen.getByTestId('detail-bt-toggle').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('clicking BT flips aria-pressed and persists the choice', () => {
+    const inst = seedWithCandles()
+    useMarketStore.setState({
+      backtestResults: { [inst.id]: mkBacktestResult(inst.id) },
+    })
+    render(<Detail />)
+    const btn = screen.getByTestId('detail-bt-toggle')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem('nexus_detail_bt_overlay')).toBe('1')
+  })
+
+  it('BT pill ONLY appears for the instrument that was backtested', () => {
+    const instA = useMarketStore.getState().instruments[0]!
+    const instB = useMarketStore.getState().instruments[1]!
+    useMarketStore.setState({
+      selectedInstrumentId: instB.id,           // currently viewing B
+      snapshots: { [instB.id]: snap(instB.id) },
+      candles: { [instB.id]: mkCandles(instB.id) },
+      backtestResults: { [instA.id]: mkBacktestResult(instA.id) }, // backtest only for A
+    })
+    render(<Detail />)
+    expect(screen.queryByTestId('detail-bt-toggle')).not.toBeInTheDocument()
   })
 })
 
