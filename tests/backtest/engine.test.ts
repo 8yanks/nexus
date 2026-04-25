@@ -24,27 +24,6 @@ const mkCandle = (
   _status: 'SIMULATED',
 })
 
-/** Build a trending series: starts at `start`, moves by `step` each bar */
-const buildTrend = (
-  start: number,
-  step: number,
-  count: number,
-): OHLCV[] => {
-  const candles: OHLCV[] = []
-  const baseTime = Date.now() - count * 3600000
-  for (let i = 0; i < count; i++) {
-    const price = start + step * i
-    candles.push(mkCandle(
-      price,
-      price + Math.abs(step) * 2,
-      price - Math.abs(step) * 2,
-      1000 + Math.random() * 500,
-      new Date(baseTime + i * 3600000).toISOString(),
-    ))
-  }
-  return candles
-}
-
 /** Build a sine-wave series for oscillating signals */
 const buildSineWave = (
   base: number,

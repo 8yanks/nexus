@@ -88,7 +88,7 @@ export const runBacktest = (
         position.lowWaterMark = Math.min(position.lowWaterMark, candle.low)
       }
 
-      const exitResult = checkExit(position, candle, config, i)
+      const exitResult = checkExit(position, candle, config)
       if (exitResult) {
         const trade = closeTrade(position, exitResult.price, exitResult.reason, candle.timestamp, i, candles, config)
         trades.push({ ...trade, id: ++tradeId })
@@ -239,7 +239,6 @@ const checkExit = (
   pos: OpenPosition,
   candle: OHLCV,
   config: BacktestConfig,
-  _index: number,
 ): { price: number; reason: TradeExitReason } | null => {
   if (pos.direction === 'long') {
     // Stop-loss

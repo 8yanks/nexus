@@ -62,8 +62,8 @@ const IndicatorRow = ({ ind }: { ind: MacroIndicator }) => {
 
 // ─── CALENDAR EVENT ROW ─────────────────────────────────────
 
-const CalendarRow = ({ event }: { event: MacroCalendarEvent }) => {
-  const isPast = new Date(event.scheduledAt).getTime() < Date.now()
+const CalendarRow = ({ event, nowMs }: { event: MacroCalendarEvent; nowMs: number }) => {
+  const isPast = new Date(event.scheduledAt).getTime() < nowMs
   const impactColor = event.impact === 'high' ? colors.red : event.impact === 'medium' ? colors.yellow : colors.textDim
   const surpriseColor = event.surprise != null
     ? event.surprise > 0 ? colors.green : event.surprise < 0 ? colors.red : colors.textDim
@@ -114,6 +114,17 @@ export const MacroPulse = () => {
   const [calendar, setCalendar] = useState<MacroCalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState<MacroCategory | 'all'>('all')
+  // Stable "now" reference for past/upcoming partitioning. Refreshed
+  // every 60s so a long-open MacroPulse session moves events from
+  // upcoming to past as their scheduled time passes. Calling
+  // Date.now() during render trips react-hooks/purity (and would
+  // also cause infinite-loop hazards if downstream effects depended
+  // on it), hence the hoist.
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(t)
+  }, [])
 
   useEffect(() => {
     const provider = createMockMacroProvider()
@@ -135,8 +146,8 @@ export const MacroPulse = () => {
   const dxy = indicators.find((i) => i.shortName === 'DXY')
   const nfp = indicators.find((i) => i.shortName === 'NFP')
 
-  const upcomingEvents = calendar.filter((e) => new Date(e.scheduledAt).getTime() > Date.now())
-  const pastEvents = calendar.filter((e) => new Date(e.scheduledAt).getTime() <= Date.now())
+  const upcomingEvents = calendar.filter((e) => new Date(e.scheduledAt).getTime() > nowMs)
+  const pastEvents = calendar.filter((e) => new Date(e.scheduledAt).getTime() <= nowMs)
 
   const filterBtn = (label: string, active: boolean, onClick: () => void) => (
     <button
@@ -255,7 +266,7 @@ export const MacroPulse = () => {
           </thead>
           <tbody>
             {[...pastEvents.slice(-3), ...upcomingEvents].map((ev) => (
-              <CalendarRow key={ev.id} event={ev} />
+              <CalendarRow key={ev.id} event={ev} nowMs={nowMs} />
             ))}
           </tbody>
         </table>

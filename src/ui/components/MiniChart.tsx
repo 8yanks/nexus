@@ -88,6 +88,12 @@ export const MiniChart = ({
 // - x is evenly spaced inside the inset; y is min→bottom, max→top
 // - flat input (min === max) draws a horizontal mid-line
 // - <2 samples returns "" (caller guards via the em-dash branch)
+//
+// Mixing a non-component export with a component export trips
+// react-refresh/only-export-components, but the helper-with-tests
+// pattern is a deliberate trade-off here — extracting to its own file
+// would obscure the colocation with the consumer.
+// eslint-disable-next-line react-refresh/only-export-components
 export const buildSparklinePath = (
   values: number[],
   width: number,

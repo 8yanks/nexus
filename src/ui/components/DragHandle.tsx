@@ -89,6 +89,11 @@ export const DragHandle = ({
   }
 
   return (
+    /* ARIA 1.2 considers separator with aria-valuenow as a focusable
+       splitter widget — equivalent to an HTML range input. The lint
+       rule treats it as non-interactive, hence the per-prop disables.
+       Keyboard handler IS wired (ArrowUp/Down). */
+    /* eslint-disable jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-noninteractive-element-interactions */
     <div
       role="separator"
       aria-orientation="horizontal"
@@ -133,4 +138,5 @@ export const DragHandle = ({
       </div>
     </div>
   )
+  /* eslint-enable jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-noninteractive-element-interactions */
 }

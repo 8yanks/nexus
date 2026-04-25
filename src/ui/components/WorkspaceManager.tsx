@@ -70,6 +70,9 @@ const WorkspaceRow = ({
         )}
         {renaming ? (
           <input
+            // Input mounts in response to "rename" click — focus belongs
+            // here, the rule's general warning doesn't apply.
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -227,6 +230,11 @@ export const WorkspaceManager = () => {
         {creating ? (
           <>
             <input
+              // Input is rendered as a direct response to the user
+              // clicking "rename" / "create new" — autoFocus is the
+              // expected UX. The rule's general warning doesn't apply
+              // when the input only mounts in response to user action.
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}

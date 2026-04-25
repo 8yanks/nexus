@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { executeSignal, clearPipelineLog, getPipelineLog, setDrawdown } from '../../apps/trader/src/pipeline'
 import { configureFreqtrade } from '../../apps/trader/src/freqtrade-bridge'
 import { clearPipelineEvents } from '../../apps/trader/src/signal-consumer'
-import { markHealthy, markDown, updateComponentHealth } from '@nexus/shared-infra'
+import { markHealthy, markDown } from '@nexus/shared-infra'
 import type { TradeSignal } from '../../apps/trader/src/types'
 
 // ─── HELPERS ──────────────────────────────────────────────

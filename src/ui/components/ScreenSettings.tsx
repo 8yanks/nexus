@@ -52,7 +52,6 @@ export const ScreenSettings = ({
   return (
     <section
       ref={rootRef}
-      role="region"
       aria-label={title}
       style={{
         padding: '14px 24px 16px',
