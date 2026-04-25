@@ -60,7 +60,7 @@ describe('PositionManager', () => {
     const p = pm.open(order(), decision())
     expect(p?.side).toBe('long')
     expect(p?.entryPrice).toBe(100)
-    expect(pm.open_().length).toBe(1)
+    expect(pm.listOpen().length).toBe(1)
   })
 
   it('opens a short position from a filled SELL order', () => {

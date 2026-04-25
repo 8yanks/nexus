@@ -166,11 +166,6 @@ export class PositionManager {
     return this.list().filter((p) => p.status === 'open')
   }
 
-  /** @deprecated use listOpen() */
-  open_(): Position[] {
-    return this.listOpen()
-  }
-
   /** Hydrate positions from persisted snapshots. Skips duplicates by id. */
   hydrate(positions: Position[]): void {
     for (const p of positions) if (!this.positions.has(p.id)) this.positions.set(p.id, p)
