@@ -1,5 +1,43 @@
 # Session notes
 
+## 2026-04-25 (cont. 7) — CSV export of backtest trades
+
+Pure additive QoL — once you've validated a strategy in Backtest, you
+can drop the trades into a spreadsheet for manual analysis without a
+manual copy-paste loop.
+
+### Shipped — `4075886` tradesToCSV + button in TradeTable header
+
+- `src/export/csv.ts`: `tradesToCSV(result)` — one row per trade with
+  every `BacktestTrade` column + the parent config's `instrumentId`
+  so multiple backtests can be joined downstream. Header-only file on
+  empty trades (still a valid spreadsheet).
+- `Backtest.tsx`: CSV button next to the "Trades (N)" title. Hidden
+  when `trades.length === 0` (matches the "view on chart" pattern).
+  Filename `nexus-backtest-{instrumentId}-{iso-ts}.csv` — multiple
+  exports for the same instrument don't clobber each other.
+
+### Status
+
+- Tests: **905/905** across 93 files (+8 — 6 tradesToCSV, 2 button).
+- Type-check + build clean.
+- Branch: `ai-schemas-and-audit`.
+
+Commits this session (newest first):
+- `4075886` feat(backtest): CSV export of trades
+- `745aaac` feat(backtest): "view on chart" button
+- `090dda3` feat(detail): timeframe keyboard shortcuts
+- `dddd3e0` feat(backtest): persist last-tuned config
+- `ac770f2` feat(detail): surface backtest trade markers on the live chart
+- `2caf96c` feat(chart): Donchian Channels overlay
+- `e063fa1` feat(providers): per-(id, tf) REST cache
+- `0c8951e` feat(chart): multi-timeframe picker
+- `4a1b878` feat(ws): heartbeat watchdog
+- `1b14e81` feat(chart): live-tick pulse indicator
+- `4ec153e` fix(chart): snap to real-time after setData
+
+---
+
 ## 2026-04-25 (cont. 6) — "View on chart" closes the Backtest→Detail loop
 
 Companion to the BT-markers-on-Detail shipping in `ac770f2`. The
