@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, FlaskConical } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import { useAnalytics } from '@/hooks/useAnalytics'
 import { StatusBadge } from '@/ui/components/StatusBadge'
@@ -15,6 +15,10 @@ import type { DetectedPattern } from '@/analytics/patterns'
 import { computePerformance, computeKeyStats } from '@/analytics/performance'
 import { VALID_TIMEFRAMES, type Timeframe } from '@/ui/timeframe-memory'
 import { timeframeShortcutFor } from '@/ui/keybinds'
+import {
+  initialBacktestConfig,
+  saveBacktestConfig,
+} from '@/backtest/config-memory'
 
 // localStorage key for the Bollinger Bands chart toggle. Persisted so a
 // user who turned bands on once doesn't have to re-toggle them on every
@@ -177,6 +181,38 @@ export const Detail = () => {
                 title={`Rolling 24h change from ${inst.exchange}. May differ from TradingView/Google because those show "since midnight" or aggregate exchanges.`}
               />
             </div>
+            {/* Reverse jump of the Backtest screen's "view on chart →"
+                button. Pre-flips the persisted Backtest config to point
+                at the current instrument BEFORE navigating, so when
+                Backtest mounts (lazy ScreenRouter swap → fresh mount)
+                it reads the new instrumentId from storage. The rest
+                of the user's tuned config (stop-loss, take-profit,
+                signals) carries over unchanged. */}
+            <button
+              type="button"
+              onClick={() => {
+                const cfg = initialBacktestConfig()
+                saveBacktestConfig({ ...cfg, instrumentId: inst.id })
+                setScreen('backtest')
+              }}
+              title={`Open Backtest preconfigured for ${inst.symbol}`}
+              data-testid="detail-go-to-backtest"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: 'none',
+                border: `1px solid ${colors.border}`,
+                cursor: 'pointer',
+                color: colors.accent,
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontFamily: fonts.sans,
+              }}
+            >
+              <FlaskConical size={13} /> backtest
+            </button>
             <button
               onClick={() => setScreen('dashboard')}
               title="Back to Dashboard (Esc)"

@@ -229,3 +229,66 @@ describe('<Backtest /> — view on chart navigation', () => {
     expect(screen.getByTestId('backtest-export-trades-csv')).toBeInTheDocument()
   })
 })
+
+// ─── Recent backtests bar — flip between stored runs ─────────────
+describe('<Backtest /> — recent results bar', () => {
+  const mkResult = (instrumentId: string, totalReturn = 0.05) => ({
+    config: { ...DEFAULT_CONFIG, instrumentId },
+    trades: [],
+    events: [],
+    equity: [],
+    stats: {
+      totalTrades: 1, winningTrades: 1, losingTrades: 0, winRate: 1,
+      grossProfit: 100, grossLoss: 0, netProfit: 100,
+      profitFactor: Infinity, maxDrawdown: 0, maxDrawdownAmount: 0,
+      sharpeRatio: 1, avgWin: 100, avgLoss: 0, avgBars: 5, expectancy: 100,
+      totalCommission: 0.2, finalEquity: 10_500, totalReturn,
+    },
+    startTimestamp: '', endTimestamp: '', candleCount: 60,
+  })
+
+  beforeEach(() => {
+    useMarketStore.setState({ backtestResults: {} })
+  })
+
+  it('does not render the recent-bar when 0 stored results', () => {
+    useMarketStore.setState({ backtestResults: {} })
+    render(<Backtest />)
+    expect(screen.queryByTestId('backtest-recent-bar')).not.toBeInTheDocument()
+  })
+
+  it('does not render the recent-bar when only 1 stored result (no value)', () => {
+    useMarketStore.setState({
+      backtestResults: { 'BTC-USD-SPOT': mkResult('BTC-USD-SPOT') },
+    })
+    render(<Backtest />)
+    expect(screen.queryByTestId('backtest-recent-bar')).not.toBeInTheDocument()
+  })
+
+  it('renders one chip per stored result when there are >= 2', () => {
+    useMarketStore.setState({
+      backtestResults: {
+        'BTC-USD-SPOT': mkResult('BTC-USD-SPOT'),
+        'ETH-USD-SPOT': mkResult('ETH-USD-SPOT'),
+      },
+    })
+    render(<Backtest />)
+    expect(screen.getByTestId('backtest-recent-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('backtest-recent-chip-BTC-USD-SPOT')).toBeInTheDocument()
+    expect(screen.getByTestId('backtest-recent-chip-ETH-USD-SPOT')).toBeInTheDocument()
+  })
+
+  it('shows return % per chip with sign', () => {
+    useMarketStore.setState({
+      backtestResults: {
+        'BTC-USD-SPOT': mkResult('BTC-USD-SPOT', 0.07),
+        'ETH-USD-SPOT': mkResult('ETH-USD-SPOT', -0.03),
+      },
+    })
+    render(<Backtest />)
+    const btc = screen.getByTestId('backtest-recent-chip-BTC-USD-SPOT')
+    const eth = screen.getByTestId('backtest-recent-chip-ETH-USD-SPOT')
+    expect(btc.textContent).toMatch(/\+7\.0%/)
+    expect(eth.textContent).toMatch(/-3\.0%/)
+  })
+})

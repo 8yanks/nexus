@@ -150,6 +150,25 @@ describe('<Detail />', () => {
     fireEvent.click(screen.getByTitle(/Back to Dashboard/i))
     expect(useMarketStore.getState().screen).toBe('dashboard')
   })
+
+  it('"backtest" button routes to Backtest with the current instrument pre-loaded', () => {
+    const inst = useMarketStore.getState().instruments[0]!
+    useMarketStore.setState({
+      selectedInstrumentId: inst.id,
+      snapshots: { [inst.id]: snap(inst.id) },
+      screen: 'detail',
+    })
+    // Clear any pre-existing persisted Backtest config so we can
+    // assert what the click writes to storage.
+    window.localStorage.removeItem('nexus.backtest-config.v1')
+    render(<Detail />)
+    fireEvent.click(screen.getByTestId('detail-go-to-backtest'))
+    expect(useMarketStore.getState().screen).toBe('backtest')
+    const persisted = JSON.parse(
+      window.localStorage.getItem('nexus.backtest-config.v1')!,
+    )
+    expect(persisted.instrumentId).toBe(inst.id)
+  })
 })
 
 describe('<Detail /> — Bollinger Bands toggle', () => {

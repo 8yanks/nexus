@@ -225,6 +225,81 @@ const ConfigPanel = ({
   )
 }
 
+// ─── RECENT RESULTS BAR ─────────────────────────────────────
+//
+// Horizontal chip strip showing every instrument that has a stored
+// backtest result in the store. Clicking a chip flips the displayed
+// result to that one — no re-run needed. The active chip (matching
+// the currently-displayed `current.config.instrumentId`) is
+// highlighted in accent color.
+//
+// Hidden entirely when there's at most one stored result — no value
+// in showing a single chip the user can already see in the panel
+// below.
+
+const RecentResultsBar = ({
+  current,
+  onPick,
+}: {
+  current: BacktestResult | null
+  onPick: (r: BacktestResult) => void
+}) => {
+  const stored = useMarketStore((s) => s.backtestResults)
+  const entries = Object.entries(stored)
+  if (entries.length <= 1) return null
+  const activeId = current?.config.instrumentId
+  return (
+    <div
+      data-testid="backtest-recent-bar"
+      style={{
+        ...card,
+        padding: '8px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+      }}
+    >
+      <span style={{ fontSize: 10, fontFamily: fonts.mono, color: colors.textMuted, letterSpacing: '0.06em' }}>
+        RECENT BACKTESTS
+      </span>
+      {entries.map(([id, r]) => {
+        const active = id === activeId
+        const pos = r.stats.totalReturn >= 0
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onPick(r)}
+            aria-pressed={active}
+            data-testid={`backtest-recent-chip-${id}`}
+            title={`${id} — ${r.trades.length} trades, ${(r.stats.totalReturn * 100).toFixed(1)}% return`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              fontSize: 11,
+              fontFamily: fonts.mono,
+              border: `1px solid ${active ? colors.accent : colors.border}`,
+              borderRadius: 3,
+              background: active ? `${colors.accent}20` : 'transparent',
+              color: active ? colors.accent : colors.textSecondary,
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            <span>{id}</span>
+            <span style={{ color: pos ? colors.green : colors.red, fontSize: 10 }}>
+              {pos ? '+' : ''}{(r.stats.totalReturn * 100).toFixed(1)}%
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── RESULTS PANEL ──────────────────────────────────────────
 // Storage key the Detail screen reads to decide whether the BT pill
 // starts ON. Forced to '1' from the "View on chart" handler so the
@@ -565,6 +640,10 @@ export const Backtest = () => {
 
         {/* Right: Results */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <RecentResultsBar
+            current={result}
+            onPick={(r) => setResult(r)}
+          />
           {result ? (
             <>
               <ResultsPanel result={result} />
