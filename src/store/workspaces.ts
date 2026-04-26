@@ -24,6 +24,12 @@ import {
   THEME_STORAGE_KEY,
   DENSITY_STORAGE_KEY,
 } from '@/ui/prefs'
+import {
+  exportWorkspacesAsJson,
+  importWorkspaces,
+  mergeWorkspaces,
+  type ImportResult,
+} from '@/store/workspaces-export'
 
 export const WORKSPACES_STORAGE_KEY = 'nexus.workspaces.v1'
 
@@ -122,6 +128,15 @@ export interface WorkspacesStore {
    * reload the page so theme.ts re-resolves. Returns false if id unknown.
    */
   applyWorkspace: (id: string) => boolean
+  /** Serialise all workspaces to a sharable JSON string (versioned bundle). */
+  exportAllAsJson: () => string
+  /**
+   * Import workspaces from a JSON bundle. Returns the parse result so
+   * the UI can surface the error message; on success, the new entries
+   * are MERGED with the existing list (id collisions keep the existing
+   * entry — caller can delete first to truly replace).
+   */
+  importFromJson: (json: string) => ImportResult
 }
 
 const initial = loadPersisted()
@@ -165,6 +180,18 @@ export const useWorkspacesStore = create<WorkspacesStore>((set, get) => ({
     const next: PersistedShape = { workspaces, activeId }
     savePersisted(next)
     set({ workspaces, activeId })
+  },
+
+  exportAllAsJson: () => exportWorkspacesAsJson(get().workspaces),
+
+  importFromJson: (json) => {
+    const result = importWorkspaces(json)
+    if (!result.ok) return result
+    const workspaces = mergeWorkspaces(get().workspaces, result.workspaces)
+    const next: PersistedShape = { workspaces, activeId: get().activeId }
+    savePersisted(next)
+    set({ workspaces })
+    return result
   },
 
   applyWorkspace: (id) => {

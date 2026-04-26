@@ -10,7 +10,7 @@
 // to the snapshot) — the UI here just iterates the field set.
 
 import { useState } from 'react'
-import { Plus, Check, Trash2, Edit3 } from 'lucide-react'
+import { Plus, Check, Trash2, Edit3, Download, Upload } from 'lucide-react'
 import {
   useWorkspacesStore,
   type Workspace,
@@ -170,9 +170,49 @@ export const WorkspaceManager = () => {
   const renameWorkspace = useWorkspacesStore((s) => s.renameWorkspace)
   const deleteWorkspace = useWorkspacesStore((s) => s.deleteWorkspace)
   const applyWorkspace = useWorkspacesStore((s) => s.applyWorkspace)
+  const exportAllAsJson = useWorkspacesStore((s) => s.exportAllAsJson)
+  const importFromJson = useWorkspacesStore((s) => s.importFromJson)
 
   const [creating, setCreating] = useState(false)
   const [draftName, setDraftName] = useState('')
+  const [importStatus, setImportStatus] = useState<{ kind: 'idle' } | { kind: 'ok'; count: number } | { kind: 'err'; msg: string }>({ kind: 'idle' })
+
+  const handleExport = () => {
+    if (typeof window === 'undefined') return
+    const json = exportAllAsJson()
+    try {
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nexus-workspaces-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      /* download blocked — user can copy from devtools */
+    }
+  }
+
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = String(reader.result ?? '')
+      const before = useWorkspacesStore.getState().workspaces.length
+      const result = importFromJson(text)
+      if (result.ok) {
+        const after = useWorkspacesStore.getState().workspaces.length
+        setImportStatus({ kind: 'ok', count: after - before })
+      } else {
+        setImportStatus({ kind: 'err', msg: result.error })
+      }
+      setTimeout(() => setImportStatus({ kind: 'idle' }), 4_000)
+    }
+    reader.onerror = () => {
+      setImportStatus({ kind: 'err', msg: 'Could not read the file.' })
+      setTimeout(() => setImportStatus({ kind: 'idle' }), 4_000)
+    }
+    reader.readAsText(file)
+  }
 
   const commitCreate = () => {
     const name = draftName.trim()
@@ -289,6 +329,70 @@ export const WorkspaceManager = () => {
           </button>
         )}
       </div>
+
+      {/* Export / Import — share workspaces across machines or with
+          teammates. Hidden when no workspaces exist (export nothing
+          + import-into-empty are both edge cases that rarely matter). */}
+      {workspaces.length > 0 && (
+        <div
+          style={{
+            marginTop: 16,
+            paddingTop: 12,
+            borderTop: `1px solid ${colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+          data-testid="workspace-share-row"
+        >
+          <button
+            type="button"
+            onClick={handleExport}
+            data-testid="workspace-export"
+            style={{ ...btnSecondary, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Download size={13} />
+            Export all
+          </button>
+          <label
+            style={{ ...btnSecondary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          >
+            <Upload size={13} />
+            Import…
+            <input
+              type="file"
+              accept="application/json,.json"
+              data-testid="workspace-import-input"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleImportFile(file)
+                // Reset input so picking the SAME file twice still
+                // triggers onChange (browsers debounce on identical paths).
+                e.target.value = ''
+              }}
+              style={{ display: 'none' }}
+            />
+          </label>
+          {importStatus.kind === 'ok' && (
+            <span
+              data-testid="workspace-import-status"
+              style={{ fontSize: 11, color: colors.green, fontFamily: fonts.mono }}
+            >
+              ✓ {importStatus.count} workspace{importStatus.count !== 1 ? 's' : ''} added
+            </span>
+          )}
+          {importStatus.kind === 'err' && (
+            <span
+              data-testid="workspace-import-status"
+              role="alert"
+              style={{ fontSize: 11, color: colors.red, fontFamily: fonts.mono }}
+            >
+              ✗ {importStatus.msg}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
