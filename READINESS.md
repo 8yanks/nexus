@@ -166,8 +166,8 @@
 - [x] ~~**CGU / Privacy / Disclaimer**~~ 🟡 Brouillons drafted dans `legal/` (TERMS.md, PRIVACY.md, DISCLAIMER.md, README.md). **À FAIRE RELIRE PAR UN AVOCAT** spécialisé droit numérique + financier avant publication.
 - [x] ~~**Disclaimer "PAPER TRADING"**~~ ✅ Badge always-on dans le TopBar (chip jaune).
 - [x] ~~**Disclaimer "not financial advice"**~~ ✅ `NotFinancialAdviceBanner` mounted sur ChainMonitor / Trader / Sentinel avec context-string adapté à chaque écran.
-- [ ] **Intégrer les docs légaux dans l'app** — créer un écran "Légal" qui affiche TERMS/PRIVACY/DISCLAIMER, ajouter une étape de consentement explicite avant mise en service publique.
-- [ ] **Cookie consent** — si on ajoute analytics.
+- [x] ~~**Intégrer les docs légaux dans l'app**~~ ✅ Écran `Legal` (catégorie System) avec 3 onglets Disclaimer / CGU / Privacy. Chaque tab ouvre sur un notice "BROUILLON — NON OPPOSABLE". Reste à ajouter une étape de consentement explicite avant mise en service publique (au-delà de juste afficher).
+- [x] ~~**Cookie consent**~~ ✅ `<CookieConsent />` mounté dans App.tsx — banner RGPD-friendly avec 3 états (unset/accepted/declined) + `onConsentChange` API pour brancher Plausible/PostHog/Sentry plus tard. Aujourd'hui dormant (no analytics shipped).
 - [ ] **Clause exonératoire trading réel** — couverte par `legal/DISCLAIMER.md` section 5, mais à durcir si passage en réel.
 
 ### 📚 Documentation utilisateur
@@ -177,7 +177,7 @@
 - [x] ~~**Glossaire**~~ ✅ `GLOSSARY.md` — RSI, EMA, BB, DC, patterns, AI orchestrator, sentinel veto, backtest stats, providers, UI bits, lectures conseillées. En FR pour non-traders.
 
 ### 🧪 Tests manquants
-- [x] ~~**E2E tests baseline**~~ ✅ Playwright installé, 4 smoke specs (`e2e/smoke.spec.ts`), CI job `e2e` (push to main only — skip sur PR pour vélocité). Reste à étendre la couverture vers les flows métier (backtest run → markers, AI decision → audit drilldown).
+- [x] ~~**E2E tests baseline**~~ ✅ Playwright installé, **7 specs** (4 smoke + 3 backtest flow), CI job `e2e` (push to main only — skip sur PR pour vélocité). Reste à étendre vers AI decision → audit drilldown.
 - [ ] **Visual regression** — un Percy / Chromatic pour catcher les régressions UI.
 - [ ] **Tests d'accessibilité** — axe-core en CI.
 - [ ] **Performance budgets** — fixer un max-bundle-size en CI (TradingViewChart à 181 KB pourrait grossir).
@@ -221,16 +221,16 @@
 
 | Métrique | Valeur |
 |---|---|
-| Tests (unit + integration) | **956 / 956 verts** |
-| Test files | **97** |
-| Tests E2E | **4 specs Playwright** (smoke baseline) |
+| Tests (unit + integration) | **997 / 997 verts** |
+| Test files | **101** |
+| Tests E2E | **7 specs Playwright** (smoke + backtest flow) |
 | Type-check | ✅ clean |
 | Build | ✅ clean (~1-3s) |
-| Bundle principal | **235 KB** (gz 75 KB) — réduit via manualChunks |
+| Bundle principal | **238 KB** (gz 76 KB) — voir `PERFORMANCE.md` pour le détail |
 | Plus gros chunk | TradingViewChart 181 KB (gz 58 KB) |
 | Branche actuelle | `ai-schemas-and-audit` |
 | Commits cumulés sur 2 jours | **30+** features + docs + chores, tout pushé, lint vert (0 errors) |
-| Pre-launch docs | `READINESS.md` (cette page) · `HOSTING.md` · `GLOSSARY.md` · `README.md` · `NOTES.md` · `legal/{TERMS,PRIVACY,DISCLAIMER,README}.md` |
+| Pre-launch docs | `READINESS.md` (cette page) · `HOSTING.md` · `GLOSSARY.md` · `PERFORMANCE.md` · `README.md` · `NOTES.md` · `legal/{TERMS,PRIVACY,DISCLAIMER,README}.md` |
 
 ---
 

@@ -1,5 +1,64 @@
 # Session notes
 
+## 2026-04-26 (cont. 5) — Legal screen + cookie consent + workspaces export + perf doc
+
+User: "travail au maximum de tes capacité car mes credits se reset
+demain". Quatre ships en rafale qui ferment de vrais items
+production-readiness.
+
+### Shipped — `83f833b` Legal screen + Cookie consent + E2E backtest
+
+1. **Legal screen** (`src/ui/screens/Legal.tsx`) — surface in-app pour
+   les placeholder docs `legal/*.md`. 3 onglets (Disclaimer / CGU /
+   Privacy), notice "BROUILLON — NON OPPOSABLE" sur chaque tab. Wired
+   dans Screen union, screen-memory validator, App router, Sidebar
+   (FileText icon), TopBar title, et catégorie System du nav.
+2. **Cookie consent** (`src/ui/consent.ts` + `CookieConsent.tsx`) —
+   store RGPD avec 3 états (unset/accepted/declined), API
+   `onConsentChange`. Banner monté global dans App.tsx, n'apparaît que
+   quand state==='unset'. Buttons visuellement équivalents (no dark
+   patterns, conformité CNIL).
+3. **E2E backtest flow** (`e2e/backtest-flow.spec.ts`) — 3 tests
+   parsing-validés: backtest screen loads, run produces stats, "view
+   on chart" jumps to Detail.
+
+26 tests + 3 E2E specs ajoutés.
+
+### Shipped — `8b1aa5d` Workspace export/import + PERFORMANCE.md
+
+1. **Workspace export/import** — partage de setups tunés.
+   - `workspaces-export.ts`: bundle versionné `nexus.workspaces.export`
+     v1, validator strict (rejette malformed/wrong-schema/future-version
+     /bad-shape/unknown-enum). Merge keeps existing on id collision.
+   - Store actions `exportAllAsJson()` + `importFromJson(json)`.
+   - WorkspaceManager UI: row Export/Import au bas, hidden si 0
+     workspaces. Status ✓/✗ pendant 4s.
+   - 16 tests sur les primitives.
+2. **PERFORMANCE.md** — audit doc avec table bundles, budgets,
+   optimisations en place, ce qui reste, workflow Lighthouse + Web
+   Vitals. Mis à jour à chaque session via `npm run check:budget`.
+
+### Status
+
+- Tests: **997 / 997** unit/integration across **101 fichiers** (+41
+  vs début segment).
+- E2E: **7 specs** Playwright (4 smoke + 3 backtest).
+- Type-check + build clean. **40 bundles** within budget.
+- Branch: `ai-schemas-and-audit`.
+
+### READINESS.md updates
+
+Marqués completed: Legal screen integration, cookie consent, E2E
+extension. Stats refreshed (997/101/238 KB/7 e2e). PERFORMANCE.md
+ajouté à la liste pre-launch docs.
+
+Commits this segment (newest first):
+- `8b1aa5d` feat(workspaces+perf): export/import + PERFORMANCE.md
+- `83f833b` feat(legal+consent+e2e): Legal screen + cookie consent +
+  backtest E2E
+
+---
+
 ## 2026-04-26 (cont. 4) — ErrorBoundary + code-split + legal drafts + Playwright
 
 User: "alors on reprend… continue solo". Quatre ships qui ferment
