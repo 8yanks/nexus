@@ -1,5 +1,46 @@
 # Session notes
 
+## 2026-04-26 (cont. 3) — Service worker + .env.example refresh
+
+User: continuing the loop. Two final small ships closing the
+"performance & scaling" + "documentation" tail of READINESS.md.
+
+### Shipped — `e89f64a` Hand-rolled service worker
+
+`public/sw.js` + production-only registration in `main.tsx`.
+Stale-while-revalidate cache for same-origin GET requests:
+- First load: nothing cached, network as usual.
+- Subsequent loads: serve from cache instantly, fetch fresh in
+  background to update next time.
+- Offline: cached copy is what the user sees.
+
+Cross-origin (Binance/Coinbase REST, Anthropic API, Google Fonts)
+explicitly bypass the cache — caching them would either break
+freshness or leak auth headers.
+
+Why hand-rolled vs `vite-plugin-pwa`: the plugin's peer range tops
+out at Vite 7 (we ship Vite 8) — install fails with ERESOLVE. The
+trade-off vs the plugin: no asset-hash pre-cache list, so first
+load with a new build still needs network. But once the user has
+visited once with that build, all subsequent loads are instant and
+offline-tolerant. `CACHE_NAME = 'nexus-v1'` — bump on incompatible
+changes.
+
+`.env.example` refreshed with the missing `VITE_XAI_API_KEY` /
+`VITE_XAI_MODEL` entries (consensus orchestrator's second provider)
+plus section headers and rationale comments per key.
+
+### Status
+
+- Tests: **943 / 943** across 95 files (stable).
+- Type-check + build clean. All 32 bundles within budget.
+- Branch: `ai-schemas-and-audit`.
+
+Commit:
+- `e89f64a` feat(pwa): SW + .env.example refresh
+
+---
+
 ## 2026-04-26 (cont. 2) — A11y baseline + PWA manifest + HOSTING.md
 
 User: continuing the autonomous loop. Three more independent ships,

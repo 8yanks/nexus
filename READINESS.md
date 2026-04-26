@@ -182,9 +182,9 @@
 
 ### 🎯 Performance & scaling
 - [x] ~~**Performance budgets**~~ ✅ `npm run check:budget` (CI step) — fail si un chunk dépasse son budget. Premier run a déjà attrapé une régression (NFA banner pulling lucide-react).
-- [x] ~~**PWA install**~~ ✅ `public/manifest.webmanifest` + meta tags. Browsers offer "Add to Home Screen" / "Install app". Pas encore de service-worker pour offline mais l'install fonctionne.
+- [x] ~~**PWA install**~~ ✅ `public/manifest.webmanifest` + meta tags. Browsers offer "Add to Home Screen" / "Install app".
+- [x] ~~**Service worker**~~ ✅ `public/sw.js` — stale-while-revalidate cache for same-origin GET. First load = network, subsequent loads = instant + offline-tolerant. Hand-rolled (vite-plugin-pwa peer range tops at Vite 7).
 - [ ] **Code-splitting plus agressif** — `index.js` à 252 KB est OK mais pourrait baisser en différant `chain` / `audit`.
-- [ ] **Service worker** — pour vrai cache offline (le manifest seul ne suffit pas pour offline).
 - [ ] **Compression** — vérifier que le host sert en gzip/brotli (Cloudflare le fait par défaut).
 
 ---
