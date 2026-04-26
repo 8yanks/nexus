@@ -4,6 +4,30 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Pull heavy modules out of the entry chunk into their own
+        // bundles. The entry was at ~252 KB pre-split because the
+        // Zustand store imports analytics + correlation + patterns +
+        // backtest types + provider registry eagerly. Most of those
+        // are only needed AFTER the user clicks into Detail / Backtest
+        // / Correlation, so splitting them defers the cost.
+        //
+        // Browsers parallelise chunk fetches, so a smaller entry +
+        // separate analytics chunk loads faster on first paint than
+        // a single fat entry.
+        manualChunks: (id) => {
+          if (id.includes('/src/analytics/')) return 'analytics'
+          if (id.includes('/src/quality/') || id.includes('/src/normalization/')) return 'analytics'
+          if (id.includes('/src/backtest/')) return 'backtest-engine'
+          if (id.includes('/src/audit/')) return 'audit'
+          if (id.includes('/src/ai/')) return 'ai-orchestrator'
+          if (id.includes('/src/sentinel/')) return 'sentinel-engine'
+        },
+      },
+    },
+  },
   resolve: {
     alias: [
       // Specific package aliases (must come before wildcard)
