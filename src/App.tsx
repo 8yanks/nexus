@@ -6,6 +6,7 @@ import { TopBar } from '@/ui/components/TopBar'
 import { StatusBar } from '@/ui/components/StatusBar'
 import { DemoSplash } from '@/ui/components/DemoSplash'
 import { ErrorBoundary } from '@/ui/components/ErrorBoundary'
+import { CookieConsent } from '@/ui/components/CookieConsent'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── LAZY-LOADED SCREENS ────────────────────────────────────
@@ -66,6 +67,9 @@ const Trader = lazy(() =>
 const Options = lazy(() =>
   import('@/ui/screens/Options').then((m) => ({ default: m.Options })),
 )
+const Legal = lazy(() =>
+  import('@/ui/screens/Legal').then((m) => ({ default: m.Legal })),
+)
 
 const ScreenLoading = () => (
   <div
@@ -100,6 +104,7 @@ const ScreenRouter = () => {
     case 'sentinel': return <Sentinel />
     case 'trader':   return <Trader />
     case 'options':  return <Options />
+    case 'legal':    return <Legal />
   }
 }
 
@@ -133,6 +138,7 @@ function App() {
       }}
     >
       {showSplash && <DemoSplash onDismiss={dismissSplash} />}
+      <CookieConsent />
       <Sidebar />
       <div
         style={{

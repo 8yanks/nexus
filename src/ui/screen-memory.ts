@@ -42,6 +42,7 @@ const VALID_SCREENS = new Set<Screen>([
   'sentinel',
   'trader',
   'options',
+  'legal',
 ])
 
 const isScreen = (v: unknown): v is Screen =>

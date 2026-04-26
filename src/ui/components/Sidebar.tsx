@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Briefcase,
   Settings,
+  FileText,
 } from 'lucide-react'
 import { useMarketStore } from '@/store/market'
 import type { Screen } from '@/store/market'
@@ -61,6 +62,7 @@ const SCREEN_ICONS: Record<Screen, React.ReactNode> = {
   sources:     <Database size={14} />,
   export:      <Download size={14} />,
   options:     <Settings size={14} />,
+  legal:       <FileText size={14} />,
 }
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -81,6 +83,7 @@ const SCREEN_LABELS: Record<Screen, string> = {
   sources:     'Sources',
   export:      'Export',
   options:     'Options',
+  legal:       'Legal',
 }
 
 const COLLAPSE_KEY = 'nexus_sidebar_collapsed'

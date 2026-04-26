@@ -86,7 +86,7 @@ describe('screensForCategory', () => {
       'macro',
     ])
     expect(screensForCategory('bots')).toEqual(['chain', 'sentinel', 'trader'])
-    expect(screensForCategory('system')).toEqual(['sources', 'export', 'options'])
+    expect(screensForCategory('system')).toEqual(['sources', 'export', 'options', 'legal'])
   })
 })
 

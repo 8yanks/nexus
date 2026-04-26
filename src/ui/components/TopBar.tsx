@@ -36,6 +36,7 @@ const SCREEN_TITLES: Record<Screen, string> = {
   sources:     'Sources',
   export:      'Export',
   options:     'Options',
+  legal:       'Documents Légaux',
 }
 
 const fmtClock = (d: Date): string =>
