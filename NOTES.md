@@ -1,5 +1,91 @@
 # Session notes
 
+## 2026-04-26 (cont. 4) — ErrorBoundary + code-split + legal drafts + Playwright
+
+User: "alors on reprend… continue solo". Quatre ships qui ferment
+gros morceaux du backlog inline restant, plus du draft légal pour
+débloquer la voie vers la mise en service publique.
+
+### Shipped — `7be1965` ErrorBoundary + Sentry-ready reporter chokepoint
+
+- `src/infra/error-reporter.ts`: chokepoint Sentry-shaped, no-op
+  par défaut (console.error en dev, silent en prod). Swap d'1
+  ligne via `setReporter(...)` pour brancher du vrai Sentry quand
+  le compte sera ouvert.
+- `src/ui/components/ErrorBoundary.tsx`: classic React boundary
+  avec `getDerivedStateFromError` + `componentDidCatch`. Reporte
+  via `reportError` avec source tag + componentStack. Fallback UI
+  inline-only (zero dépendance au theme) pour tenir même si une
+  régression du theme EST le bug.
+- `src/App.tsx`: ScreenRouter wrapped, source="ScreenRouter".
+- 13 tests (5 reporter, 8 boundary).
+
+### Shipped — `66ec78c` Code-split — entry chunk 251 KB → 235 KB
+
+`vite.config.ts manualChunks` pull analytics + backtest + audit +
+ai + sentinel hors de l'entry. Tous chargés lazy quand l'utilisateur
+visite l'écran qui les exige. Net :
+- entry: -16 KB
+- nouveaux chunks: analytics (17 KB), backtest-engine (12 KB),
+  ai-orchestrator (13 KB)
+- shared chunk audit/banner: 32 → 15 KB (audit broke out)
+- 38 bundles total, tous dans le budget
+
+### Shipped — `5daa556` Legal placeholders TERMS / PRIVACY / DISCLAIMER
+
+Brouillons FR dans `legal/`, **clairement marqués placeholder en
+en-tête** — aucun ne doit être publié sans relecture par avocat
+spécialisé.
+- `TERMS.md`: CGU complet, sections "à approfondir avec l'avocat"
+  listées en bas (PSAN/PSI/MiCA, SLA, force majeure).
+- `PRIVACY.md`: structure RGPD avec table "qui reçoit quelle data"
+  par tiers (Binance, Coinbase, Anthropic, Fonts).
+- `DISCLAIMER.md`: short version (déjà visible dans le banner) +
+  long version (statut réglementaire, risques par catégorie:
+  marché/modèle/backtest/données/technique).
+- `legal/README.md`: workflow recommandé pour transformer en docs
+  prod-ready avec un avocat.
+
+### Shipped — `69f5fa8` Playwright E2E baseline
+
+Premier vrai test bout-en-bout contre la build prod (`vite preview`).
+- `playwright.config.ts`: Chromium-only, single worker (IndexedDB
+  shared origin, sinon races), traces/screenshots/videos on failure.
+- `e2e/smoke.spec.ts`: 4 tests
+  1. App boots, sidebar + PAPER TRADING badge visible
+  2. Sidebar → Backtest screen reachable
+  3. Dashboard watchlist double-click → Detail with TF picker
+  4. ChainMonitor shows NotFinancialAdviceBanner
+- `vite.config.ts test.exclude` pour empêcher Vitest de picker les
+  specs e2e.
+- `package.json`: scripts `test:e2e` + `test:e2e:install`.
+- CI: nouveau job `e2e` (push to main only — pas sur PR pour ne pas
+  ralentir le cycle de review). Pin chromium-only browser, upload
+  playwright-report sur failure.
+
+### Status
+
+- Tests: **956 / 956** unit/integration across 97 fichiers (+13).
+- E2E: **4 specs Playwright** (parse-validated, full run requires
+  `npm run test:e2e:install` pour le browser).
+- Lint: 0 errors, 15 warnings.
+- Build: clean. **Entry chunk 235 KB** (-16 KB vs avant code-split).
+- All 38 bundles within budget.
+- Branch: `ai-schemas-and-audit`.
+
+### READINESS.md updates
+
+Marqués completed: ErrorBoundary, code-split, legal placeholders,
+E2E baseline. Stats refreshed (956 / 97 / 235 KB / 4 e2e).
+
+Commits this segment (newest first):
+- `69f5fa8` test(e2e): Playwright baseline
+- `5daa556` docs(legal): TERMS / PRIVACY / DISCLAIMER drafts
+- `66ec78c` perf(bundle): manual chunks split
+- `7be1965` feat(infra): ErrorBoundary + reporter chokepoint
+
+---
+
 ## 2026-04-26 (cont. 3) — Service worker + .env.example refresh
 
 User: continuing the loop. Two final small ships closing the

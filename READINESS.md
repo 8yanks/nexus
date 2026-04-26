@@ -144,7 +144,8 @@
 - [ ] **Hébergement** — pas de target choisie. **Voir `HOSTING.md`** : comparaison Vercel / Cloudflare Pages / Netlify / VPS / GitHub Pages avec effort/coût/recommandation par stade (MVP / public / 100% contrôle).
 - [ ] **Domaine + HTTPS** — à acheter + configurer.
 - [x] ~~**CI**~~ ✅ `.github/workflows/ci.yml` — lint + type-check + test + build sur push/PR. Reste à câbler le **CD** (déploiement auto vers le host à choisir).
-- [ ] **Monitoring / logs** — pas de Sentry / DataDog / OpenTelemetry. Si ça crashe en prod, on ne le sait pas.
+- [x] ~~**ErrorBoundary**~~ ✅ `<ErrorBoundary>` enveloppe le ScreenRouter — un crash dans un screen ne kill plus toute l'app. `src/infra/error-reporter.ts` est un chokepoint Sentry-shaped : swap d'1 ligne (`setReporter(...)`) pour brancher du vrai Sentry quand le compte sera ouvert.
+- [ ] **Monitoring / logs réels** — Sentry stub en place mais pas connecté. Reste à créer compte + ajouter `VITE_SENTRY_DSN` + remplacer l'impl no-op par `Sentry.captureException`.
 - [ ] **Analytics** — pas de Plausible / PostHog. On ne sait pas qui utilise quoi.
 
 ### 📡 Données réelles equities/forex
@@ -162,11 +163,12 @@
 - [ ] Sinon, **assumer paper-only** publiquement (badge "PAPER TRADING" partout).
 
 ### 📜 Légal & conformité
-- [ ] **CGU / Privacy Policy** — obligatoires en EU (RGPD).
+- [x] ~~**CGU / Privacy / Disclaimer**~~ 🟡 Brouillons drafted dans `legal/` (TERMS.md, PRIVACY.md, DISCLAIMER.md, README.md). **À FAIRE RELIRE PAR UN AVOCAT** spécialisé droit numérique + financier avant publication.
 - [x] ~~**Disclaimer "PAPER TRADING"**~~ ✅ Badge always-on dans le TopBar (chip jaune).
 - [x] ~~**Disclaimer "not financial advice"**~~ ✅ `NotFinancialAdviceBanner` mounted sur ChainMonitor / Trader / Sentinel avec context-string adapté à chaque écran.
+- [ ] **Intégrer les docs légaux dans l'app** — créer un écran "Légal" qui affiche TERMS/PRIVACY/DISCLAIMER, ajouter une étape de consentement explicite avant mise en service publique.
 - [ ] **Cookie consent** — si on ajoute analytics.
-- [ ] **Clause exonératoire** — couvrir les pertes de l'utilisateur si Trader devient réel.
+- [ ] **Clause exonératoire trading réel** — couverte par `legal/DISCLAIMER.md` section 5, mais à durcir si passage en réel.
 
 ### 📚 Documentation utilisateur
 - [x] ~~**README.md**~~ ✅ Refait — overview, asset coverage, getting-started, scripts, architecture ASCII, repo layout, disclaimer.
@@ -175,7 +177,7 @@
 - [x] ~~**Glossaire**~~ ✅ `GLOSSARY.md` — RSI, EMA, BB, DC, patterns, AI orchestrator, sentinel veto, backtest stats, providers, UI bits, lectures conseillées. En FR pour non-traders.
 
 ### 🧪 Tests manquants
-- [ ] **E2E tests** — actuellement zero. Playwright ou Cypress pour valider les flows complets (run backtest → view on chart → markers visible).
+- [x] ~~**E2E tests baseline**~~ ✅ Playwright installé, 4 smoke specs (`e2e/smoke.spec.ts`), CI job `e2e` (push to main only — skip sur PR pour vélocité). Reste à étendre la couverture vers les flows métier (backtest run → markers, AI decision → audit drilldown).
 - [ ] **Visual regression** — un Percy / Chromatic pour catcher les régressions UI.
 - [ ] **Tests d'accessibilité** — axe-core en CI.
 - [ ] **Performance budgets** — fixer un max-bundle-size en CI (TradingViewChart à 181 KB pourrait grossir).
@@ -184,7 +186,7 @@
 - [x] ~~**Performance budgets**~~ ✅ `npm run check:budget` (CI step) — fail si un chunk dépasse son budget. Premier run a déjà attrapé une régression (NFA banner pulling lucide-react).
 - [x] ~~**PWA install**~~ ✅ `public/manifest.webmanifest` + meta tags. Browsers offer "Add to Home Screen" / "Install app".
 - [x] ~~**Service worker**~~ ✅ `public/sw.js` — stale-while-revalidate cache for same-origin GET. First load = network, subsequent loads = instant + offline-tolerant. Hand-rolled (vite-plugin-pwa peer range tops at Vite 7).
-- [ ] **Code-splitting plus agressif** — `index.js` à 252 KB est OK mais pourrait baisser en différant `chain` / `audit`.
+- [x] ~~**Code-splitting plus agressif**~~ ✅ vite.config.ts `manualChunks` — entry **251 KB → 235 KB** (-6%). Nouveaux chunks lazy : analytics (17 KB), backtest-engine (12 KB), ai-orchestrator (13 KB), audit (absorbé par shared chunk). 38 bundles total, tous dans le budget.
 - [ ] **Compression** — vérifier que le host sert en gzip/brotli (Cloudflare le fait par défaut).
 
 ---
@@ -219,15 +221,16 @@
 
 | Métrique | Valeur |
 |---|---|
-| Tests | **943 / 943 verts** |
-| Test files | **95** |
+| Tests (unit + integration) | **956 / 956 verts** |
+| Test files | **97** |
+| Tests E2E | **4 specs Playwright** (smoke baseline) |
 | Type-check | ✅ clean |
 | Build | ✅ clean (~1-3s) |
-| Bundle principal | 252 KB (gz 80 KB) |
+| Bundle principal | **235 KB** (gz 75 KB) — réduit via manualChunks |
 | Plus gros chunk | TradingViewChart 181 KB (gz 58 KB) |
 | Branche actuelle | `ai-schemas-and-audit` |
 | Commits cumulés sur 2 jours | **30+** features + docs + chores, tout pushé, lint vert (0 errors) |
-| Pre-launch docs | `READINESS.md` (cette page) · `HOSTING.md` · `GLOSSARY.md` · `README.md` · `NOTES.md` |
+| Pre-launch docs | `READINESS.md` (cette page) · `HOSTING.md` · `GLOSSARY.md` · `README.md` · `NOTES.md` · `legal/{TERMS,PRIVACY,DISCLAIMER,README}.md` |
 
 ---
 
