@@ -62,3 +62,43 @@ jobs:
           # Short retention — these are debug-only, the real build is
           # whatever ships from a tagged release later.
           retention-days: 7
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # E2E only runs on push to main — skipped on PRs to keep PR cycles
+    # snappy. Devs can run `npm run test:e2e` locally for confidence.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: ci
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (chromium only)
+        # We pin chromium-only to keep the install footprint small; the
+        # baseline tests don't need cross-browser coverage yet.
+        run: npx playwright install --with-deps chromium
+
+      - name: Build (E2E runs against the production preview)
+        run: npm run build
+
+      - name: Run E2E
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7

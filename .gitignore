@@ -26,3 +26,8 @@ dist-ssr
 
 # Design handoff bundle (reference only — not for production)
 .design_handoff/
+
+# Playwright artifacts
+test-results/
+playwright-report/
+playwright/.cache/
