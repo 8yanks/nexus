@@ -8,6 +8,7 @@ import { DemoSplash } from '@/ui/components/DemoSplash'
 import { ErrorBoundary } from '@/ui/components/ErrorBoundary'
 import { CookieConsent } from '@/ui/components/CookieConsent'
 import { KeybindHelp } from '@/ui/components/KeybindHelp'
+import { ErrorToast } from '@/ui/components/ErrorToast'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── LAZY-LOADED SCREENS ────────────────────────────────────
@@ -141,6 +142,7 @@ function App() {
       {showSplash && <DemoSplash onDismiss={dismissSplash} />}
       <CookieConsent />
       <KeybindHelp />
+      <ErrorToast />
       <Sidebar />
       <div
         style={{

@@ -169,3 +169,63 @@ describe('<WorkspaceManager /> — apply / delete / rename', () => {
     expect(useWorkspacesStore.getState().workspaces[0]?.name).toBe('Renamed')
   })
 })
+
+
+describe("<WorkspaceManager /> — export / import", () => {
+  it("hides the share row when no workspaces exist", () => {
+    render(<WorkspaceManager />)
+    expect(screen.queryByTestId("workspace-share-row")).not.toBeInTheDocument()
+  })
+
+  it("shows the share row once a workspace is added", () => {
+    useWorkspacesStore.setState({
+      workspaces: [{ id: "a", name: "Day", createdAt: 1, theme: "dark", density: "comfy" }],
+      activeId: null,
+    })
+    render(<WorkspaceManager />)
+    expect(screen.getByTestId("workspace-share-row")).toBeInTheDocument()
+    expect(screen.getByTestId("workspace-export")).toBeInTheDocument()
+    expect(screen.getByTestId("workspace-import-input")).toBeInTheDocument()
+  })
+
+  it("import success path adds workspaces (real timers + FileReader)", async () => {
+    // FileReader needs real microtask ordering — fake timers stub
+    // setTimeout but the underlying read still completes asynchronously.
+    vi.useRealTimers()
+    useWorkspacesStore.setState({
+      workspaces: [{ id: "a", name: "existing", createdAt: 1, theme: "dark", density: "comfy" }],
+      activeId: null,
+    })
+    render(<WorkspaceManager />)
+    const bundle = JSON.stringify({
+      schema: "nexus.workspaces.export",
+      version: 1,
+      exportedAt: "2026-04-26T00:00:00Z",
+      workspaces: [
+        { id: "b", name: "imported", createdAt: 2, theme: "light", density: "spacious" },
+      ],
+    })
+    const input = screen.getByTestId("workspace-import-input") as HTMLInputElement
+    const file = new File([bundle], "nexus-workspaces.json", { type: "application/json" })
+    fireEvent.change(input, { target: { files: [file] } })
+    // findBy polls until the success status appears — no timer fakery needed.
+    await screen.findByTestId("workspace-import-status")
+    expect(useWorkspacesStore.getState().workspaces.map((w) => w.id).sort()).toEqual(["a", "b"])
+  })
+
+  it("import failure path surfaces the error message", async () => {
+    vi.useRealTimers()
+    useWorkspacesStore.setState({
+      workspaces: [{ id: "a", name: "existing", createdAt: 1, theme: "dark", density: "comfy" }],
+      activeId: null,
+    })
+    render(<WorkspaceManager />)
+    const input = screen.getByTestId("workspace-import-input") as HTMLInputElement
+    const file = new File(["{not-json"], "broken.json", { type: "application/json" })
+    fireEvent.change(input, { target: { files: [file] } })
+    const status = await screen.findByTestId("workspace-import-status")
+    expect(status.textContent).toMatch(/invalid json/i)
+    // Existing workspace untouched.
+    expect(useWorkspacesStore.getState().workspaces).toHaveLength(1)
+  })
+})
