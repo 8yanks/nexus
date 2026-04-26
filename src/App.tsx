@@ -5,6 +5,7 @@ import { Sidebar } from '@/ui/components/Sidebar'
 import { TopBar } from '@/ui/components/TopBar'
 import { StatusBar } from '@/ui/components/StatusBar'
 import { DemoSplash } from '@/ui/components/DemoSplash'
+import { ErrorBoundary } from '@/ui/components/ErrorBoundary'
 import { colors, fonts } from '@/ui/theme'
 
 // ─── LAZY-LOADED SCREENS ────────────────────────────────────
@@ -144,9 +145,14 @@ function App() {
       >
         <TopBar />
         <main style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-          <Suspense fallback={<ScreenLoading />}>
-            <ScreenRouter />
-          </Suspense>
+          {/* ErrorBoundary scoped to the screen tree — a crash in
+              one screen doesn't take Sidebar/TopBar/StatusBar down
+              with it. Reset re-mounts the screen on user click. */}
+          <ErrorBoundary source="ScreenRouter">
+            <Suspense fallback={<ScreenLoading />}>
+              <ScreenRouter />
+            </Suspense>
+          </ErrorBoundary>
         </main>
         <StatusBar />
       </div>
