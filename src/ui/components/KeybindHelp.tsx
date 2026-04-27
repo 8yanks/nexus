@@ -32,6 +32,7 @@ const SECTIONS: KeySection[] = [
     title: 'Global',
     rows: [
       { keys: ['?'], description: 'Open this help' },
+      { keys: ['Ctrl/Cmd', 'K'], description: 'Open command palette (jump to screen / instrument)' },
       { keys: ['Esc'], description: 'Close modals / dismiss splash' },
     ],
   },
