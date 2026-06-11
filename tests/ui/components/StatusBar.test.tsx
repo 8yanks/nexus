@@ -126,3 +126,51 @@ describe('<StatusBar /> — chrome', () => {
     expect(screen.getByText('ONLINE')).toBeInTheDocument()
   })
 })
+
+
+describe("<StatusBar /> — manual refresh", () => {
+  it("renders a refresh button", () => {
+    render(<StatusBar />)
+    expect(screen.getByTestId("status-bar-refresh")).toBeInTheDocument()
+  })
+
+  it("button reads the current refreshed-ago label by default", () => {
+    const now = new Date("2026-04-24T12:00:00Z")
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    useMarketStore.setState({
+      lastRefresh: new Date(now.getTime() - 7_000).toISOString(),
+    })
+    render(<StatusBar />)
+    expect(screen.getByTestId("status-bar-refresh").textContent).toMatch(/7s AGO/)
+  })
+
+  it("clicking the button calls refreshAll", async () => {
+    const refreshAllMock = vi.fn().mockResolvedValue(undefined)
+    useMarketStore.setState({ refreshAll: refreshAllMock as never })
+    render(<StatusBar />)
+    await act(async () => {
+      screen.getByTestId("status-bar-refresh").click()
+    })
+    expect(refreshAllMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("button shows REFRESHING… while in flight (debounce double-click)", async () => {
+    let resolveIt: () => void = () => {}
+    const refreshAllMock = vi.fn().mockReturnValue(new Promise<void>((r) => { resolveIt = r }))
+    useMarketStore.setState({ refreshAll: refreshAllMock as never })
+    render(<StatusBar />)
+    await act(async () => {
+      screen.getByTestId("status-bar-refresh").click()
+    })
+    expect(screen.getByTestId("status-bar-refresh").textContent).toMatch(/REFRESHING/i)
+    // A second click during the in-flight call must not double-fire.
+    await act(async () => {
+      screen.getByTestId("status-bar-refresh").click()
+    })
+    expect(refreshAllMock).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolveIt()
+    })
+  })
+})
