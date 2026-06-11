@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMarketStore } from '@/store/market'
 import { colors, fonts } from '@/ui/theme'
 
@@ -33,6 +33,7 @@ export const StatusBar = () => {
   const snapshots = useMarketStore((s) => s.snapshots)
   const signalsCount = useMarketStore((s) => s.signals.length)
   const lastRefresh = useMarketStore((s) => s.lastRefresh)
+  const refreshAll = useMarketStore((s) => s.refreshAll)
 
   // Tick the "Xs ago" label without re-rendering the whole tree. The
   // store updates lastRefresh every refresh cycle anyway; this just
@@ -42,6 +43,24 @@ export const StatusBar = () => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  // ── Manual refresh button ─────────────────────────────────
+  // Click → fire a refreshAll. Visual feedback via `refreshing`
+  // flag (debounced through the in-flight ref so a fat double-click
+  // doesn't hammer the providers).
+  const [refreshing, setRefreshing] = useState(false)
+  const inFlight = useRef(false)
+  const triggerRefresh = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setRefreshing(true)
+    try {
+      await refreshAll()
+    } finally {
+      inFlight.current = false
+      setRefreshing(false)
+    }
+  }
 
   const snapList = Object.values(snapshots)
   const liveFeeds = snapList.filter((s) => s._status === 'LIVE').length
@@ -91,7 +110,27 @@ export const StatusBar = () => {
       <span style={item}>
         <span style={{ color: colors.yellow }}>{signalsCount} SIGNALS</span>
       </span>
-      <span style={item}>REFRESHED {fmtAgo(lastRefresh, now)}</span>
+      <button
+        type="button"
+        onClick={triggerRefresh}
+        disabled={refreshing}
+        title={refreshing ? 'Refresh in progress…' : 'Refresh data now'}
+        data-testid="status-bar-refresh"
+        style={{
+          ...item,
+          background: 'transparent',
+          border: 'none',
+          padding: '2px 4px',
+          cursor: refreshing ? 'wait' : 'pointer',
+          fontFamily: fonts.mono,
+          fontSize: 9.5,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: refreshing ? colors.cyan : colors.textMuted,
+        }}
+      >
+        {refreshing ? '↻ REFRESHING…' : `REFRESHED ${fmtAgo(lastRefresh, now)}`}
+      </button>
       <span style={{ ...item, marginLeft: 'auto' }}>
         ANALYST BOT
         <span style={dot(colors.cyan)} />
